@@ -16,40 +16,42 @@
 #include "003_BG96.h"
 
 const char* cmd_list[] = {
+    // DEV Auto CMDs
     CMD_DEV_REGISTER,
+    CMD_HEART_BEAT,
+    CMD_DOOR_LOCKED,
+    CMD_DOOR_UNLOCKED,
+    CMD_CALYPSO_UPLOAD,
+    CMD_INVALID_MOVE,
     CMD_REPORT_GPS,
     CMD_IAP_SUCCESS,
-    CMD_DOOR_UNLOCKED,
-    CMD_FINISH_RST,
-    CMD_FINISH_ADDNFC,
+    CMD_CHARGE_STARTED,
     CMD_CHARGE_STOPED,
-    CMD_HEART_BEAT,
+    CMD_FINISH_ADDNFC,
+    CMD_FINISH_RST,
+    CMD_RISK_REPORT,
+
+    // SVR Auto CMDs
     CMD_QUERY_PARAMS,
     CMD_RING_ALARM,
     CMD_UNLOCK_DOOR,
-    CMD_DOOR_LOCKED,
-    CMD_JUMP_LAMP,
-    CMD_CALYPSO_UPLOAD,
     CMD_FACTORY_RST,
-    CMD_INVALID_MOVE,
-    CMD_CHARGE_STARTED,
     CMD_ENTER_SLEEP,
     CMD_QUERY_GPS,
     CMD_IAP_UPGRADE,
-    CMD_MP3_UPDATE,
     CMD_CHANGE_APN,
-    CMD_START_TRACE,
-    CMD_STOP_TRACE,
     CMD_QUERY_NFC,
     CMD_EXIT_SLEEP,
     CMD_DELETE_NFC,
     CMD_ADD_NFC,
-    CMD_DOOR_OPENED,
-    CMD_RISK_REPORT,
+    CMD_QUERY_ALARM,
+    CMD_MODIFY_ALARM,
+    CMD_QUERY_ICCID,
     NULL
 };
 
 u32 g_need_ack = 0;
+u32 g_till_svr_ack = 0;
 
 // DOOR Sta:
 u8 g_door_state = 0;
@@ -132,6 +134,10 @@ u8 is_supported_mobit_cmd(u8 pos, char* str)
 
     printf("pos = %d\n", pos);
     for (i=pos; i<cmd_count; i++) {
+        if ((0==pos) && (i>=QUERY_PARAMS)) {
+            break;
+        }
+
         if (0 == strncmp(str, cmd_list[i], strlen(cmd_list[i]))) {
             break;
         }
@@ -182,58 +188,57 @@ void parse_mobit_msg(char* msg)
 
             printf("is_run = %d\n", is_run);
         } else if (2 == index) {
-            if (0 == is_run) {
+            cmd_type =  UNKNOWN_CMD;
+
+            if (0 == is_run) {// SVR Re for Dev Auto CMDs
                 cmd_type = (enum CMD_TYPE)is_supported_mobit_cmd(0, split_str);
-            } else {
-                cmd_type = (enum CMD_TYPE)is_supported_mobit_cmd(HEART_BEAT, split_str);
+            } else {// SVR Auto CMDs
+                cmd_type = (enum CMD_TYPE)is_supported_mobit_cmd(CMD_QUERY_PARAMS, split_str);
+
+                // need to ack for every SVR CMDs
+                if (cmd_type != UNKNOWN_CMD) {
+                    g_need_ack |= (1<<cmd_type);
+                }
             }
 
             printf("cmd_type = %d\r\n", cmd_type);
 
-            if (strstr((const char*)msg, (const char*)"B5")) {
-                g_door_state = 0;
+            if (cmd_type != UNKNOWN_CMD) {
+                break;
             }
 
             // No need Parse extra params
-            ////////////////// SVR CMDs //////////////////
-            // Need do some action
-            if (UNLOCK_DOOR == cmd_type) {
-                g_need_ack |= (1<<cmd_type);
-            } else if (FACTORY_RST == cmd_type) {
-                g_need_ack |= (1<<cmd_type);
-            } else if (ADD_NFC == cmd_type) {
-                g_need_ack |= (1<<cmd_type);
-            } else if (QUERY_PARAMS == cmd_type) {
-                g_need_ack |= (1<<cmd_type);
-            } else if (ENTER_SLEEP == cmd_type) {
-                g_need_ack |= (1<<cmd_type);
-            } else if (QUERY_GPS == cmd_type) {
-                g_need_ack |= (1<<cmd_type);
-            } else if (QUERY_NFC == cmd_type) {
-                g_need_ack |= (1<<cmd_type);
-            } else if (EXIT_SLEEP == cmd_type) {
-                g_need_ack |= (1<<cmd_type);
-            ////////////////// SVR ACKs //////////////////
-            // Need update completed flag
-            // Below comments:
-            // To ensure the server has received this device's notice
-            // If not, device will repeat send this notice
-            } else if (DOOR_LOCKED == cmd_type) {
-                g_drlock_sta_chged &= 0x7F;
-            } else if (DOOR_UNLOCKED == cmd_type) {
-                g_drlock_sta_chged &= 0x7F;
-            } else if (DOOR_OPENED == cmd_type) {
-                g_dropen_sta_chged &= 0x7F;
-            } else if (FINISH_ADDNFC == cmd_type) {
-                g_dropen_sta_chged &= 0x7F;
-            } else if (FINISH_RST == cmd_type) {
-                g_hbrake_sta_chged &= 0x7F;
-            } else if (RISK_REPORT == cmd_type) {
-                g_hbrake_sta_chged &= 0x7F;
-            ////////////////// SVR ACKs //////////////////
-            // Needn't do anything
-            } else if (HEART_BEAT == cmd_type) {
-                // Just Skip
+            if (cmd_type >= QUERY_PARAMS) {// SVR Auto CMDs
+                // Need do some action ASAP
+
+                if (QUERY_PARAMS == cmd_type) {
+                } else if (RING_ALARM == cmd_type) {
+                } else if (UNLOCK_DOOR == cmd_type) {
+                    DoUnLockTheLockerFast();
+                } else if (FACTORY_RST == cmd_type) {
+                } else if (ENTER_SLEEP == cmd_type) {
+                } else if (QUERY_GPS == cmd_type) {
+                } else if (QUERY_NFC == cmd_type) {
+                } else if (EXIT_SLEEP == cmd_type) {
+                } else if (ADD_NFC == cmd_type) {
+                } else if (QUERY_ALARM == cmd_type) {
+                } else if (QUERY_ICCID == cmd_type) {
+            } else {// SVR ACKs for DEV's Auto CMDs
+                // Dev thread will re-send DEV important Report till server received
+
+                if (DOOR_LOCKED == cmd_type) {
+                    // clear the loop send flag
+                    g_till_svr_ack &= ~(1<<cmd_type);
+                } else if (DOOR_UNLOCKED == cmd_type) {
+                    g_till_svr_ack &= ~(1<<cmd_type);
+                } else if (FINISH_ADDNFC == cmd_type) {
+                    g_till_svr_ack &= ~(1<<cmd_type);
+                } else if (RISK_REPORT == cmd_type) {
+                    g_till_svr_ack &= ~(1<<cmd_type);
+                } else {
+                    // Needn't do anything
+                    // Just Skip
+                }
             }
         } else if (index > 2) {// Need to Parse extra params
             // Parse CMD or ACK
@@ -301,18 +306,7 @@ void parse_mobit_msg(char* msg)
                     // do delete
                     printf("To delete %s\n", tmp_card);
                 }
-                g_need_ack |= (1<<cmd_type);
-            } else if (START_TRACE == cmd_type) {
-                //g_time_start_gps = os_jiffies;
-                //g_gps_trace_gap = atoi(split_str);
-                //printf("g_gps_trace_gap = %d\n", g_gps_trace_gap);
-                //if (g_gps_trace_gap < 5) {
-                //    g_gps_trace_gap = 5;
-                //    printf("change g_gps_trace_gap = %d\n", g_gps_trace_gap);
-                //}
 
-                g_need_ack |= (1<<cmd_type);
-            } else if (RING_ALARM == cmd_type) {
                 g_need_ack |= (1<<cmd_type);
             }
         }
@@ -325,26 +319,6 @@ void parse_mobit_msg(char* msg)
 
 void ProcessTcpServerCommand(void)
 {
-    // during download mode, skip other operations
-    // till download success or failed
-    if (g_mp3_update != 0) {
-        if (sim7500e_http_mp3()) {
-            if (sim7500e_http_mp3()) {
-                // try twice NG, skip this request
-                g_mp3_update = 0;
-                printf("failed to do sim7500e_http_mp3\n");
-
-                memset(g_mp3_update_url, 0, LEN_DW_URL);
-                memset(g_mp3_update_name, 0, LEN_FILE_NAME);
-
-                g_dw_size_total = 0;
-                g_dw_recved_sum = 0;
-            }
-        }
-
-        return;
-    }
-
     // during download mode, skip other operations
     // till download success or failed
     if (g_iap_update != 0) {
@@ -375,11 +349,7 @@ void ProcessTcpServerCommand(void)
     // CMD_UNLOCK_DOOR,
     } else if (g_need_ack & (1<<UNLOCK_DOOR)) {
         g_need_ack &= ~(1<<UNLOCK_DOOR);
-        sim7500e_do_unlock_door_ack();
-    // CMD_JUMP_LAMP,
-    } else if (g_need_ack & (1<<JUMP_LAMP)) {
-        g_need_ack &= ~(1<<JUMP_LAMP);
-        sim7500e_do_jump_lamp_ack();
+        TcpReDoUnlockLocker();
     // CMD_ENGINE_START,
     } else if (g_need_ack & (1<<ENGINE_START)) {
         g_need_ack &= ~(1<<ENGINE_START);
@@ -396,40 +366,10 @@ void ProcessTcpServerCommand(void)
     } else if (g_need_ack & (1<<IAP_UPGRADE)) {
         g_need_ack &= ~(1<<IAP_UPGRADE);
         sim7500e_do_iap_upgrade_ack();
-    // CMD_MP3_UPDATE,
-    } else if (g_need_ack & (1<<MP3_UPDATE)) {
-        g_need_ack &= ~(1<<MP3_UPDATE);
-    // CMD_MP3_PLAY,
-    } else if (g_need_ack & (1<<MP3_PLAY)) {
-        g_need_ack &= ~(1<<MP3_PLAY);
-        sim7500e_do_mp3_play_ack();
-    // CMD_START_TRACE,
-    } else if (g_need_ack & (1<<START_TRACE)) {
-        g_need_ack &= ~(1<<START_TRACE);
-        sim7500e_do_start_trace_ack();
-        // CMD_STOP_TRACE,
-    } else if (g_need_ack & (1<<STOP_TRACE)) {
-        g_need_ack &= ~(1<<STOP_TRACE);
-        sim7500e_do_stop_trace_ack();
-    // CMD_QUERY_BMS,
-    } else if (g_need_ack & (1<<QUERY_BMS)) {
-        g_need_ack &= ~(1<<QUERY_BMS);
-        sim7500e_do_query_bms_ack();
-    // CMD_QUERY_MP3,
-    } else if (g_need_ack & (1<<QUERY_MP3)) {
-        g_need_ack &= ~(1<<QUERY_MP3);
-        sim7500e_do_query_mp3_ack();
-    // CMD_QUERY_CAR,
-    } else if (g_need_ack & (1<<QUERY_CAR)) {
-        g_need_ack &= ~(1<<QUERY_CAR);
-        sim7500e_do_query_car_ack();
     // CMD_ENGINE_STOP,
     } else if (g_need_ack & (1<<LOCK_DOOR)) {
         g_need_ack &= ~(1<<LOCK_DOOR);
         sim7500e_do_lock_door_ack();
-    // CMD_DOOR_OPENED,
-    } else if (g_need_ack & (1<<DOOR_OPENED)) {
-        g_need_ack &= ~(1<<DOOR_OPENED);
     // CMD_DOOR_CLOSED,
     } else if (g_need_ack & (1<<DOOR_CLOSED)) {
         g_need_ack &= ~(1<<DOOR_CLOSED);
@@ -440,9 +380,16 @@ void ProcessTcpServerCommand(void)
     } else if (g_need_ack & (1<<BRAKE_UNLOCKED)) {
         g_need_ack &= ~(1<<BRAKE_UNLOCKED);
     }
+
+    // always send till received ACK from server
+    if (g_till_svr_ack & (1<<DOOR_LOCKED)) {
+    } else if (g_till_svr_ack & (1<<DOOR_UNLOCKED)) {
+    } else if (g_till_svr_ack & (1<<FINISH_ADDNFC)) {
+    } else if (g_till_svr_ack & (1<<RISK_REPORT)) {
+    }
 }
 
-// ============================================ DEV Host ============================================ //
+// ============================================ DEV TCP Host ============================================ //
 bool TcpHeartBeat(void)
 {
     // const char send_data[] = "#MOBIT,868446032285351,HB,4.0,1,20,e10adc3949ba59abbe56e057f20f883e$";
@@ -574,4 +521,71 @@ bool TcpChargeStoped(void)
     return BG96TcpSend();
 }
 
-// ============================================ DEV Slave ============================================ //
+// ============================================ DEV TCP Slave ============================================ //
+
+// #MOBIT,868446032285351,UG,1,Re,e10adc3949ba59abbe56e057f20f883e$
+// #MOBIT,868446032285351,RS,1,Re,e10adc3949ba59abbe56e057f20f883e$
+// #MOBIT,868446032285351,SLEEP,1,Re,e10adc3949ba59abbe56e057f20f883e$
+// #MOBIT,868446032285351,OL,0,Re,e10adc3949ba59abbe56e057f20f883e$
+// #MOBIT,868446032285351,UP,Re,e10adc3949ba59abbe56e057f20f883e$
+// #MOBIT,868446032285351,ADDC,Re,e10adc3949ba59abbe56e057f20f883e$
+// #MOBIT,868446032285351,ICCID,Re,e10adc3949ba59abbe56e057f20f883e$
+// #MOBIT,868446032285351,1,1,80,Re,e10adc3949ba59abbe56e057f20f883e$
+// #MOBIT,868446032285351,MALC,Re,e10adc3949ba59abbe56e057f20f883e$
+// #MOBIT,868446032285351,DD,Re,e10adc3949ba59abbe56e057f20f883e$
+bool TcpReNormalAck(u8* cmd_str, u8* sta)
+{
+    memset(bg96_send_buf, 0, LEN_MAX_SEND);
+    sprintf(bg96_send_buf, "#MOBIT,%s,%s,Re,%s,%s$", g_imei_str, cmd_str, sta, send_md5);
+
+    return BG96TcpSend();
+}
+
+bool TcpReDoQueryParams(void)
+{
+    // #MOBIT,868446032285351,QG,lock.mobit.eu,1000,mobit.apn,Re,e10adc3949ba59abbe56e057f20f883e$
+
+    memset(bg96_send_buf, 0, LEN_MAX_SEND);
+    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_PARAMS, g_svr_ip, g_svr_port, g_svr_apn, send_md5);
+
+    return BG96TcpSend();
+}
+
+
+bool TcpReDoQueryGPS(void)
+{
+    // #MOBIT,868446032285351,GGEO,51.106922|3.702681|20|180,0,Re,e10adc3949ba59abbe56e057f20f883e$
+
+    memset(bg96_send_buf, 0, LEN_MAX_SEND);
+    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s|%s|%s|%s,%s,Re,%s$", g_imei_str, CMD_QUERY_GPS, "51.106922", "3.702681", "20", "180", "0", send_md5);
+
+    return BG96TcpSend();
+}
+
+bool TcpReDoQueryNFCs(void)
+{
+    // #MOBIT,868446032285351,QCL,a|b|c|d|e|f|g|h,Re,e10adc3949ba59abbe56e057f20f883e$
+
+    memset(bg96_send_buf, 0, LEN_MAX_SEND);
+    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_NFC, "a|b|c|d|e|f|g|h", send_md5);
+
+    return BG96TcpSend();
+}
+
+bool TcpReDoDeleteNFCs(void)
+{
+    // #MOBIT,868446032285351,RMC,a|b|c|d|e,Re,e10adc3949ba59abbe56e057f20f883e$
+
+    memset(bg96_send_buf, 0, LEN_MAX_SEND);
+    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_NFC, "a|b|c|d|e|f|g|h", send_md5);
+
+    return BG96TcpSend();
+}
+
+// ============================================ DEV Action ============================================ //
+bool DoUnLockTheLockerFast(void)
+{
+    printf("DoUnLockTheLockerFast...\n");
+
+    return true;
+}

@@ -21,8 +21,7 @@
 #define CMD_IAP_SUCCESS     "UP"// DEV Host
 #define CMD_CHARGE_STARTED  "CG"// DEV Host
 #define CMD_CHARGE_STOPED   "CGE"// DEV Host
-    #define CMD_DOOR_OPENED     "C7"// DEV Host
-#define CMD_FINISH_ADDNFC   "ADDC"// DEV Host
+#define CMD_FINISH_ADDNFC   "ADDCR"// DEV Host
 #define CMD_FINISH_RST      "RSOK"// DEV Host
 #define CMD_RISK_REPORT     "FA"// DEV Host
 
@@ -30,19 +29,18 @@
 #define CMD_QUERY_PARAMS    "QG"// DEV ACK
 #define CMD_RING_ALARM      "DD"// DEV ACK
 #define CMD_UNLOCK_DOOR     "OL"// DEV ACK
-    #define CMD_JUMP_LAMP       "S2"// DEV ACK
 #define CMD_FACTORY_RST     "RS"// DEV ACK
 #define CMD_ENTER_SLEEP     "SLEEP"// DEV ACK
-#define CMD_QUERY_GPS       "GEO"// DEV ACK
+#define CMD_QUERY_GPS       "GGEO"// DEV ACK
 #define CMD_IAP_UPGRADE     "UP"// DEV ACK
-    #define CMD_MP3_UPDATE      "U2"// DEV ACK
 #define CMD_CHANGE_APN      "UG"// DEV ACK
-    #define CMD_START_TRACE     "T0"// DEV ACK
-    #define CMD_STOP_TRACE      "T2"// DEV ACK
 #define CMD_QUERY_NFC       "QCL"// DEV ACK
 #define CMD_EXIT_SLEEP      "WU"// DEV ACK
 #define CMD_DELETE_NFC      "RMC"// DEV ACK
 #define CMD_ADD_NFC         "ADDC"// DEV ACK
+#define CMD_QUERY_ALARM     "ALC"// DEV ACK
+#define CMD_MODIFY_ALARM    "MALC"// DEV ACK
+#define CMD_QUERY_ICCID     "ICCID"// DEV ACK
 
 #define LEN_NET_TCP    32
 #define LEN_CARD_ID    32
@@ -60,36 +58,37 @@
 #define LEN_FILE_NAME   128
 
 enum CMD_TYPE {
+    // DEV Auto CMDs
     DEV_REGISTER = 0,
+    HEART_BEAT,
+    DOOR_LOCKED,
+    DOOR_UNLOCKED,
+    CALYPSO_UPLOAD,
+    INVALID_MOVE,
     REPORT_GPS,
     IAP_SUCCESS,
-    DOOR_UNLOCKED,
-    FINISH_RST,
-    FINISH_ADDNFC,
+    CHARGE_STARTED,
     CHARGE_STOPED,
-    HEART_BEAT,
+    FINISH_ADDNFC,
+    FINISH_RST,
+    RISK_REPORT,
+
+    // SVR Auto CMDs
     QUERY_PARAMS,
     RING_ALARM,
     UNLOCK_DOOR,
-    DOOR_LOCKED,
-    JUMP_LAMP,
-    CALYPSO_UPLOAD,
     FACTORY_RST,
-    INVALID_MOVE,
-    CHARGE_STARTED,
     ENTER_SLEEP,
     QUERY_GPS,
     IAP_UPGRADE,
-    MP3_UPDATE,
     CHANGE_APN,
-    START_TRACE,
-    STOP_TRACE,
     QUERY_NFC,
     EXIT_SLEEP,
     DELETE_NFC,
     ADD_NFC,
-    DOOR_OPENED,
-    RISK_REPORT,
+    QUERY_ALARM,
+    MODIFY_ALARM,
+    QUERY_ICCID,
     UNKNOWN_CMD
 };
 
