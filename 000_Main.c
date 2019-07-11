@@ -43,6 +43,8 @@ int is_mode_nb = 0;
 // BIT0: current connect status
 u8 g_net_sta = 0;
 
+extern u32 g_need_ack;
+
 u8 g_imei_str[LEN_COMMON_USE] = "868446032285351";
 u8 g_iccid_str[LEN_COMMON_USE] = "898602B4151830031698";
 
@@ -64,14 +66,14 @@ void process_bg96(void)
     while(1) {
         if (0 == IsNetRingBufferAvailable()) {
             WaitUartNetRxIdle();
-            
+
             // buffer is empty for 50MS
             if (0 == IsNetRingBufferAvailable()) {
                 break;
             }
         }
         one_svr_cmds[i++] = ReadByteFromNetRingBuffer();
-        
+
         if (3 == i) {
             if ((one_svr_cmds[0]=='S')&&(one_svr_cmds[1]=='T')&&(one_svr_cmds[2]=='A')) {
                 skip_flag = 0;
@@ -80,7 +82,7 @@ void process_bg96(void)
                 skip_flag = 1;
             }
         }
-        
+
         if (i > 3) {
             if ((one_svr_cmds[i-3]=='S')&&(one_svr_cmds[i-2]=='T')&&(one_svr_cmds[i-3]=='A')) {
                 if (i != 3) {
@@ -92,7 +94,7 @@ void process_bg96(void)
 
                 skip_flag = 0;
             }
-            
+
             if ((one_svr_cmds[i-3]=='E')&&(one_svr_cmds[i-2]=='N')&&(one_svr_cmds[i-1]=='D')) {
                 if ((one_svr_cmds[0]=='S')&&(one_svr_cmds[1]=='T')&&(one_svr_cmds[2]=='A')) {
                     // process the valid MSGs
@@ -110,14 +112,14 @@ void process_bg96(void)
                     // skip the invalid MSGs
                     i = 0;
                 }
-                
+
                 skip_flag = 0;
                 memset(one_svr_cmds, 0, RX_RINGBUF_MAX_LEN);
 
                 continue;
             }
         }
-        
+
         if (1 == skip_flag) {
             i = 0;
         }
@@ -126,31 +128,33 @@ void process_bg96(void)
 
 int main(void)
 {
+    u8 test_cnt = 0;
     // unsigned long xxx = 0x1345678;
     unsigned long task_cnt = 0;
 
     System_Config();
     Configure_Tick_10ms();
     Configure_Tick2_10ms();
-    GPIOB_Init();    
+    GPIOB_Init();
     Uart1_Init();
     Uart2_Init();
-    Uart3_Init();  
+    Uart3_Init();
     // clrc663_SPI_init();
-    
-	// Configure_CLRC663();
-	// Configure_LB1938();
-	// Configure_BNO055();
+
+    // Configure_CLRC663();
+    // Configure_LB1938();
+    // Configure_BNO055();
 
     // bno055_calibrate_demo();
 
     // printf("Hello PIC24F Uart1... 0x%.8lX\r\n", xxx);
     printf("Hello PIC24F Uart1...\r\n");
-    
+
     // calc_first_md5();
 
     InitRingBuffers();
 
+    // exit till CMCC net registered
     Configure_BG96();
 
     while(1)
@@ -158,9 +162,9 @@ int main(void)
         // TcpClientDemo10s();
         // read_iso14443B_nfc_card();
         // bno055_demo();
-        
+
         task_cnt++;
-        
+
         if ((0x80==g_net_sta) || (0==g_net_sta)) {// lost connection
             ConnectToTcpServer();
         }
@@ -168,20 +172,50 @@ int main(void)
         if (10 == task_cnt) {// 500MS -> process task1
             process_bg96();
         } else if (20 == task_cnt) {// 1000MS -> process task2
+            // Auto Dev Send Test
+            if (0 ==  test_cnt) {
+                TcpHeartBeat();
+            } else if (1 ==  test_cnt) {
+                TcpExitCarriageSleep();
+            } else if (2 ==  test_cnt) {
+                TcpReportGPS();
+            } else if (3 ==  test_cnt) {
+                TcpInvalidMovingAlarm();
+            } else if (4 ==  test_cnt) {
+                TcpRiskAlarm();
+            } else if (5 ==  test_cnt) {
+                TcpFinishIAP();
+            } else if (6 ==  test_cnt) {
+                TcpFinishAddNFCCard();
+            } else if (7 ==  test_cnt) {
+                TcpReadedOneCard();
+            } else if (8 ==  test_cnt) {
+                TcpLockerLocked();
+            } else if (9 ==  test_cnt) {
+                TcpChargeStarted();
+            } else if (10 ==  test_cnt) {
+                TcpChargeStoped();
+            } else if (11 ==  test_cnt) {
+                TcpFinishFactoryReset();
+            }
+
+            test_cnt++;
+            if (test_cnt > 12)
+                test_cnt = 0;
+            }
         } else if (30 == task_cnt) {// 1500MS -> process task3
+            ProcessTcpServerCommand();
         } else if (40 == task_cnt) {// 2000MS -> process task4
-        } else if (50 == task_cnt) {// 2500MS -> process task4
-            // ProcessEvent();
-            TcpHeartBeat();
+        } else if (64 == task_cnt) {// 2500MS -> process task4
             task_cnt = 0;
         }
-        
+
         if ((task_cnt%16) < 8) {
             GPIOB_SetPin(task_cnt%8, 1);
         } else {
             GPIOB_SetPin(task_cnt%8, 0);
         }
+
         delay_ms(50);
     }
 }
-
