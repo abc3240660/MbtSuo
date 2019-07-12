@@ -29,6 +29,7 @@ const char* cmd_list[] = {
     CMD_CHARGE_STOPED,
     CMD_FINISH_ADDNFC,
     CMD_FINISH_RST,
+    CMD_EXIT_SLEEP,
     CMD_RISK_REPORT,
 
     // SVR Auto CMDs
@@ -41,7 +42,6 @@ const char* cmd_list[] = {
     CMD_IAP_UPGRADE,
     CMD_CHANGE_APN,
     CMD_QUERY_NFC,
-    CMD_EXIT_SLEEP,
     CMD_DELETE_NFC,
     CMD_ADD_NFC,
     CMD_QUERY_ALARM,
@@ -81,6 +81,10 @@ u8 g_card_ids[(LEN_CARD_ID+1)*10] = "";
 u8 g_net_ip[LEN_NET_TCP+1] = "";
 u8 g_net_port[LEN_NET_TCP+1] = "";
 u8 g_net_apn[LEN_NET_TCP+1] = "";
+
+u8 g_alarm_on[LEN_COMMON_USE+1] = "1";
+u8 g_beep_on[LEN_COMMON_USE+1] = "1";
+u8 g_alarm_level[LEN_COMMON_USE+1] = "80";
 
 u8 g_iap_update = 0;
 u8 g_iap_update_md5[LEN_DW_MD5+1] = "";
@@ -212,17 +216,26 @@ void parse_mobit_msg(char* msg)
                 // Need do some action ASAP
 
                 if (QUERY_PARAMS == cmd_type) {
+                    // Needn't do anything, just return params by tcp
                 } else if (RING_ALARM == cmd_type) {
+                    DoRingAlarmFast();
                 } else if (UNLOCK_DOOR == cmd_type) {
                     DoUnLockTheLockerFast();
                 } else if (FACTORY_RST == cmd_type) {
+                    DoFactoryResetFast();// Delete every CardIDs
                 } else if (ENTER_SLEEP == cmd_type) {
+                    DoEnterSleepFast();
                 } else if (QUERY_GPS == cmd_type) {
+                    DoQueryGPSFast();
                 } else if (QUERY_NFC == cmd_type) {
-                } else if (EXIT_SLEEP == cmd_type) {
+                    DoQueryNFCFast();
                 } else if (ADD_NFC == cmd_type) {
+                    DoAddNFCFast();
                 } else if (QUERY_ALARM == cmd_type) {
+                    // Needn't do anything, just return parms by tcp
                 } else if (QUERY_ICCID == cmd_type) {
+                    // Needn't do anything, just return parms by tcp
+                }
             } else {// SVR ACKs for DEV's Auto CMDs
                 // Dev thread will re-send DEV important Report till server received
 
@@ -241,8 +254,8 @@ void parse_mobit_msg(char* msg)
                 }
             }
         } else if (index > 2) {// Need to Parse extra params
-            // Parse CMD or ACK
-            if (DEV_REGISTER == cmd_type) {
+            // Parse CMD or ACK with params
+            if (DEV_REGISTER == cmd_type) {// only one SVR ACK with params
                 if (3 == index) {
                     g_hbeat_gap = atoi(split_str);
                     printf("g_hbeat_gap = %d\n", g_hbeat_gap);
@@ -255,6 +268,7 @@ void parse_mobit_msg(char* msg)
                     g_server_time[LEN_SYS_TIME] = '\0';
                     printf("g_swap_pw = %s\n", g_server_time);
                 }
+            // below is all SVR CMDs with params
             } else if (IAP_UPGRADE == cmd_type) {
                 if (3 == index) {
                     g_iap_update = 1;
@@ -265,8 +279,6 @@ void parse_mobit_msg(char* msg)
                     memset(g_iap_update_md5, 0, LEN_DW_URL);
                     strncpy((char*)g_iap_update_md5, split_str, LEN_DW_URL);
                     printf("g_iap_update_md5 = %s\n", g_iap_update_md5);
-
-                    g_need_ack |= (1<<cmd_type);
                 }
             } else if (CHANGE_APN == cmd_type) {
                 if (3 == index) {
@@ -282,8 +294,6 @@ void parse_mobit_msg(char* msg)
                     strncpy((char*)g_net_apn, split_str, LEN_NET_TCP);
                     printf("g_net_apn = %s\n", g_net_apn);
                 }
-
-                g_need_ack |= (1<<cmd_type);
             } else if (DELETE_NFC == cmd_type) {
                 if (3 == index) {
                     u8 tmp_card[32]="";
@@ -306,8 +316,20 @@ void parse_mobit_msg(char* msg)
                     // do delete
                     printf("To delete %s\n", tmp_card);
                 }
-
-                g_need_ack |= (1<<cmd_type);
+            } else if (MODIFY_ALARM == cmd_type) {
+                if (3 == index) {
+                    memset(g_alarm_on, 0, LEN_NET_TCP);
+                    strncpy((char*)g_alarm_on, split_str, LEN_NET_TCP);
+                    printf("g_alarm_on = %s\n", g_alarm_on);
+                } else if (4 == index) {
+                    memset(g_beep_on, 0, LEN_NET_TCP);
+                    strncpy((char*)g_beep_on, split_str, LEN_NET_TCP);
+                    printf("g_beep_on = %s\n", g_beep_on);
+                } else if (5 == index) {
+                    memset(g_alarm_level, 0, LEN_NET_TCP);
+                    strncpy((char*)g_alarm_level, split_str, LEN_NET_TCP);
+                    printf("g_alarm_level = %s\n", g_alarm_level);
+                }
             }
         }
 
@@ -338,54 +360,52 @@ void ProcessTcpServerCommand(void)
         return;
     }
 
-    // CMD_QUERY_PARAMS,
     if (g_need_ack & (1<<QUERY_PARAMS)) {
         g_need_ack &= ~(1<<QUERY_PARAMS);
-        sim7500e_do_query_params_ack();
-    // CMD_RING_ALARM,
-    } else if (g_need_ack & (1<<RING_ALARM)) {
-        g_need_ack &= ~(1<<RING_ALARM);
-        sim7500e_do_ring_alarm_ack();
-    // CMD_UNLOCK_DOOR,
-    } else if (g_need_ack & (1<<UNLOCK_DOOR)) {
-        g_need_ack &= ~(1<<UNLOCK_DOOR);
-        TcpReDoUnlockLocker();
-    // CMD_ENGINE_START,
-    } else if (g_need_ack & (1<<ENGINE_START)) {
-        g_need_ack &= ~(1<<ENGINE_START);
-        sim7500e_do_engine_start_ack();
-    // CMD_DEV_SHUTDOWN,
-    } else if (g_need_ack & (1<<DEV_SHUTDOWN)) {
-        g_need_ack &= ~(1<<DEV_SHUTDOWN);
-        sim7500e_do_dev_shutdown_ack();
-    // CMD_QUERY_GPS,
+        TcpReQueryParams();
     } else if (g_need_ack & (1<<QUERY_GPS)) {
         g_need_ack &= ~(1<<QUERY_GPS);
-        sim7500e_do_query_gps_ack();
-    // CMD_IAP_UPGRADE,
-    } else if (g_need_ack & (1<<IAP_UPGRADE)) {
-        g_need_ack &= ~(1<<IAP_UPGRADE);
-        sim7500e_do_iap_upgrade_ack();
-    // CMD_ENGINE_STOP,
-    } else if (g_need_ack & (1<<LOCK_DOOR)) {
-        g_need_ack &= ~(1<<LOCK_DOOR);
-        sim7500e_do_lock_door_ack();
-    // CMD_DOOR_CLOSED,
-    } else if (g_need_ack & (1<<DOOR_CLOSED)) {
-        g_need_ack &= ~(1<<DOOR_CLOSED);
-    // CMD_BRAKE_LOCKED,
-    } else if (g_need_ack & (1<<BRAKE_LOCKED)) {
-        g_need_ack &= ~(1<<BRAKE_LOCKED);
-    // CMD_BRAKE_UNLOCKED,
-    } else if (g_need_ack & (1<<BRAKE_UNLOCKED)) {
-        g_need_ack &= ~(1<<BRAKE_UNLOCKED);
+        TcpReQueryGPS();
+    } else if (g_need_ack & (1<<QUERY_NFC)) {
+        g_need_ack &= ~(1<<QUERY_NFC);
+        TcpReQueryNFCs();
+    } else if (g_need_ack & (1<<QUERY_ALARM)) {
+        g_need_ack &= ~(1<<QUERY_ALARM);
+        TcpReQueryAlarm();
+    } else if (g_need_ack & (1<<QUERY_ICCID)) {
+        g_need_ack &= ~(1<<QUERY_ICCID);
+        TcpReQueryIccid();
+    } else {
+        for (i=0 ;i<32; i++) {
+            if (g_need_ack & (1<<i)) {
+                if (QUERY_PARAMS == i) {
+                    continue;
+                } else if (QUERY_GPS == i) {
+                    continue;
+                } else if (QUERY_NFC == i) {
+                    continue;
+                } else if (QUERY_ALARM == i) {
+                    continue;
+                } else if (QUERY_ICCID == i) {
+                    continue;
+                } else {
+                    TcpReNormalAck();
+                    g_need_ack &= ~(1<<i);
+                }
+            }
+        }
     }
 
+    // TODO: add some time delay between twice tcp-send
     // always send till received ACK from server
     if (g_till_svr_ack & (1<<DOOR_LOCKED)) {
+        TcpLockerLocked();
     } else if (g_till_svr_ack & (1<<DOOR_UNLOCKED)) {
+        TcpLockerUnlocked();
     } else if (g_till_svr_ack & (1<<FINISH_ADDNFC)) {
+        TcpFinishAddNFCCard();
     } else if (g_till_svr_ack & (1<<RISK_REPORT)) {
+        TcpRiskAlarm();
     }
 }
 
@@ -501,6 +521,16 @@ bool TcpLockerLocked(void)
     return BG96TcpSend();
 }
 
+bool TcpLockerUnlocked(void)
+{
+    // #MOBIT,868446032285351,OL,e10adc3949ba59abbe56e057f20f883e$
+
+    memset(bg96_send_buf, 0, LEN_MAX_SEND);
+    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_DOOR_LOCKED, send_md5);
+
+    return BG96TcpSend();
+}
+
 bool TcpChargeStarted(void)
 {
     // #MOBIT,868446032285351,CG,e10adc3949ba59abbe56e057f20f883e$
@@ -541,7 +571,7 @@ bool TcpReNormalAck(u8* cmd_str, u8* sta)
     return BG96TcpSend();
 }
 
-bool TcpReDoQueryParams(void)
+bool TcpReQueryParams(void)
 {
     // #MOBIT,868446032285351,QG,lock.mobit.eu,1000,mobit.apn,Re,e10adc3949ba59abbe56e057f20f883e$
 
@@ -551,8 +581,7 @@ bool TcpReDoQueryParams(void)
     return BG96TcpSend();
 }
 
-
-bool TcpReDoQueryGPS(void)
+bool TcpReQueryGPS(void)
 {
     // #MOBIT,868446032285351,GGEO,51.106922|3.702681|20|180,0,Re,e10adc3949ba59abbe56e057f20f883e$
 
@@ -562,7 +591,7 @@ bool TcpReDoQueryGPS(void)
     return BG96TcpSend();
 }
 
-bool TcpReDoQueryNFCs(void)
+bool TcpReQueryNFCs(void)
 {
     // #MOBIT,868446032285351,QCL,a|b|c|d|e|f|g|h,Re,e10adc3949ba59abbe56e057f20f883e$
 
@@ -572,7 +601,17 @@ bool TcpReDoQueryNFCs(void)
     return BG96TcpSend();
 }
 
-bool TcpReDoDeleteNFCs(void)
+bool TcpReQueryAlarm(void)
+{
+    // #MOBIT,868446032285351,ALC,1,1,80,Re,e10adc3949ba59abbe56e057f20f883e$
+
+    memset(bg96_send_buf, 0, LEN_MAX_SEND);
+    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_ALARM, g_alarm_on, g_beep_on, g_alarm_level, send_md5);
+
+    return BG96TcpSend();
+}
+
+bool TcpReDeleteNFCs(void)
 {
     // #MOBIT,868446032285351,RMC,a|b|c|d|e,Re,e10adc3949ba59abbe56e057f20f883e$
 
@@ -586,6 +625,55 @@ bool TcpReDoDeleteNFCs(void)
 bool DoUnLockTheLockerFast(void)
 {
     printf("DoUnLockTheLockerFast...\n");
+
+    return true;
+}
+
+bool DoRingAlarmFast(void)
+{
+    printf("DoRingAlarmFast...\n");
+
+    return true;
+}
+
+bool DoFactoryResetFast(void)
+{
+    printf("DoFactoryResetFast...\n");
+
+    return true;
+}
+
+bool DoEnterSleepFast(void)
+{
+    printf("DoEnterSleepFast...\n");
+
+    return true;
+}
+
+bool DoEnterSleepFast(void)
+{
+    printf("DoEnterSleepFast...\n");
+
+    return true;
+}
+
+bool DoQueryGPSFast(void)
+{
+    printf("DoEnterSleepFast...\n");
+
+    return true;
+}
+
+bool DoQueryNFCFast(void)
+{
+    printf("DoEnterSleepFast...\n");
+
+    return true;
+}
+
+bool DoAddNFCFast(void)
+{
+    printf("DoEnterSleepFast...\n");
 
     return true;
 }

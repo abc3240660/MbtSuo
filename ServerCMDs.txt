@@ -51,6 +51,10 @@ Charge Stoped:
 #MOBIT,868446032285351,CGE,e10adc3949ba59abbe56e057f20f883e$
 #MOBIT,Re,CGE,e10adc3949ba59abbe56e057f20f883e$
 
+Locker Unlocked:
+#MOBIT,868446032285351,OL,e10adc3949ba59abbe56e057f20f883e$
+#MOBIT,Re,OL,e10adc3949ba59abbe56e057f20f883e$
+
 ============================================================================================================================
 
 SVR QueryParams:
@@ -99,7 +103,7 @@ SVR QueryICCID:
 
 SVR QueryAlarm:
 #MOBIT,Run,ALC,e10adc3949ba59abbe56e057f20f883e$
-#MOBIT,868446032285351,1,1,80,Re,e10adc3949ba59abbe56e057f20f883e$
+#MOBIT,868446032285351,ALC,1,1,80,Re,e10adc3949ba59abbe56e057f20f883e$
 
 SVR ModifyAlarm:
 #MOBIT,Run,MALC,1,1,100$

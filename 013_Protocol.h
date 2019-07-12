@@ -71,6 +71,7 @@ enum CMD_TYPE {
     CHARGE_STOPED,
     FINISH_ADDNFC,
     FINISH_RST,
+    EXIT_SLEEP,
     RISK_REPORT,
 
     // SVR Auto CMDs
@@ -83,7 +84,6 @@ enum CMD_TYPE {
     IAP_UPGRADE,
     CHANGE_APN,
     QUERY_NFC,
-    EXIT_SLEEP,
     DELETE_NFC,
     ADD_NFC,
     QUERY_ALARM,
@@ -106,8 +106,25 @@ bool TcpFinishIAP(void);
 bool TcpFinishAddNFCCard(void);
 bool TcpReadedOneCard(void);
 bool TcpLockerLocked(void);
+bool TcpLockerUnlocked(void);
 bool TcpChargeStarted(void);
 bool TcpChargeStoped(void);
 void ProcessTcpServerCommand(void);
+
+bool TcpReNormalAck(u8* cmd_str, u8* sta);
+bool TcpReQueryParams(void);
+bool TcpReQueryGPS(void);
+bool TcpReQueryNFCs(void);
+bool TcpReQueryAlarm(void);
+bool TcpReDeleteNFCs(void);
+
+bool DoUnLockTheLockerFast(void);
+bool DoRingAlarmFast(void);
+bool DoFactoryResetFast(void);
+bool DoEnterSleepFast(void);
+bool DoEnterSleepFast(void);
+bool DoQueryGPSFast(void);
+bool DoQueryNFCFast(void);
+bool DoAddNFCFast(void);
 
 #endif
