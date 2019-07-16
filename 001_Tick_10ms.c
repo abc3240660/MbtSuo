@@ -108,13 +108,13 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
         }
 
         // printf("recv len = %d\n", IsTmpRingBufferAvailable());
-        
+
         c = ReadByteFromTmpRingBuffer();
 
 #if 0
         // when MSG1 lost tail
         // need next msg(MSG2 head) to complete MSG1
-        if ('+' == c) {            
+        if ('+' == c) {
             cnt_after = 1;
         } else {
             if (cnt_after != 0) {
@@ -139,14 +139,14 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                             ringbuffer_write_byte(&at_rbuf,tmpuse_buf[i]);
                         }
                         printf("<<<\n");
-                        
+
                         // if tail->head, printf may NG
                         // printf("Total ACKs = %s<<<\n", at_rbuf.head);
                     }
                 } else {// process uncompleted MSGs + new MSGs again:
                     // just skip the previous uncompleted MSGs
                 }
-                
+
                 // skip or redirection the previous head MSGs/ACKs
                 tmp_len = 5;
                 cnt_after = 5;
@@ -163,9 +163,9 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                 cnt_after++;
             }
         }
-        
+
         tmpuse_buf[tmp_len++] = c;
-        
+
         // "+QQQ"
         // "\r\n+QQQ"
         // "\r\n\r\n+QQQ"
@@ -176,11 +176,11 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                 } else {
                     cnt_tail_exp = 1;
                 }
-                
+
                 // printf("len=%d, str = %s\n", sizeof("recv"), p+sizeof("+QIURC: \""));
             }
         }
-        
+
         if (tmp_len >= 2) {
             if (('>'==tmpuse_buf[tmp_len-2]) && (' '==tmpuse_buf[tmp_len-1])) {
                 printf("Receive XACKs: %s<<<\n", tmpuse_buf);
@@ -188,20 +188,20 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                 for (i=0; i<tmp_len; i++) {
                     ringbuffer_write_byte(&at_rbuf,tmpuse_buf[i]);
                 }
-                
+
                 msg_done = 0;
                 cnt_tail = 0;
                 cnt_tail_exp = 0;
-                tmp_len = 0;                    
+                tmp_len = 0;
                 memset(tmpuse_buf, 0, RX_RINGBUF_MAX_LEN);
             }
         }
-        
+
         if (tmp_len > 4) {// skip "\r\n" & "\r\n\r\n"
             if (('\r'==tmpuse_buf[tmp_len-2]) && ('\n'==tmpuse_buf[tmp_len-1])) {
                 if (cnt_tail_exp != 0) {
                     cnt_tail++;
-                    
+
                     if (cnt_tail_exp == cnt_tail) {
                         cnt_after = 0;
                         msg_done = 1;
@@ -213,7 +213,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                 if (1 == msg_done) {
                     if ((cnt_tail_exp==cnt_tail) && (cnt_tail_exp!=0)) {
                         printf("Receive MSGs: %s<<<\n", tmpuse_buf);
-                        
+
                         if ((p=strstr(tmpuse_buf, "+QIURC: ")) != NULL) {
                             if ((p=strstr(tmpuse_buf, "closed")) != NULL) {// TCP mode only
                                 g_net_sta = 0x80;
@@ -224,7 +224,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                                 ringbuffer_write_byte(&net_rbuf,'S');
                                 ringbuffer_write_byte(&net_rbuf,'T');
                                 ringbuffer_write_byte(&net_rbuf,'A');
-;
+
                                 for (i=(p-tmpuse_buf)+1; i<tmp_len; i++) {
                                     if (('\r'==tmpuse_buf[i-1]) && ('\n'==tmpuse_buf[i])) {
                                         cnt_tail++;
@@ -233,7 +233,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                                         }
                                         continue;
                                     }
-                                    
+
                                     if (cnt_tail >= 1) {
                                         if (('\r'!=tmpuse_buf[i]) && ('\n'!=tmpuse_buf[i])) {
                                             ringbuffer_write_byte(&net_rbuf,tmpuse_buf[i]);
@@ -264,20 +264,20 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                         for (i=0; i<tmp_len; i++) {
                             ringbuffer_write_byte(&at_rbuf,tmpuse_buf[i]);
                         }
-                        
+
                         // printf("Total XACKs = %s\n", at_rbuf.head);
                     }
 
                     msg_done = 0;
                     cnt_tail = 0;
                     cnt_tail_exp = 0;
-                    tmp_len = 0;                    
+                    tmp_len = 0;
                     memset(tmpuse_buf, 0, RX_RINGBUF_MAX_LEN);
                 }
             }
         }
     }
-    
+
     if (0 == Timer2Cnt % 300) {
         // printf("timer2 trigger\r\n");
         printf("recv len = %d\n", IsTmpRingBufferAvailable());
@@ -308,7 +308,7 @@ void delay_ms(unsigned long val)
 void DelayMs(unsigned long val)
 {
     unsigned long start_time = GetTimeStamp();
-    
+
     while (!isDelayTimeout(start_time,val));
 }
 

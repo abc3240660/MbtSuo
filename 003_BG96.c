@@ -48,6 +48,9 @@ extern unsigned long MobitTimes;
 extern u8 g_imei_str[LEN_COMMON_USE];
 extern u8 g_iccid_str[LEN_COMMON_USE];
 
+u8 g_devtime_str[LEN_COMMON_USE];
+u8 g_devzone_str[LEN_COMMON_USE];
+
 extern u8 g_net_sta;
 
 extern u8 g_svr_ip[32];
@@ -119,7 +122,7 @@ void SetPinVal(u8 pin_num, u8 val)
 int WriteToBG96(const char *data_buf)
 {
     printf("%s", data_buf);
-    
+
     return Uart2_Printf("%s",data_buf);
 }
 
@@ -171,7 +174,7 @@ int IsRingBufferAvailable()
     int ret;
 
     ret = ringbuffer_buf_use_size(&at_rbuf);
-    
+
     return ret;
 }
 
@@ -180,7 +183,7 @@ int IsNetRingBufferAvailable()
     int ret;
 
     ret = ringbuffer_buf_use_size(&net_rbuf);
-    
+
     return ret;
 }
 
@@ -189,7 +192,7 @@ int IsTmpRingBufferAvailable()
     int ret;
 
     ret = ringbuffer_buf_use_size(&tmp_rbuf);
-    
+
     return ret;
 }
 
@@ -199,18 +202,18 @@ bool WaitUartRxIdle()
     int size2 = 0;
 
     size1 = ringbuffer_buf_use_size(&at_rbuf);
-    
+
     while (1) {
         delay_ms(50);
         size2 = ringbuffer_buf_use_size(&at_rbuf);
-    
+
         if ((size1 == size2)) {// RX stopped for 50MS
             break;
         }
-        
+
         size1 = size2;
     }
-    
+
     return true;
 }
 
@@ -220,18 +223,18 @@ bool WaitUartTmpRxIdle()
     int size2 = 0;
 
     size1 = ringbuffer_buf_use_size(&tmp_rbuf);
-    
+
     while (1) {
         delay_ms(50);
         size2 = ringbuffer_buf_use_size(&tmp_rbuf);
-    
+
         if ((size1 == size2)) {// RX stopped for 50MS
             break;
         }
-        
+
         size1 = size2;
     }
-    
+
     return true;
 }
 
@@ -241,18 +244,18 @@ bool WaitUartNetRxIdle()
     int size2 = 0;
 
     size1 = ringbuffer_buf_use_size(&net_rbuf);
-    
+
     while (1) {
         delay_ms(50);
         size2 = ringbuffer_buf_use_size(&net_rbuf);
-    
+
         if ((size1 == size2)) {// RX stopped for 50MS
             break;
         }
-        
+
         size1 = size2;
     }
-    
+
     return true;
 }
 
@@ -441,6 +444,55 @@ bool GetDevSimICCID(char *iccid)
     return false;
 }
 
+bool GetCurrentTimeZone(char *timezone)
+{
+    char cmd[16] = "";
+
+    strcpy(cmd, DEV_TIME_ZONE);
+    strcat(cmd, "=2");
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
+        strcpy(cmd, DEV_TIME_ZONE);
+        strcat(cmd, "?");
+
+        if (SendAndSearch(cmd, "+CTZE", 2)) {
+            if (ReadResponseToBuffer(2)) {// loop read till timeout
+                u8 i = 0;
+                u8 j = 0;
+                u8 k = 0;
+                char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
+                *end_buf = '\0';
+                char *sta_buf = SearchStrBuffer(": ");
+                memset(g_devzone_str, 0, LEN_COMMON_USE);
+                memset(g_devtime_str, 0, LEN_COMMON_USE);
+
+                for (i=0; i<strlen(sta_buf), i++) {
+                    if ('"' == sta_buf[i]) {
+                        j++;
+                        continue;
+                    } else {
+                        if (1 == j) {
+                            g_devzone_str[k++] = sta_buf[i];
+                        } else if (3 == j) {
+                            if ((sta_buf[i]>='0') && (sta_buf[i]<='9')) {
+                                g_devtime_str[k++] = sta_buf[i];
+                            }
+                        } else {
+                            k = 0;
+                        }
+                    }
+                }
+
+                printf("devzone = %s\n", g_devzone_str);
+                printf("devtime = %s\n", g_devtime_str);
+
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 Net_Status_t DevNetRegistrationStatus()
 {
     char cmd[16] = "";
@@ -507,7 +559,7 @@ Cmd_Response_t ScanOperatorNetwork(char *net)
         *end_buf = '\0';
         char *sta_buf = SearchStrBuffer(": ");
         strcpy(net, sta_buf + 2);
-    } else if (scan_status == FIAL_RESPONSE) {
+    } else if (scan_status == FAIL_RESPONSE) {
         char *sta_buf = SearchStrBuffer(": ");
         strcpy(net, sta_buf + 2);
     }
@@ -786,7 +838,7 @@ bool OpenSocketService(unsigned int pdp_index, unsigned int socket_index, Socket
                 }
                 errorCode = -1;
                 char *sta_buf = SearchChrBuffer(',');
-                
+
                 printf("sta_buf:%s\r\n",sta_buf);
                 if (0 == atoi(sta_buf + 1)) {
                     return true;
@@ -839,14 +891,14 @@ bool SocketSendData(unsigned int socket_index, Socket_Type_t socket, char *data_
             return false;
     }
     strcat(cmd, buf);
-    
+
     rx_debug_flag = 1;
     if (SendAndSearchChr(cmd, '>', 2)) {// 2s
         if (SendDataAndCheck(data_buf, RESPONSE_SEND_OK, RESPONSE_SEND_FAIL, 10)) {
             return true;
         }
     }
-    
+
     rx_debug_flag = 0;
     return false;
 }
@@ -1069,7 +1121,7 @@ bool SendDataAndCheck(const char *data_buf, const char *ok_str, const char *err_
     while (ReadByteFromRingBuffer() >= 0);
 
     int data_len = strlen(data_buf);
-    
+
     printf("SND: ");
     int send_bytes = WriteToBG96(data_buf);
     printf("===\r\n");
@@ -1114,7 +1166,7 @@ bool SendATcommand(const char *command)
         return false;
     }
     WriteToBG96("\r\n");
-    
+
     printf("===\r\n");
 
     return true;
@@ -1140,6 +1192,7 @@ unsigned int ReadResponseByteToBuffer()
     return 1;
 }
 
+// Return: Only return after timeout
 unsigned int ReadResponseToBuffer(unsigned int timeout)
 {
     unsigned long start_time = GetTimeStamp();
@@ -1154,6 +1207,10 @@ unsigned int ReadResponseToBuffer(unsigned int timeout)
     return recv_len;
 }
 
+// Search the last words of the while reply
+// AT Reply: XXXs + Keywords
+//         : Keywords must be the end of the whole reply
+// Return: Will return after got the Keywords or timeout
 Cmd_Response_t ReadResponseAndSearchChr(const char test_chr, unsigned int timeout)
 {
     unsigned long start_time = GetTimeStamp();
@@ -1175,6 +1232,10 @@ Cmd_Response_t ReadResponseAndSearchChr(const char test_chr, unsigned int timeou
     }
 }
 
+// Search the last words of the while reply
+// AT Reply: XXXs + Keywords
+//         : Keywords must be the end of the whole reply
+// Return: Will return after got the Keywords or timeout
 Cmd_Response_t ReadResponseAndSearch(const char *test_str, unsigned int timeout)
 {
     unsigned long start_time = GetTimeStamp();
@@ -1210,6 +1271,8 @@ Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const char *e_t
                 return SUCCESS_RESPONSE;
             } else if (SearchStrBuffer(e_test_str)) {
                 start_time = GetTimeStamp();
+                // only break when timeout
+                // to ensure have got the whole infomation about error code
                 while (!isDelayTimeout(start_time,1000UL)) {
                     if (IsRingBufferAvailable()) {
                         recv_len += ReadResponseByteToBuffer();
@@ -1224,12 +1287,16 @@ Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const char *e_t
                     errorCode = atoi(err_code);
                 }
                 printf("\nFail Response P1\n");
-                return FIAL_RESPONSE;
+                return FAIL_RESPONSE;
             }
-            
+
+            // You may receive "ERROR" when waiting for "SEND_FAIL"
             if (0 == strcmp(e_test_str, RESPONSE_SEND_FAIL)) {
                 if (SearchStrBuffer(RESPONSE_ERROR)) {
                     start_time = GetTimeStamp();
+                    // TODO: to ensure if need to parse the fail code
+                    // only break when timeout
+                    // to ensure have got the whole infomation about error code
                     while (!isDelayTimeout(start_time,1000UL)) {
                         if (IsRingBufferAvailable()) {
                             recv_len += ReadResponseByteToBuffer();
@@ -1243,21 +1310,22 @@ Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const char *e_t
                         *end_buf = '\0';
                         errorCode = atoi(err_code);
                     }
-                    printf("\nError Response\n");                
-                    return FIAL_RESPONSE;
+                    printf("\nError Response\n");
+                    return FAIL_RESPONSE;
                 }
             }
         }
     }
     if (recv_len > 0){
         printf("\nFail Response P2\n");
-        return FIAL_RESPONSE;
+        return FAIL_RESPONSE;
     } else {
         printf("\nTimeout Response\n");
         return TIMEOUT_RESPONSE;
     }
 }
 
+// Only used for get '>' when after AT+SEND before send datas
 Cmd_Response_t SendAndSearchChr(const char *command, const char test_chr, unsigned int timeout)
 {
     int i = 0;
@@ -1275,7 +1343,7 @@ Cmd_Response_t SendAndSearchChr(const char *command, const char test_chr, unsign
 Cmd_Response_t SendAndSearch(const char *command, const char *test_str, unsigned int timeout)
 {
     int i = 0;
-    
+
     for (i = 0; i < 3; i++) {
         if (SendATcommand(command)) {
             if (ReadResponseAndSearch(test_str, timeout) == SUCCESS_RESPONSE) {
@@ -1300,6 +1368,20 @@ Cmd_Response_t SendAndSearch_multi(const char *command, const char *test_str, co
     return resp_status;
 }
 
+
+// The below call path will read reply into rxBuffer
+// So SearchStrBuffer can search someting expect
+// ReadResponseToBuffer
+//   -->ReadResponseByteToBuffer
+// SendAndSearchChr
+//   -->ReadResponseAndSearchChr
+//        -->ReadResponseByteToBuffer
+// SendAndSearch
+//   -->ReadResponseAndSearch
+//        -->ReadResponseByteToBuffer
+// SendAndSearch_multi
+//   -->ReadResponseAndSearch_multi
+//        -->ReadResponseByteToBuffer
 char *SearchStrBuffer(const char *test_str)
 {
     int buf_len = strlen((const char *)rxBuffer);
@@ -1963,7 +2045,6 @@ bool SetSSLCertificate(unsigned int ssl_index, const char *ca_cert_path, const c
                 return true;
             }
         }
-            
     }else if(strcmp(ca_cert_path,"") && strcmp(client_cert_path,"") && strcmp(client_key_path,"")){
         sprintf(buf, "=\"seclevel\",%d,2", ssl_index);
         strcat(cmd, buf);
@@ -2313,6 +2394,7 @@ bool BG96ATInitialize(void)
 
     GetDevIMEI((char *)g_imei_str);
     GetDevSimICCID((char *)g_iccid_str);
+    GetCurrentTimeZone((char *)g_devtime_str);
 
     return true;
 }

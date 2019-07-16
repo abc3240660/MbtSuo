@@ -41,6 +41,7 @@ static const char DEV_LOCAL_RATE[] = "+IPR";
 static const char DEV_SIM_IMSI[] = "+CIMI";
 static const char DEV_SIM_PIN[] = "+CPIN";
 static const char DEV_SIM_ICCID[] = "+QCCID";
+static const char DEV_TIME_ZONE[] = "+CTZR";
 static const char DEV_NET_STATUS[] = "+CREG";
 static const char DEV_NET_STATUS_G[] = "+CGREG";
 static const char DEV_EPS_NET_STATUS[] = "+CEREG";
@@ -296,7 +297,7 @@ static const unsigned long Band_list[] = {
 typedef enum cmd_response {
     UNKNOWN_RESPONSE  = -2,
     TIMEOUT_RESPONSE  = -1,
-    FIAL_RESPONSE  =  0,
+    FAIL_RESPONSE  =  0,
     SUCCESS_RESPONSE  = 1,
 } Cmd_Response_t;
 
