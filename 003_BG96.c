@@ -444,7 +444,7 @@ bool GetDevSimICCID(char *iccid)
     return false;
 }
 
-bool GetCurrentTimeZone(char *timezone)
+bool GetCurrentTimeZoneX(char *timezone)
 {
     char cmd[16] = "";
 
@@ -490,6 +490,56 @@ bool GetCurrentTimeZone(char *timezone)
             }
         }
     }
+    return false;
+}
+
+bool GetCurrentTimeZone(char *timezone)
+{
+    char cmd[16] = "";
+
+    strcpy(cmd, DEV_TIME_ZONE);
+    strcat(cmd, "?");
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
+        u8 i = 0;
+        u8 j = 0;
+        u8 k = 0;
+        u8 m = 0;
+        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
+        *end_buf = '\0';
+        char *sta_buf = SearchStrBuffer(": ");
+        memset(g_devzone_str, 0, LEN_COMMON_USE);
+        memset(g_devtime_str, 0, LEN_COMMON_USE);
+        
+        for (i=0; i<strlen(sta_buf); i++) {
+            if ('"' == sta_buf[i]) {
+                j++;
+                continue;
+            } else {
+                if (1 == j) {
+                    if ((sta_buf[i]>='0') && (sta_buf[i]<='9')) {
+                        g_devtime_str[k++] = sta_buf[i];
+                        
+                        if (12 == k) {
+                            continue;
+                        }
+                    }
+                    
+                    if (k >= 12) {
+                        g_devzone_str[m++] = sta_buf[i];
+                    }
+                } else {
+                    k = 0;
+                }
+            }
+        }
+
+        printf("\ndevzone = %s\n", g_devzone_str);
+        printf("devtime = %s\n", g_devtime_str);
+                
+        return true;
+    }
+
     return false;
 }
 
@@ -2439,7 +2489,7 @@ bool ConnectToTcpServer(void)
 
     trycnt = 10;
     while(trycnt--) {
-        if (OpenSocketService(comm_pdp_index, comm_socket_index, socket, (char *)g_svr_ip, /*atoi(g_svr_port)*/88, 0, DIRECT_PUSH_MODE)){
+        if (OpenSocketService(comm_pdp_index, comm_socket_index, socket, (char *)g_svr_ip, atoi(g_svr_port), 0, DIRECT_PUSH_MODE)){
             break;
         }
 
