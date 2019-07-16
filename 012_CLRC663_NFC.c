@@ -10,7 +10,28 @@
  * @Create time  : 04/14/2019
 ******************************************************************************/
 
+#include <xc.h>
+
+#include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
+void print_block(uint8_t * block, uint8_t length);
+uint16_t clrc663_SPI_transfer(const uint8_t* tx, uint8_t* rx, uint16_t len)
+{
+    uint16_t tempLen = 0;
+    tempLen = SPI2_Exchange8bitBuffer((uint8_t*)tx, len, rx);
+    print_block(rx,tempLen);
+    return tempLen;
+}
+
+void clrc663_SPI_select()
+{
+    PORTEbits.RE7 = 0;
+}
+
+void clrc663_SPI_unselect()
+{
+    PORTEbits.RE7 = 1;
+}
 
 //      *** *** ***     Print identification numbers     *** *** ***       //
 

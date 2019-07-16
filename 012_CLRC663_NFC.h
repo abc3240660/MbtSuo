@@ -25,7 +25,9 @@ extern "C" {
 #define DEBUG_ISO14443B
 #define PRINT_IDENTIFICATION_NUMBERS
     
-    
+uint16_t clrc663_SPI_transfer(const uint8_t* tx, uint8_t* rx, uint16_t len);
+void clrc663_SPI_select();
+void clrc663_SPI_unselect();
 void read_iso14443B_nfc_card();
 
 #ifdef	__cplusplus

@@ -200,7 +200,7 @@ int main(void)
             }
 
             test_cnt++;
-            if (test_cnt > 12)
+            if (test_cnt > 12) {
                 test_cnt = 0;
             }
         } else if (30 == task_cnt) {// 1500MS -> process task3

@@ -7,51 +7,206 @@
 
 #ifndef CLRC663_SPI_H
 #define	CLRC663_SPI_H
+/**
+ Section: Included Files
+*/
 
-#ifdef	__cplusplus
-extern "C" {
+#include <xc.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+
+#ifdef __cplusplus  // Provide C++ Compatibility
+
+    extern "C" {
+
 #endif
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
+/**
+ Section: Data Type Definitions
+*/
+        
+/**
+  SPI2_DUMMY_DATA 
 
+  @Summary
+    Dummy data to be sent. 
 
-    
-void clrc663_SPI_init(void);
-    /*!
-  @brief Transmit and receive bytes via SPI.
-  
-    This function should provide the main SPI transfer functionality. SPI always reads a byte at the same time as it
-    transmits a byte, the function should read from the `tx` array to transmit this data over MOSI and it should write
-    the data received via MISO to the `rx` array.
-
-
-  \param [in] len This is the number of bytes to be transfered.
-  \param [in] tx The bytes from this array are transmitted, `len` bytes are always read from this argument. (MOSI)
-  \param [out] rx The bytes received during transmission are written into this array, `len` bytes are always written.
-               (MISO)
+  @Description
+    Dummy data to be sent, when no input buffer is specified in the buffer APIs.
  */
-uint16_t clrc663_SPI_transfer(const unsigned char * tx, unsigned char* rx, uint16_t len);
+#define SPI2_DUMMY_DATA 0x0
+        
+/**
+  SPI2_FIFO_FILL_LIMIT
 
-/*!
-  @brief Selects the CLRC630 to accept data from the SPI bus.
-  
-    This function should set the Chip Select (NSS) line to the appropriate level such that the chip acceps the data
-    on the SPI bus. For the CLRC630 this means setting the Chip Select line to a LOW logic level.
+  @Summary
+    FIFO fill limit for data transmission. 
 
+  @Description
+    The amount of data to be filled in the FIFO during transmission. The maximum limit allowed is 8.
  */
-void clrc663_SPI_select();
+#define SPI2_FIFO_FILL_LIMIT 0x8
 
-/*!
-  @brief Deselects the CLRC630 to stop accepting data from the SPI bus.
-  
-    This function should set the Chip Select (NSS) line to the appropriate level such that the chip does not accept the
-    data on the SPI bus. For the CLRC630 this means setting the Chip Select line to a HIGH logic level.
+//Check to make sure that the FIFO limit does not exceed the maximum allowed limit of 8
+#if (SPI2_FIFO_FILL_LIMIT > 8)
 
+    #define SPI2_FIFO_FILL_LIMIT 8
+
+#endif
+
+/**
+  SPI2 Status Enumeration
+
+  @Summary
+    Defines the status enumeration for SPI2.
+
+  @Description
+    This defines the status enumeration for SPI2.
  */
-void clrc663_SPI_unselect();
-void test_spi(void);
+typedef enum {
+    SPI2_SHIFT_REGISTER_EMPTY  = 1 << 7,
+    SPI2_RECEIVE_OVERFLOW = 1 << 6,
+    SPI2_RECEIVE_FIFO_EMPTY = 1 << 5,
+    SPI2_TRANSMIT_BUFFER_FULL = 1 << 1,
+    SPI2_RECEIVE_BUFFER_FULL = 1 << 0
+}SPI2_STATUS;
+
+/**
+ Section: Interface Routines
+*/
+
+/**
+  @Summary
+    Initializes the SPI instance : 2
+
+  @Description
+    This routine initializes the spi2 driver instance for : 2
+    index, making it ready for clients to open and use it.
+
+    This routine must be called before any other SPI2 routine is called.
+    This routine should only be called once during system initialization.
+ 
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    uint16_t   myWriteBuffer[MY_BUFFER_SIZE];
+    uint16_t   myReadBuffer[MY_BUFFER_SIZE];
+    uint16_t writeData;
+    uint16_t readData;
+    SPI2_STATUS status;
+    unsigned int    total;
+    SPI2_Initialize;
+ 
+    total = 0;
+    numberOfBytesFactor = 2;
+    do
+    {
+        total  = SPI2_Exchange16bitBuffer( &myWriteBuffer[total], (MY_BUFFER_SIZE - total)*numberOfBytesFactor, &myReadBuffer[total]);
+
+        // Do something else...
+
+    } while( total < MY_BUFFER_SIZE );
+
+    readData = SPI2_Exchange16bit( writeData);
+
+    status = SPI2_StatusGet();
+
+    </code>
+
+*/
+
+void SPI2_Initialize (void);
+
+
+
+
+/**
+  @Summary
+    Exchanges one byte of data from SPI2
+
+  @Description
+    This routine exchanges one byte of data from the SPI2.
+    This is a blocking routine.
+
+  @Preconditions
+    The SPI2_Initialize routine must have been called for the specified
+    SPI2 driver instance.
+
+  @Returns
+    Data read from SPI2
+
+  @Param
+    data         - Data to be written onto SPI2.
+
+  @Example 
+    Refer to SPI2_Initialize() for an example    
+*/
+        
+uint8_t SPI2_Exchange8bit( uint8_t data );
+
+/**
+  @Summary
+    Exchanges data from a buffer of size one byte from SPI2
+
+  @Description
+    This routine exchanges data from a buffer of size one byte from the SPI2.
+    This is a blocking routine.
+
+  @Preconditions
+    The SPI2_Initialize routine must have been called for the specified
+    SPI2 driver instance.
+
+  @Returns
+    Number of 8bit data written/read.
+
+  @Param
+    dataTransmitted         - Buffer of data to be written onto SPI2.
+ 
+  @Param
+    byteCount         - Number of bytes to be exchanged.
+ 
+  @Param
+    dataReceived         - Buffer of data to be read from SPI2.
+
+  @Example 
+    Refer to SPI2_Initialize() for an example    
+ 
+*/
+
+uint16_t SPI2_Exchange8bitBuffer(uint8_t *dataTransmitted, uint16_t byteCount, uint8_t *dataReceived);
+
+/**
+  @Summary
+    Returns the value of the status register of SPI instance : 2
+
+  @Description
+    This routine returns the value of the status register of SPI2 driver instance : 2
+
+  @Preconditions
+    None.
+
+  @Returns
+    Returns the value of the status register.
+
+  @Param
+    None.
+
+  @Example 
+    Refer to SPI2_Initialize() for an example    
+ 
+*/
+
+SPI2_STATUS SPI2_StatusGet(void);
+
 #ifdef	__cplusplus
 }
 #endif

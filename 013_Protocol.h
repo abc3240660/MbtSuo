@@ -116,6 +116,7 @@ bool TcpReQueryParams(void);
 bool TcpReQueryGPS(void);
 bool TcpReQueryNFCs(void);
 bool TcpReQueryAlarm(void);
+bool TcpReQueryIccid(void);
 bool TcpReDeleteNFCs(void);
 
 bool DoUnLockTheLockerFast(void);
@@ -126,5 +127,6 @@ bool DoEnterSleepFast(void);
 bool DoQueryGPSFast(void);
 bool DoQueryNFCFast(void);
 bool DoAddNFCFast(void);
+bool DoHttpIAP(void);
 
 #endif

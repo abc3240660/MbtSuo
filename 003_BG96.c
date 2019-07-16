@@ -466,7 +466,7 @@ bool GetCurrentTimeZone(char *timezone)
                 memset(g_devzone_str, 0, LEN_COMMON_USE);
                 memset(g_devtime_str, 0, LEN_COMMON_USE);
 
-                for (i=0; i<strlen(sta_buf), i++) {
+                for (i=0; i<strlen(sta_buf); i++) {
                     if ('"' == sta_buf[i]) {
                         j++;
                         continue;

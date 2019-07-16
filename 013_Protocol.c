@@ -101,6 +101,13 @@ extern u8 g_iccid_str[LEN_COMMON_USE];
 char bg96_send_buf[LEN_MAX_SEND] = "";
 char send_md5[LEN_DW_MD5] = "e10adc3949ba59abbe56e057f20f883e";
 
+unsigned long g_dw_size_total = 0;
+unsigned long g_dw_recved_sum = 0;
+
+extern u8 g_svr_ip[32];
+extern u8 g_svr_port[8];
+extern u8 g_svr_apn[32];
+
 void calc_first_md5()
 {
     u8 i = 0;
@@ -162,6 +169,7 @@ void parse_mobit_msg(char* msg)
     int index = 0;
     char delims[] = ",";
     char* split_str = NULL;
+    unsigned long temp = 1;
 
     enum CMD_TYPE cmd_type = UNKNOWN_CMD;
 
@@ -197,11 +205,11 @@ void parse_mobit_msg(char* msg)
             if (0 == is_run) {// SVR Re for Dev Auto CMDs
                 cmd_type = (enum CMD_TYPE)is_supported_mobit_cmd(0, split_str);
             } else {// SVR Auto CMDs
-                cmd_type = (enum CMD_TYPE)is_supported_mobit_cmd(CMD_QUERY_PARAMS, split_str);
+                cmd_type = (enum CMD_TYPE)is_supported_mobit_cmd(QUERY_PARAMS, split_str);
 
                 // need to ack for every SVR CMDs
                 if (cmd_type != UNKNOWN_CMD) {
-                    g_need_ack |= (1<<cmd_type);
+                    g_need_ack |= (temp<<cmd_type);
                 }
             }
 
@@ -241,13 +249,13 @@ void parse_mobit_msg(char* msg)
 
                 if (DOOR_LOCKED == cmd_type) {
                     // clear the loop send flag
-                    g_till_svr_ack &= ~(1<<cmd_type);
+                    g_till_svr_ack &= ~(temp<<cmd_type);
                 } else if (DOOR_UNLOCKED == cmd_type) {
-                    g_till_svr_ack &= ~(1<<cmd_type);
+                    g_till_svr_ack &= ~(temp<<cmd_type);
                 } else if (FINISH_ADDNFC == cmd_type) {
-                    g_till_svr_ack &= ~(1<<cmd_type);
+                    g_till_svr_ack &= ~(temp<<cmd_type);
                 } else if (RISK_REPORT == cmd_type) {
-                    g_till_svr_ack &= ~(1<<cmd_type);
+                    g_till_svr_ack &= ~(temp<<cmd_type);
                 } else {
                     // Needn't do anything
                     // Just Skip
@@ -344,7 +352,7 @@ void ProcessTcpServerCommand(void)
     // during download mode, skip other operations
     // till download success or failed
     if (g_iap_update != 0) {
-        sim7500e_http_iap();
+        DoHttpIAP();
 
         // try twice NG, skip this request
         if (g_iap_update != 0) {
@@ -360,24 +368,27 @@ void ProcessTcpServerCommand(void)
         return;
     }
 
-    if (g_need_ack & (1<<QUERY_PARAMS)) {
-        g_need_ack &= ~(1<<QUERY_PARAMS);
+    unsigned long temp = 1;
+
+    if (g_need_ack & (temp<<QUERY_PARAMS)) {
+        g_need_ack &= ~(temp<<QUERY_PARAMS);
         TcpReQueryParams();
-    } else if (g_need_ack & (1<<QUERY_GPS)) {
-        g_need_ack &= ~(1<<QUERY_GPS);
+    } else if (g_need_ack & (temp<<QUERY_GPS)) {
+        g_need_ack &= ~(temp<<QUERY_GPS);
         TcpReQueryGPS();
-    } else if (g_need_ack & (1<<QUERY_NFC)) {
-        g_need_ack &= ~(1<<QUERY_NFC);
+    } else if (g_need_ack & (temp<<QUERY_NFC)) {
+        g_need_ack &= ~(temp<<QUERY_NFC);
         TcpReQueryNFCs();
-    } else if (g_need_ack & (1<<QUERY_ALARM)) {
-        g_need_ack &= ~(1<<QUERY_ALARM);
+    } else if (g_need_ack & (temp<<QUERY_ALARM)) {
+        g_need_ack &= ~(temp<<QUERY_ALARM);
         TcpReQueryAlarm();
-    } else if (g_need_ack & (1<<QUERY_ICCID)) {
-        g_need_ack &= ~(1<<QUERY_ICCID);
+    } else if (g_need_ack & (temp<<QUERY_ICCID)) {
+        g_need_ack &= ~(temp<<QUERY_ICCID);
         TcpReQueryIccid();
     } else {
+        u8 i = 0;
         for (i=0 ;i<32; i++) {
-            if (g_need_ack & (1<<i)) {
+            if (g_need_ack & (temp<<i)) {
                 if (QUERY_PARAMS == i) {
                     continue;
                 } else if (QUERY_GPS == i) {
@@ -389,8 +400,8 @@ void ProcessTcpServerCommand(void)
                 } else if (QUERY_ICCID == i) {
                     continue;
                 } else {
-                    TcpReNormalAck();
-                    g_need_ack &= ~(1<<i);
+                    TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("0"));
+                    g_need_ack &= ~(temp<<i);
                 }
             }
         }
@@ -398,13 +409,13 @@ void ProcessTcpServerCommand(void)
 
     // TODO: add some time delay between twice tcp-send
     // always send till received ACK from server
-    if (g_till_svr_ack & (1<<DOOR_LOCKED)) {
+    if (g_till_svr_ack & (temp<<DOOR_LOCKED)) {
         TcpLockerLocked();
-    } else if (g_till_svr_ack & (1<<DOOR_UNLOCKED)) {
+    } else if (g_till_svr_ack & (temp<<DOOR_UNLOCKED)) {
         TcpLockerUnlocked();
-    } else if (g_till_svr_ack & (1<<FINISH_ADDNFC)) {
+    } else if (g_till_svr_ack & (temp<<FINISH_ADDNFC)) {
         TcpFinishAddNFCCard();
-    } else if (g_till_svr_ack & (1<<RISK_REPORT)) {
+    } else if (g_till_svr_ack & (temp<<RISK_REPORT)) {
         TcpRiskAlarm();
     }
 }
@@ -611,6 +622,16 @@ bool TcpReQueryAlarm(void)
     return BG96TcpSend();
 }
 
+bool TcpReQueryIccid(void)
+{
+    // #MOBIT,868446032285351,ALC,1,1,80,Re,e10adc3949ba59abbe56e057f20f883e$
+
+    memset(bg96_send_buf, 0, LEN_MAX_SEND);
+    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_ALARM, g_alarm_on, g_beep_on, g_alarm_level, send_md5);
+
+    return BG96TcpSend();
+}
+
 bool TcpReDeleteNFCs(void)
 {
     // #MOBIT,868446032285351,RMC,a|b|c|d|e,Re,e10adc3949ba59abbe56e057f20f883e$
@@ -650,30 +671,30 @@ bool DoEnterSleepFast(void)
     return true;
 }
 
-bool DoEnterSleepFast(void)
-{
-    printf("DoEnterSleepFast...\n");
-
-    return true;
-}
-
 bool DoQueryGPSFast(void)
 {
-    printf("DoEnterSleepFast...\n");
+    printf("DoQueryGPSFast...\n");
 
     return true;
 }
 
 bool DoQueryNFCFast(void)
 {
-    printf("DoEnterSleepFast...\n");
+    printf("DoQueryNFCFast...\n");
 
     return true;
 }
 
 bool DoAddNFCFast(void)
 {
-    printf("DoEnterSleepFast...\n");
+    printf("DoAddNFCFast...\n");
 
+    return true;
+}
+
+bool DoHttpIAP(void)
+{
+    printf("DoHttpIAP...\n");
+    
     return true;
 }

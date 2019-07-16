@@ -1,96 +1,146 @@
 
-#include <p24fxxxx.h> 
-#include "---_Variables.h"
+/**
+  SPI2 Generated Driver API Source File
+
+  Company:
+    Microchip Technology Inc.
+
+  File Name:
+    spi2.c
+
+  @Summary
+    This is the generated source file for the SPI2 driver using PIC24 / dsPIC33 / PIC32MM MCUs
+
+  @Description
+    This source file provides APIs for driver for SPI2.
+    Generation Information :
+        Product Revision  :  PIC24 / dsPIC33 / PIC32MM MCUs - 1.125
+        Device            :  PIC24FJ1024GA606
+    The generated drivers are tested against the following:
+        Compiler          :  XC16 v1.36B
+        MPLAB             :  MPLAB X v5.20
+*/
+
+/*
+    (c) 2016 Microchip Technology Inc. and its subsidiaries. You may use this
+    software and any derivatives exclusively with Microchip products.
+
+    THIS SOFTWARE IS SUPPLIED BY MICROCHIP "AS IS". NO WARRANTIES, WHETHER
+    EXPRESS, IMPLIED OR STATUTORY, APPLY TO THIS SOFTWARE, INCLUDING ANY IMPLIED
+    WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY, AND FITNESS FOR A
+    PARTICULAR PURPOSE, OR ITS INTERACTION WITH MICROCHIP PRODUCTS, COMBINATION
+    WITH ANY OTHER PRODUCTS, OR USE IN ANY APPLICATION.
+
+    IN NO EVENT WILL MICROCHIP BE LIABLE FOR ANY INDIRECT, SPECIAL, PUNITIVE,
+    INCIDENTAL OR CONSEQUENTIAL LOSS, DAMAGE, COST OR EXPENSE OF ANY KIND
+    WHATSOEVER RELATED TO THE SOFTWARE, HOWEVER CAUSED, EVEN IF MICROCHIP HAS
+    BEEN ADVISED OF THE POSSIBILITY OR THE DAMAGES ARE FORESEEABLE. TO THE
+    FULLEST EXTENT ALLOWED BY LAW, MICROCHIP'S TOTAL LIABILITY ON ALL CLAIMS IN
+    ANY WAY RELATED TO THIS SOFTWARE WILL NOT EXCEED THE AMOUNT OF FEES, IF ANY,
+    THAT YOU HAVE PAID DIRECTLY TO MICROCHIP FOR THIS SOFTWARE.
+
+    MICROCHIP PROVIDES THIS SOFTWARE CONDITIONALLY UPON YOUR ACCEPTANCE OF THESE
+    TERMS.
+*/
+
+/**
+  Section: Included Files
+*/
+
 #include "011_Spi.h"
 
-#define MOSI    _LATG8      //PR21,SDO2,10
-#define MISO    _RG7       //PR26,PG7
-#define SCK     _LATG6      //PR21,SCK2,11
-#define CS1     _LATE7
+/**
+ Section: File specific functions
+*/
+
+/**
+  SPI2 Transfer Mode Enumeration
+
+  @Summary
+    Defines the Transfer Mode enumeration for SPI2.
+
+  @Description
+    This defines the Transfer Mode enumeration for SPI2.
+ */
+typedef enum {
+    SPI2_TRANSFER_MODE_32BIT  = 2,
+    SPI2_TRANSFER_MODE_16BIT = 1,
+    SPI2_TRANSFER_MODE_8BIT = 0
+}SPI2_TRANSFER_MODE;
+
+inline __attribute__((__always_inline__)) SPI2_TRANSFER_MODE SPI2_TransferModeGet(void);
+void SPI2_Exchange( uint8_t *pTransmitData, uint8_t *pReceiveData );
+uint16_t SPI2_ExchangeBuffer(uint8_t *pTransmitData, uint16_t byteCount, uint8_t *pReceiveData);
+
+/**
+ Section: Driver Interface Function Definitions
+*/
 
 
-#define TMOSI   _TRISG8
-#define TMISO   _TRISG7
-#define TSCK    _TRISG6
-#define TCS1    _TRISE7
-
-#define SPI2_DUMMY_DATA 0x0
-extern VAR Mobit;
-extern NonVolatile NonVolatileDATA;
-
-void clrc663_SPI_init(void)
+void SPI2_Initialize (void)
 {
-    CS1 = 1;
-    SCK = 0;
-    MOSI = 0;    
-    MISO = 1;
-
-    CS1 = 1;
-    TSCK = 0;
-    TMOSI = 0;
-    TMISO = 1;
+    RPINR22bits.SDI2R = 0x0015;    //RG6->SPI2:SDI2
+    RPOR9bits.RP19R = 0x000B;    //RG8->SPI2:SCK2OUT
+    RPOR13bits.RP26R = 0x000A;    //RG7->SPI2:SDO2
+    RPINR22bits.SCK2R = 0x0013;    //RG8->SPI2:SCK2IN
     
-    _RP21R = 11 ;
-    _RP19R = 10 ; 
-    _SDI2R = 26;
-#if 0// temp commented    
-    SPI2CON1 = 0x0122;      
-    SPI2CON2 = 0x0000;
-    SPI2STAT = 0X8000;
-    SPI2STATL = 0x0000;
-    CM2CON = 0 ;
-#endif
+    LATE = 0x0000;
+    LATG = 0x0000;
+    
+    TRISE = 0x007F;
+    TRISG = 0x024C;
+    
+    IOCPDE = 0x0000;
+    IOCPDG = 0x0000;
+    IOCPUE = 0x0000;
+    IOCPUG = 0x0000;
+    
+    ODCE = 0x0000;
+    ODCG = 0x0000;
+    
+    ANSE = 0x0010;
+    ANSG = 0x0000;
+    
     // AUDEN disabled; FRMEN disabled; AUDMOD I2S; FRMSYPW One clock wide; AUDMONO stereo; FRMCNT 0; MSSEN disabled; FRMPOL disabled; IGNROV disabled; SPISGNEXT not sign-extended; FRMSYNC disabled; URDTEN disabled; IGNTUR disabled; 
-    SPI2CON1H = 0x0000;
-    // SPIEN enabled; DISSDO disabled; MCLKEN FOSC/2; CKP Idle:High, Active:Low; SSEN enabled; MSTEN Slave; MODE16 disabled; SMP Middle; DISSCK disabled; SPIFE Frame Sync pulse coincides; CKE Idle to Active; MODE32 disabled; SPISIDL disabled; ENHBUF disabled; DISSDI disabled; 
-    SPI2CON1L = 0x80C2;
+    SPI2CON1H = 0x00;
     // WLENGTH 0; 
-    SPI2CON2L = 0x0000;
+    SPI2CON2L = 0x00;
     // SPIROV disabled; FRMERR disabled; 
-    SPI2STATL = 0x0000;
-    // SPI1BRGL 0; 
-    SPI2BRGL = 0x0000;
-    // SPITBFEN disabled; SPITUREN disabled; FRMERREN disabled; SRMTEN disabled; SPIRBEN disabled; BUSYEN disabled; SPITBEN disabled; SPIROVEN enabled; SPIRBFEN disabled; 
-    SPI2IMSKL = 0x0040;
+    SPI2STATL = 0x00;
+    // SPI2BRGL 31; 
+    SPI2BRGL = 0x1F;
+    // SPITBFEN disabled; SPITUREN disabled; FRMERREN disabled; SRMTEN disabled; SPIRBEN disabled; BUSYEN disabled; SPITBEN disabled; SPIROVEN disabled; SPIRBFEN disabled; 
+    SPI2IMSKL = 0x00;
     // RXMSK 0; TXWIEN disabled; TXMSK 0; RXWIEN disabled; 
-    SPI2IMSKH = 0x0000;
-    // SPI1URDTL 0; 
-    SPI2URDTL = 0x0000;
-    // SPI1URDTH 0; 
-    SPI2URDTH = 0x0000;
-    
-    //SPI1IMSKLbits.SPIRBFEN = true; // SPI RX Buffer full generates an interrupt
-    SPI2IMSKL = 0xFFFF;
-    SPI2IMSKH = 0xFFFF;
-    //SPI1IMSKLbits.SPIRBEN = true;
-    
-    IEC2bits.SPI2IE = true;
-    IEC2bits.SPI2TXIE = true;
-    IEC3bits.SPI2RXIE = true;
-    IFS2bits.SPI2IF = 0;  // clear interrupt flag
-    IFS2bits.SPI2TXIF = 0;  // clear interrupt flag
-    IFS3bits.SPI2RXIF = 0;  // clear interrupt flag
-#if 1// temp commented
-    ODCEbits.ODCE7 = 1;
-//    AD1PCFGL |= 0x0080;
-#endif
-    LATE |= 0XFF7F;
-    TRISE &= 0XFF7F;
+    SPI2IMSKH = 0x00;
+    // SPI2URDTL 0; 
+    SPI2URDTL = 0x00;
+    // SPI2URDTH 0; 
+    SPI2URDTH = 0x00;
+    // SPIEN enabled; DISSDO disabled; MCLKEN FOSC/2; CKP Idle:Low, Active:High; SSEN disabled; MSTEN Master; MODE16 disabled; SMP Middle; DISSCK disabled; SPIFE Frame Sync pulse precedes; CKE Active to Idle; MODE32 disabled; SPISIDL disabled; ENHBUF enabled; DISSDI disabled; 
+    SPI2CON1L = 0x8121;
+
 }
+
 void SPI2_Exchange( uint8_t *pTransmitData, uint8_t *pReceiveData )
 {
-    while( SPI2STATLbits.SPITBF == true );
+
+    while( SPI2STATLbits.SPITBF == true )
+    {
+
+    }
+        
     SPI2BUFL = *((uint8_t*)pTransmitData);
-    while ( SPI2STATLbits.SPIRBE == true);
+
+    while ( SPI2STATLbits.SPIRBE == true)
+    {
+    
+    }
+
     *((uint8_t*)pReceiveData) = SPI2BUFL;
 }
-unsigned char clrc663_SPI_write(unsigned char data)
-{
-    uint8_t receiveData;
-    SPI2_Exchange(&data, &receiveData);
-    return (receiveData);
-}
-uint16_t SPI2_ExchangeBuffer(const uint8_t *pTransmitData, uint16_t byteCount, uint8_t *pReceiveData)
+
+uint16_t SPI2_ExchangeBuffer(uint8_t *pTransmitData, uint16_t byteCount, uint8_t *pReceiveData)
 {
 
     uint16_t dataSentCount = 0;
@@ -127,47 +177,80 @@ uint16_t SPI2_ExchangeBuffer(const uint8_t *pTransmitData, uint16_t byteCount, u
        receiveAddressIncrement = addressIncrement;        
        pReceived = (uint8_t*)pReceiveData;
     }
-    while( SPI2STATLbits.SPITBF == true );
+
+
+    while( SPI2STATLbits.SPITBF == true )
+    {
+
+    }
+
     while (dataSentCount < byteCount)
     {
         if ( SPI2STATLbits.SPITBF != true )
         {
+
             SPI2BUFL = *pSend;
+
             pSend += sendAddressIncrement;
             dataSentCount++;
+
         }
+
         if (SPI2STATLbits.SPIRBE == false)
         {
+
             *pReceived = SPI2BUFL;
+
             pReceived += receiveAddressIncrement;
             dataReceivedCount++;
         }
+
     }
     while (dataReceivedCount < byteCount)
     {
         if (SPI2STATLbits.SPIRBE == false)
         {
+
             *pReceived = SPI2BUFL;
+
             pReceived += receiveAddressIncrement;
             dataReceivedCount++;
         }
     }
+
     return dataSentCount;
 }
-uint16_t clrc663_SPI_transfer(const unsigned char *tx,unsigned char *rx,uint16_t len)
+
+uint8_t SPI2_Exchange8bit( uint8_t data )
 {
-    return (SPI2_ExchangeBuffer(tx, len, rx));
+    uint8_t receiveData;
+    
+    SPI2_Exchange(&data, &receiveData);
+
+    return (receiveData);
 }
 
-void clrc663_SPI_select(void)
+
+uint16_t SPI2_Exchange8bitBuffer(uint8_t *dataTransmitted, uint16_t byteCount, uint8_t *dataReceived)
 {
-    CS1 = 0;
+    return (SPI2_ExchangeBuffer(dataTransmitted, byteCount, dataReceived));
 }
 
-void clrc663_SPI_unselect(void)
+inline __attribute__((__always_inline__)) SPI2_TRANSFER_MODE SPI2_TransferModeGet(void)
 {
-    CS1 = 1;
+    if (SPI2CON1Lbits.MODE32 == 1)
+        return SPI2_TRANSFER_MODE_32BIT;
+    else if (SPI2CON1Lbits.MODE16 == 1)
+        return SPI2_TRANSFER_MODE_16BIT;
+    else
+        return SPI2_TRANSFER_MODE_8BIT;
 }
-//******************************************************************************
-//* END OF FILE
-//******************************************************************************
+
+SPI2_STATUS SPI2_StatusGet()
+{
+    return(SPI2STATL);
+}
+
+/**
+ End of File
+*/
