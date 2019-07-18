@@ -13,7 +13,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
-
 #include <p24fxxxx.h>
 
 #include "003_BG96.h"
@@ -38,68 +37,68 @@ void Uart1_Init(void)
 {
     _RP22R = 3;// RD3
     _U1RXR = 23;// RD2
-    
-    _LATD3 = 1;             
-    _TRISD2 = 1;            
-    _TRISD3 = 0;            
-    
-    _LATD6 = 0;             
-    _TRISD6 = 0;            
-    
-    U1MODE = 0X8808;        
-    U1STA = 0X2400;         
+
+    _LATD3 = 1;
+    _TRISD2 = 1;
+    _TRISD3 = 0;
+
+    _LATD6 = 0;
+    _TRISD6 = 0;
+
+    U1MODE = 0X8808;
+    U1STA = 0X2400;
     // 4M/(34+1) = 114285
-    U1BRG = 34;            
-    
-    _U1TXIP = 3;            
-    _U1RXIP = 7;            
+    U1BRG = 34;
+
+    _U1TXIP = 3;
+    _U1RXIP = 7;
     _U1TXIF = 0;
-	_U1RXIF = 0;
-	_U1TXIE = 0;           
-	_U1RXIE = 1;            
+    _U1RXIF = 0;
+    _U1TXIE = 0;
+    _U1RXIE = 1;
 }
 
 // 115200
 void Uart2_Init(void)
 {
     _RP17R = 5;// RF5
-    _U2RXR = 10;// RF4      
-	
-    _LATF5 = 1;            
-    _TRISF4 = 1;            
-    _TRISF5 = 0;            
-    U2MODE = 0X8808;       
-    U2STA = 0X2400;         
-    U2BRG = 34;            
-    
-    _U2TXIP = 1;            
-    _U2RXIP = 2;            
+    _U2RXR = 10;// RF4
+
+    _LATF5 = 1;
+    _TRISF4 = 1;
+    _TRISF5 = 0;
+    U2MODE = 0X8808;
+    U2STA = 0X2400;
+    U2BRG = 34;
+
+    _U2TXIP = 1;
+    _U2RXIP = 2;
     _U2TXIF = 0;
-	_U2RXIF = 0;
-	_U2TXIE = 0;            
-	_U2RXIE = 1; 
+    _U2RXIF = 0;
+    _U2TXIE = 0;
+    _U2RXIE = 1;
 }
 
 // 115200
 void Uart3_Init(void)
 {
-	// PIC24FJ256 is 28
-	// PIC24FJ1024 is 19
-    _RP3R = 19;     //RP3(RD10) = U3TX         
-    _U3RXR = 4;     //U3RXR     = RP4(RD9)      
-	
-    _LATD10 = 1;            
-    _TRISD9 = 1;            
-    _TRISD10 = 0;            
-    U3MODE = 0X8808;       
-    U3STA = 0X2400;         
-    U3BRG = 34;            
-    
-    _U3TXIP = 1;            
-    _U3RXIP = 2;            
+    // PIC24FJ256 is 28
+    // PIC24FJ1024 is 19
+    _RP3R = 19;     //RP3(RD10) = U3TX
+    _U3RXR = 4;     //U3RXR     = RP4(RD9)
+
+    _LATD10 = 1;
+    _TRISD9 = 1;
+    _TRISD10 = 0;
+    U3MODE = 0X8808;
+    U3STA = 0X2400;
+    U3BRG = 34;
+
+    _U3TXIP = 1;
+    _U3RXIP = 2;
     _U3TXIF = 0;
-	_U3RXIF = 0;
-	_U3TXIE = 0;   
+    _U3RXIF = 0;
+    _U3TXIE = 0;
     _U3RXIE = 1;
 }
 
@@ -132,9 +131,9 @@ int Uart3_Putc(char ch)
     U3TXREG = ch;
     while(_U3TXIF == 0);
     _U3TXIF = 0;
-    
+
 //    printf("%.2X\r\n", (uint8_t)ch);
-    
+
     return ch;
 }
 
@@ -150,7 +149,7 @@ int uart3_write_bytes(char * buf,int len)
 int Uart2_String(char *ch)
 {
     int i=0;
-    
+
     int len = strlen(ch);
     for(i=0;i<len;i++){
         Uart2_Putc(ch[i]);
@@ -187,14 +186,14 @@ void __attribute__((__interrupt__,no_auto_psv)) _U2RXInterrupt(void)
             U2STAbits.OERR = 0;
         } else {
             ringbuffer_write_byte(&tmp_rbuf,temp);
-        }            
+        }
     } while (U2STAbits.URXDA);
 }
 
 void __attribute__((__interrupt__,no_auto_psv)) _U1RXInterrupt(void)
 {
     char temp = 0;
-    
+
     do {
         temp = U1RXREG;
         // Uart1_Putc(temp);
@@ -212,7 +211,7 @@ void __attribute__((__interrupt__,no_auto_psv)) _U1RXInterrupt(void)
 void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
 {
     char temp = 0;
-    
+
     do {
         temp = U3RXREG;
         // printf("%.2X\r\n", (uint8_t)temp);

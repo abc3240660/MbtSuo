@@ -15,10 +15,9 @@
 
 #include <string.h>
 #include <stdlib.h>
-
 #include <p24fxxxx.h>
 
-#include "---_Defines.h"
+#include "015_Common.h"
 
 /////////////////////////////////// BG96 AT CMDs ///////////////////////////////////
 // AT commands response

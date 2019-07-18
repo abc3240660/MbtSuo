@@ -1,12 +1,17 @@
-/* 
- * File:   011_CLRC663_SPI.h
- * Author: Micheal
+//       10        20        30        40        50        60        70
+//--*----*----*----*----*----*----*----*----*----*----*----*----*----*----*----*
+
+/******************************************************************************
+ * A library for PIC24F SPI2(for CLRC663)
+ * This file is about the SPI2 API of PIC24
  *
- * Created on 2019?3?28?, ??10:33
- */
+ * Copyright (c) 2019 Mobit technology inc.
+ * @Author       : Damon
+ * @Create time  : 03/11/2019
+******************************************************************************/
 
 #ifndef CLRC663_SPI_H
-#define	CLRC663_SPI_H
+#define CLRC663_SPI_H
 /**
  Section: Included Files
 */
@@ -25,18 +30,18 @@
 /**
  Section: Data Type Definitions
 */
-        
+
 /**
-  SPI2_DUMMY_DATA 
+  SPI2_DUMMY_DATA
 
   @Summary
-    Dummy data to be sent. 
+    Dummy data to be sent.
 
   @Description
     Dummy data to be sent, when no input buffer is specified in the buffer APIs.
  */
 #define SPI2_DUMMY_DATA 0x0
-        
+
 /**
   SPI2_FIFO_FILL_LIMIT
 
@@ -70,7 +75,7 @@ typedef enum {
     SPI2_RECEIVE_FIFO_EMPTY = 1 << 5,
     SPI2_TRANSMIT_BUFFER_FULL = 1 << 1,
     SPI2_RECEIVE_BUFFER_FULL = 1 << 0
-}SPI2_STATUS;
+} SPI2_STATUS;
 
 /**
  Section: Interface Routines
@@ -86,7 +91,7 @@ typedef enum {
 
     This routine must be called before any other SPI2 routine is called.
     This routine should only be called once during system initialization.
- 
+
   @Preconditions
     None.
 
@@ -105,7 +110,7 @@ typedef enum {
     SPI2_STATUS status;
     unsigned int    total;
     SPI2_Initialize;
- 
+
     total = 0;
     numberOfBytesFactor = 2;
     do
@@ -126,9 +131,6 @@ typedef enum {
 
 void SPI2_Initialize (void);
 
-
-
-
 /**
   @Summary
     Exchanges one byte of data from SPI2
@@ -145,12 +147,12 @@ void SPI2_Initialize (void);
     Data read from SPI2
 
   @Param
-    data         - Data to be written onto SPI2.
+    data          Data to be written onto SPI2.
 
-  @Example 
-    Refer to SPI2_Initialize() for an example    
+  @Example
+    Refer to SPI2_Initialize() for an example
 */
-        
+
 uint8_t SPI2_Exchange8bit( uint8_t data );
 
 /**
@@ -169,17 +171,17 @@ uint8_t SPI2_Exchange8bit( uint8_t data );
     Number of 8bit data written/read.
 
   @Param
-    dataTransmitted         - Buffer of data to be written onto SPI2.
- 
-  @Param
-    byteCount         - Number of bytes to be exchanged.
- 
-  @Param
-    dataReceived         - Buffer of data to be read from SPI2.
+    dataTransmitted          Buffer of data to be written onto SPI2.
 
-  @Example 
-    Refer to SPI2_Initialize() for an example    
- 
+  @Param
+    byteCount          Number of bytes to be exchanged.
+
+  @Param
+    dataReceived          Buffer of data to be read from SPI2.
+
+  @Example
+    Refer to SPI2_Initialize() for an example
+
 */
 
 uint16_t SPI2_Exchange8bitBuffer(uint8_t *dataTransmitted, uint16_t byteCount, uint8_t *dataReceived);
@@ -200,16 +202,15 @@ uint16_t SPI2_Exchange8bitBuffer(uint8_t *dataTransmitted, uint16_t byteCount, u
   @Param
     None.
 
-  @Example 
-    Refer to SPI2_Initialize() for an example    
- 
+  @Example
+    Refer to SPI2_Initialize() for an example
+
 */
 
 SPI2_STATUS SPI2_StatusGet(void);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 
-#endif	/* CLRC663_SPI_H */
-
+#endif /* CLRC663_SPI_H */

@@ -20,16 +20,15 @@ extern "C"{
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <p24fxxxx.h> 
+#include <p24fxxxx.h>
 
 typedef struct
 {
-	char* head;
-	unsigned int buflen;
-	unsigned int readpos;
-	unsigned int writepos;
-	int roundsum;
+    char* head;
+    unsigned int buflen;
+    unsigned int readpos;
+    unsigned int writepos;
+    int roundsum;
 } ringbuffer_t;
 
 void ringbuffer_init(ringbuffer_t *rbuf,char * buf,unsigned int len);

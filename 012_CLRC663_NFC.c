@@ -14,7 +14,9 @@
 
 #include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
+
 void print_block(uint8_t * block, uint8_t length);
+
 uint16_t clrc663_SPI_transfer(const uint8_t* tx, uint8_t* rx, uint16_t len)
 {
     uint16_t tempLen = 0;
@@ -34,59 +36,62 @@ void clrc663_SPI_unselect()
 }
 
 //      *** *** ***     Print identification numbers     *** *** ***       //
-
 //      *** *** ***     Card Invalidation     *** *** ***       //
 // Hex print for blocks without printf.
 void print_block(uint8_t * block, uint8_t length){
   int i = 0;
   for (i = 0; i < length; i++){
-      if (block[i] < 16){  printf("%02x ",block[i]); } 
+      if (block[i] < 16){  printf("%02x ",block[i]); }
       else printf("%02x ",block[i]);
-  } 
-  printf("\r\n"); 
+  }
+  printf("\r\n");
 }
 
-void print_block_01(uint8_t* block, uint8_t lower_lim, uint8_t upper_lim){ 
+void print_block_01(uint8_t* block, uint8_t lower_lim, uint8_t upper_lim){
   int i = 0;
   for(i = lower_lim; i < upper_lim; i++){
-    if (block[i] < 16){ printf("%02x ",block[i]); } 
+    if (block[i] < 16){ printf("%02x ",block[i]); }
     else printf("%02x ",block[i]);
-  } 
-  printf(" \r\n"); 
+  }
+  printf(" \r\n");
 }
 
 void print_card_ID_block(uint8_t * block, uint8_t length){
   printf("CardId: ");
   int i = 0;
   for (i = 3; i < 12; i++){
-      if (block[i] < 16){printf("%02x ",block[i]); } 
+      if (block[i] < 16){printf("%02x ",block[i]); }
       else  printf("%02x ",block[i]); }
   printf("%02x ",block[12]>>4);
-  printf(" \r\n"); 
+  printf(" \r\n");
 }
-  //  Card Blacklist and Card Invalidation
+
+//  Card Blacklist and Card Invalidation
 void check_valid_card(uint8_t * buf){
   if(buf[40] == 0x62 || buf [41] == 0x83) printf(" ----INVALID CARD: card is locked----");
   else printf("---- VALID CARD ----");
 }
-  //  Print Pseudo-Unique PICC Identifier, Type B
+
+//  Print Pseudo-Unique PICC Identifier, Type B
 void print_PUPI(uint8_t* block){
-  printf("PUPI: "); 
+  printf("PUPI: ");
   print_block_01(block, 1, 5);
 }
 
-  //  Print MOBIB Hardcoded Serial Number
+//  Print MOBIB Hardcoded Serial Number
 void print_serial_nr(uint8_t* block){
-  printf("Serial number: "); 
+  printf("Serial number: ");
   print_block_01(block, 23, 31);
 }
+
 int bitRead(uint8_t value,int pos)
 {
     uint8_t temp;
     temp = (value & (0x01 << pos)) >> pos;
     return temp;
 }
-  //  Shift buffer with two bits (to determine MOBIB Original Card ID)
+
+//  Shift buffer with two bits (to determine MOBIB Original Card ID)
 void shift(uint8_t* buf, uint8_t buf_size){
     int i = 0;
     buf [3] = buf [3] << 2;
@@ -98,7 +103,8 @@ void shift(uint8_t* buf, uint8_t buf_size){
       buf[i] = buf[i] << 2;
     }
 }
-  //  Print MOBIB Original Card ID
+
+//  Print MOBIB Original Card ID
 void print_card_ID(uint8_t* buf, uint8_t bufsize){
     shift(buf, bufsize);
     print_card_ID_block(buf, bufsize);
@@ -106,34 +112,33 @@ void print_card_ID(uint8_t* buf, uint8_t bufsize){
 
 void read_iso14443B_nfc_card(){
 
-    //  Configure CLRC663
+  //  Configure CLRC663
   CLRC663_configure_communication_protocol(CLRC630_PROTO_ISO14443B_106_NRZ_BPSK);
-  
-    //  WUPB
+
+  //  WUPB
   uint8_t wupb_buffer [] = {CLRC663_ISO14443B_CMD_APF, CLRC663_ISO14443B_CMD_AFI, CLRC663_ISO14443B_CMD_PARAM};
   uint8_t atqb_buffer [12] = {0};
   uint8_t atqb_length = clrc663_communicate(wupb_buffer, sizeof(wupb_buffer), atqb_buffer);
-  
-  if(atqb_length != 0) { 
 
-      //  ATTRIB
+  if(atqb_length != 0) {
+    //  ATTRIB
     uint8_t transmit_buffer [] = {0x1D, atqb_buffer[1], atqb_buffer[2], atqb_buffer[3], atqb_buffer[4], 0x00, 0x08, 0x01, 0x00};
     uint8_t receive_buffer [1] = {0};
     clrc663_communicate(transmit_buffer, sizeof(transmit_buffer), receive_buffer);
-          
-      //  CALYPSO --- Select Global Data Application 
+
+    //  CALYPSO --- Select Global Data Application 
     uint8_t apdu_transmit_buffer [] = APDU_SELECT_GLOBAL_DATA_APP_MOBIB_CARD;
     uint8_t apdu_receive_buffer [42] = {0};
     clrc663_communicate(apdu_transmit_buffer, sizeof(apdu_transmit_buffer), apdu_receive_buffer);
-    
-      //  CALYPSO --- Read record 1
+
+    //  CALYPSO --- Read record 1
     uint8_t apdu_transmit_buffer_1 [] = CARDISSUING_FILE_READ_RECORD_1;
     uint8_t apdu_receive_buffer_1 [32] = {0};
     clrc663_communicate(apdu_transmit_buffer_1, sizeof(apdu_transmit_buffer_1), apdu_receive_buffer_1);
 
 
     #ifdef DEBUG_ISO14443B
-        //  Print sended en received bytes
+      //  Print sended en received bytes
       printf("  ---   WUPB   --- \n");
       printf("Send: "); print_block(wupb_buffer, sizeof(wupb_buffer));
       printf("Receive: "); print_block(atqb_buffer, sizeof(atqb_buffer));

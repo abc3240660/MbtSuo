@@ -12,9 +12,9 @@
 #ifndef __Tick_10ms_H
 #define __Tick_10ms_H
 
-#include <p24fxxxx.h> 
-#include "---_Defines.h"
-#include "---_Variables.h"
+#include <p24fxxxx.h>
+
+#include "015_Common.h"
 
 void Configure_Tick_10ms(void);
 void Configure_Tick2_10ms(void);

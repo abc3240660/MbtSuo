@@ -8,14 +8,10 @@
 // Revision history: Version 01.00
 // Date 26/12/2018
 //******************************************************************************
-#include "007_Uart.h"
-#include "001_Tick_10ms.h"
-#include "008_RingBuffer.h"
-#include "007_Uart.h"
-#include "008_RingBuffer.h"
 
-extern VAR Mobit;
-extern NonVolatile NonVolatileDATA;
+#include "001_Tick_10ms.h"
+#include "007_Uart.h"
+#include "008_RingBuffer.h"
 
 unsigned long MobitTimes = 0UL;// unit: ms
 

@@ -19,8 +19,9 @@ extern "C" {
 
 #include <stdio.h>
 #include <stdint.h>
+
 #include "002_CLRC663_Def.h"
-    
+
 #define CLRC630_DEBUG_PRINTF printf
 // debug print statement.
 #ifdef CLRC630_DEBUG_PRINTF

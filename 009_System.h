@@ -11,17 +11,17 @@
 ******************************************************************************/
 
 #ifndef SYSTEM01_H
-#define	SYSTEM01_H
+#define SYSTEM01_H
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
 void System_Config(void);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 
-#endif	/* SYSTEM01_H */
+#endif /* SYSTEM01_H */
 

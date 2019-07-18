@@ -12,8 +12,9 @@
 #ifndef __LB1938_H
 #define __LB1938_H
 
-#include <p24fxxxx.h> 
-#include "---_Defines.h"
+#include <p24fxxxx.h>
+
+#include "015_Common.h"
 
 void Configure_LB1938(void);
 

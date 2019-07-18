@@ -1,0 +1,699 @@
+PIC24FJ(OSCI: 20MHz):
+
+External Sub-Board
+XX? -> VSUP_PROT 	-> 	EXT_VSUP
+	maybe just a power suppply, not provided by PIC24FJ
+RD3 -> LED_RED_E 	-> 	EXT_RED
+RD2 -> LED_GREEN_E -> 	EXT_GREEN
+RD1 -> LED_BLUE_E 	-> 	EXT_BLUE
+
+Main LED Status:
+RD6 -> LED_GREEN
+RD5 -> LED_RED
+RD4 -> LED_BLUE
+
+Battery Charge:
+RF2 <- CHARGE_STAT(IN)
+RG3 -> nEN_CHARGE:
+	is always enabled with an internal
+	pull-down resistor. Pulling the CE pin high will enter
+	Standby mode.
+	
+Switch1/2:
+RE4 <- SWITCH1
+	detect the position of the locking pin
+RE5 <- SWITCH2
+	detect the rotation of the motor
+
+CLRC663(XTAL: 27.12MHz):
+RE6 ->  IFSEL0
+RE7 ->  IFSEL1
+RB5 ->  IF0
+RB4 ->  IF1(Old:RG6)	->	SPI SDI
+RB2 <-> IF2(Old:RG7)	->	SPI SDO
+RB1 <-> IF3(Old:RG8)	->	SPI SCK
+RE5 ->  nCLRC_RST
+RE3	<-  nCLRC_IRQ(IN)
+
+TouchPad:
+RF4  -> SENS_MTPM
+	Low-Power mode Select(Active-Low), Host is Digital output
+RB15 <- SENS_MTO
+	Detect Output(Active-Low), Host is Digital input
+RG9  -> SENS_MTSA(>=20KHz from Hans, duty ratio can be variable for different sensitivity)
+	Sensitivity Adjust Input, Host is DAC output
+	
+	The sensitivity of the system determines how far and
+	fast it can respond to proximity or touch. The MTCH101
+	provides the MTSA pin to adjust the sensitivity, and the
+	voltage on this pin will determine the sensitivity. VDD
+	voltage will give the lowest sensitivity, while GND
+	voltage will give the highest sensitivity.
+	
+	Application Note AN538, “Using PWM to
+	Generate Analog Output” has details
+	about how to choose appropriate R and C
+	values.
+
+J8 TC2030 Connector is ICSP program Interface:
+ICSP <-> MCLR
+ICSP <-> RB6
+ICSP <-> RB7
+
+BG96:
+RB8  -> PIC_AP_READY
+	AP_READY will detect the sleep state of the host (can be configured to high level or low level
+	detection). Please refer to AT+QCFG=“apready” command in document [2] for details.
+RB3  <- PIC_STATUS(IN)
+	The STATUS pin is used to indicate the operation status of BG96 module.
+	It will output HIGH level when the module is powered on.
+RB9  -> PIC_PWRKEY(default HIGH, change to low level for at least 500ms when PIC_STATUS is low, after PIC_STATUS become HIGH, power success)
+	When BG96 is in power off mode(PWRKEY HIGH + STATUS LOW), it can be turned on to normal mode by driving the PWRKEY pin to a low
+	level for at least 500ms. It is recommended to use an open drain/collector driver to control the PWRKEY.
+	After STATUS pin outputting a high level, PWRKEY pin can be released.
+RB10 -> PIC_DISABLE(default disabled, AT+QCFG can open it, if open, low level can enter airplane mode)
+	W_DISABLE#* is pulled up by default. Driving it to low level will let the module enter into airplane mode.
+	When the module enters into airplane mode, the RF function does not work, and all AT commands
+	correlative with RF function will be inaccessible. This mode can be set via the following ways.
+	AT+CFUN=<fun> command provides choice of the functionality level, through setting <fun> into 0, 1 or 4.
+	AT+CFUN=0: Minimum functionality mode. Both (U)SIM and RF functions are disabled.
+	AT+CFUN=1: Full functionality mode (by default).
+	AT+CFUN=4: Airplane mode. RF function is disabled.
+	Airplane mode control via W_DISABLE# is disabled in firmware by default. It can be enabled by
+	AT+QCFG=“airplanecontrol” command. The command is still under development.
+RE2  <- PIC_RI(IN)
+	Idle: RI keeps in high level.
+	URC RI outputs 120ms low pulse when new URC returns.
+	When BG96 has URC to report, RI signal will wake up the host.
+RB11 -> PIC_RESET(default HIGH)
+	>=150ms <=460ms(HIGH -> 150ms~460ms LOW -> HIGH)
+	The RESET_N pin can be used to reset the module. The module can be reset by driving RESET_N to a
+	low level voltage for time between 150ms and 460ms.
+	Use RESET_N only when turning off the module by AT+QPOWD command and PWRKEY pin both failed.
+RB12 <- PIC_PSM_IND(IN)
+RB14 -> PIC_TX
+RG6  <- PIC_RX(IN)
+	BG96 UART1:It is used for data transmission and AT command communication.
+	(BG96 UART2:It is used for module debugging and log output.)
+RE1  <- PIC_DCD(IN)
+RE0  -> PIC_RTS
+RF1  -> PIC_DTR
+RF0  <- PIC_CTS(IN)
+
+RG7  <- PIC_GPS_RX(IN)
+RG8  -> PIC_GPS_TX
+	BG96 UART3:It is used for outputting GNSS data and NMEA sentences.
+
+Turn off BG96:
+Method 1:
+	condition: PWRKEY HIGH + STATUS HIGH(module is in power on)
+	go to off: PWRKEY LOW at least 650ms, after relase >= 2s, STATUS will goto LOW
+Method 2:
+	It is also a safe way to use AT+QPOWD command to turn off the module, which is similar to turning off the
+	module via PWRKEY pin.
+	AT+QPOWD[=<n>]: 0-Immediately power down, 1-Normal power down
+
+Motor LB1938FA:
+RD9 -> MOTOR_FWD
+RD8 -> nMOTOR_FWD
+
+BNO055:
+RD0  <- TILT_IRQ
+RD10 <- TILT_RX
+RD11 -> TILT_TX
+RC13 -> nTILT_RST
+RC14 -> nTILT_BOOT_LOAD
+	The boot loader is located at the start of the program memory and it is executed at each
+	reset / power-on sequence. The boot loader first checks the status of a BOOT_LOAD_PIN.
+	If the BOOT_LOAD_PIN is pulled low during reset / power-on sequence, it continues
+	execution in boot loader mode. Otherwise the device continues to boot in application mode.
+	For more details on the boot loader please contact your local Bosch Sensortec sales
+	representative and ask for the “BNO Boot loader application note” document.
+
+BUZZER:
+RB13 -> BUZZER
+
+Battery Voltage Monitor:
+RB0	<-	VDX
+(RB0 use internal MCU ADC)
+
+==================================== HTTP ====================================
+
+[09:10:17.760]发→◇AT+QHTTPCFG="contextid",1
+□
+[09:10:17.769]收←◆AT+QHTTPCFG="contextid",1
+OK
+
+[09:10:27.760]发→◇AT+QHTTPCFG="responseheader",1
+□
+[09:10:27.773]收←◆AT+QHTTPCFG="responseheader",1
+OK
+
+
+AT+QHTTPCFG="requestheader",1
+
+
+[09:11:48.501]发→◇AT+QHTTPURL=24,80
+□
+[09:11:48.507]收←◆AT+QHTTPURL=24,80
+CONNECT
+
+[09:11:52.941]发→◇http://tlele.cn/test.mp3
+□
+[09:11:52.954]收←◆
+OK
+
+[09:12:06.430]发→◇AT+QHTTPGET=80
+□
+[09:12:06.439]收←◆AT+QHTTPGET=80
+OK
+
+[09:12:08.083]收←◆
++QHTTPGET: 0,200,69895
+
+
+[09:14:36.823]发→◇AT+QHTTPURL=24,80
+□
+[09:14:36.840]收←◆AT+QHTTPURL=24,80
+CONNECT
+
+[09:14:41.489]发→◇http://tlele.cn/test.mp3
+□
+[09:14:41.496]收←◆
+OK
+
+[09:14:58.217]发→◇AT+QHTTPPOST=20,80,80
+□
+[09:14:58.236]收←◆AT+QHTTPPOST=20,80,80
+[09:15:00.588]收←◆
+CONNECT
+
+
+POST /test.mp3 HTTP/1.1
+Accept: */*
+Range: 0-1000
+User-Agent: BG96
+Content-Length: 43
+
+
+[10:01:17.824]发→◇AT+QHTTPURL=35,80
+□
+[10:01:17.835]收←◆AT+QHTTPURL=35,80
+CONNECT
+
+[10:01:24.865]发→◇http://122.4.233.119:10217/test.mp3
+□
+[10:01:24.874]收←◆
+OK
+
+[10:07:16.859]发→◇AT+QHTTPPOST=11,80,80
+□
+[10:07:16.864]收←◆AT+QHTTPPOST=11,80,80
+[10:07:21.373]收←◆
+CONNECT
+
+[10:07:42.378]发→◇Range: 0-10
+□
+[10:07:42.391]收←◆
+OK
+
++QHTTPPOST: 0,200,69895
+
+[10:07:52.561]发→◇AT+QHTTPREAD=80
+□
+[10:07:52.566]收←◆AT+QHTTPREAD
+[10:07:52.597]收←◆=80
+CONNECT
+HTTP/1.1 200 
+Accept-Ranges: bytes
+ETag: W/"69895-1563367727000"
+Last-Modified: Wed, 17 Jul 2019 12:48:47 GMT
+Content-Type: audio/mpeg
+Content-Length: 69895
+Date: Thu, 18 Jul 2019 02:06:21 GMT
+
+
+
+POST /test.mp3 HTTP/1.1
+Host: 220.180.239.212:8011
+Accept: */*
+Range:  bytes=0-128
+User-Agent: QUECTEL_MODULE
+Connection: Keep-Alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 0
+
+
+
+[13:07:48.523]发→◇AT+QHTTPCFG="contextid",1
+□
+[13:07:48.540]收←◆AT+QHTTPCFG="contextid",1
+OK
+
+[13:07:54.924]发→◇AT+QHTTPCFG="responseheader",1
+□
+[13:07:54.938]收←◆AT+QHTTPCFG="responseheader",1
+OK
+
+[13:08:02.267]发→◇AT+QHTTPCFG="requestheader",1
+□
+[13:08:02.281]收←◆AT+QHTTPCFG="requestheader",1
+OK
+
+[13:08:47.462]发→◇AT+QHTTPURL=16,80
+□
+[13:08:47.470]收←◆AT+QHTTPURL=16,80
+CONNECT
+
+[13:08:50.606]发→◇http://tlele.cn/
+□
+[13:08:50.621]收←◆
+OK
+
+[13:10:42.147]发→◇AT+QHTTPGET=205,80
+□
+[13:10:42.162]收←◆AT+QHTTPGET=205,80
+[13:10:43.890]收←◆
+CONNECT
+
+[13:10:54.084]发→◇POST /test.mp3 HTTP/1.1
+Host: 220.180.239.212:8011
+Accept: */*
+Range:  bytes=0-128
+User-Agent: QUECTEL_MODULE
+Connection: Keep-Alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 0
+□
+[13:10:54.093]收←◆
+OK
+
+[13:11:03.847]发→◇AT+QHTTPREAD=80
+□
+[13:11:03.865]收←◆AT+QHTTPREAD=80
++CME ERROR: 703
+
+[13:11:45.153]发→◇AT+QHTTPREAD=80
+□
+[13:11:45.160]收←◆AT+QHTTPREAD=80
++CME ERROR: 703
+
+[13:11:45.846]收←◆
++QHTTPGET: 719
+
+
+
+==================================== FTP ====================================
+
+[13:12:54.846]发→◇AT+QFTPCFG="contextid",1
+□
+[13:12:54.856]收←◆AT+QFTPCFG="contextid",1
+OK
+
+[13:14:14.002]发→◇AT+QFTPCFG="account","firmware",""
+□
+[13:14:14.020]收←◆AT+QFTPCFG="account","firmware",""
+OK
+
+[13:14:34.679]发→◇AT+QFTPCFG="filetype",1
+□
+[13:14:34.684]收←◆AT+QFTPCFG="filetype",1
+OK
+
+[13:14:49.815]发→◇AT+QFTPCFG="transmode",1
+□
+[13:14:49.831]收←◆AT+QFTPCFG="transmode",1
+OK
+
+[13:15:08.677]发→◇AT+QFTPCFG="rsptimeout",90
+□
+[13:15:08.689]收←◆AT+QFTPCFG="rsptimeout",90
+OK
+
+[13:15:55.579]发→◇AT+QFTPOPEN="122.4.233.119",10218
+□
+[13:15:55.585]收←◆AT+QFTPOPEN="122.4.233.119",10218
+OK
+
+[13:15:57.712]收←◆
++QFTPOPEN: 0,0
+
+[13:16:34.425]发→◇AT+QFTPCWD="/"
+□
+[13:16:34.435]收←◆AT+QFTPCWD="/"
+OK
+
+[13:16:35.459]收←◆
++QFTPCWD: 0,0
+
+[13:17:21.470]发→◇AT+QFTPGET="test.mp3","COM:",0,100
+□
+[13:17:21.475]收←◆AT+QFTPGET="test.mp3","COM:",0,100
+[13:17:24.067]收←◆
+CONNECT
+
+[13:17:24.917]收←◆ID3\0
+[13:17:24.942]收←◆\0\0\0![TIT3\0\0\0\0\0\0站长素材(sc.chinaz.com)TALB\0\0\0\0\0\0站长素材(sc.chinaz.com)TYER\0\0\0\0\0\02016TPE2\0\0\0
+OK
+
++QFTPGET: 0,100
+
+[13:18:19.980]发→◇AT+QFTPGET="test.mp3","COM:",0,100
+□
+[13:18:19.993]收←◆AT+QFTPGET="test.mp3","COM:",0,100
+[13:18:23.928]收←◆
+CONNECT
+
+[13:18:24.855]收←◆ID3\0\0\0\0![TIT3\0\0\0\0\0\0站长素材(sc.chinaz.com)TALB\0\0\0\0\0\0站长素材(sc.chinaz.com)TYER\0\0\0\0\0\02016TPE2\0\0\0
+OK
+
++QFTPGET: 0,100
+
+[13:18:57.585]发→◇AT+QFTPGET="test.mp3","COM:",0,100
+□
+[13:18:57.603]收←◆AT+QFTPGET="test.mp3","COM:",0,100
+[13:19:01.698]收←◆
+CONNECT
+
+[13:19:03.350]收←◆ID3\0\0\0\0![TIT3\0\0\0\0\0\0站长素材(sc.chinaz.com)TALB\0\0\0\0\0\0站长素材(sc.chinaz.com)TYER\0\0\0\0\0\02016TPE2\0\0\0
+OK
+
++QFTPGET: 0,100
+
+[13:20:01.693]发→◇AT+QFTPGET="test.mp3","COM:",100,100
+□
+[13:20:01.706]收←◆AT+QFTPGET="test.mp3","COM:",100,100
+CONNECT
+\0\0\0站长素材(sc.chinaz.com)TIT2\0\0\0\0\0\0站长素材(sc.chinaz.com)TCON\0\0\0\0\0\0站长素材(sc.chinaz.com)TPE1\0
+OK
+
++QFTPGET: 0,100
+
+[13:20:52.938]发→◇AT+QFTPCLOSE
+□
+[13:20:52.956]收←◆AT+QFTPCLOSE
+OK
+
+[13:20:54.631]收←◆
++QFTPCLOSE: 0,0
+
+[13:21:02.010]发→◇AT+QIDEACT=1
+□
+[13:21:02.025]收←◆AT+QIDEACT=1
+[13:21:02.952]收←◆
+OK
+
+[13:21:10.899]发→◇AT+QIDEACT=?
+□
+[13:21:10.907]收←◆AT+QIDEACT=?
++QIDEACT: (1-16)
+
+OK
+
+[13:21:15.433]发→◇AT+QIDEACT?
+□
+[13:21:15.444]收←◆AT+QIDEACT?
+ERROR
+
+[13:21:18.960]发→◇AT+QIDEACT
+□
+[13:21:18.970]收←◆AT+QIDEACT
+ERROR
+
+// 并未重新激活移动场景后:AT+QIACT=1
+// 但是还能联通
+[13:28:49.688]发→◇AT+QFTPCFG="contextid",1
+□
+[13:28:49.704]收←◆AT+QFTPCFG="contextid",1
+OK
+
+[13:28:55.919]发→◇AT+QFTPCFG="account","firmware",""
+□
+[13:28:55.926]收←◆AT+QFTPCFG="account","firmware",""
+OK
+
+[13:29:02.142]发→◇AT+QFTPCFG="filetype",1
+□
+[13:29:02.147]收←◆AT+QFTPCFG="filetype",1
+OK
+
+[13:29:07.662]发→◇AT+QFTPCFG="transmode",1
+□
+[13:29:07.666]收←◆AT+QFTPCFG="transmode",1
+OK
+
+[13:29:13.326]发→◇AT+QFTPCFG="rsptimeout",90
+□
+[13:29:13.344]收←◆AT+QFTPCFG="rsptimeout",90
+OK
+
+[13:29:19.165]发→◇AT+QFTPOPEN="122.4.233.119",10218
+□
+[13:29:19.182]收←◆AT+QFTPOPEN="122.4.233.119",10218
+OK
+
+[13:29:21.677]收←◆
++QFTPOPEN: 0,0
+
+[13:29:31.149]发→◇AT+QFTPCWD="/"
+□
+[13:29:31.161]收←◆AT+QFTPCWD="/"
+OK
+
+[13:29:31.834]收←◆
++QFTPCWD: 0,0
+
+[13:29:39.476]发→◇AT+QFTPGET="test.mp3","COM:",0,100
+□
+[13:29:39.495]收←◆AT+QFTPGET="test.mp3","COM:",0,100
+[13:29:41.481]收←◆
+CONNECT
+
+[13:29:42.171]收←◆ID3\0\0\0\0![TIT3\0\0\0\0\0\0站长素材(sc.chinaz.com)TALB\0\0\0\0\0\0站长素材(sc.chinaz.com)TYER\0\0\0\0\0\02016TPE2\0\0\0
+OK
+
++QFTPGET: 0,100
+
+[13:31:35.342]发→◇AT+QIACT?
+□
+[13:31:35.356]收←◆AT+QIACT?
++QIACT: 1,1,1,"100.79.217.119"
+
+OK
+
+// 关闭移动场景后，FTPGET就失败了
+[13:31:53.157]发→◇AT+QIDEACT=1
+□
+[13:31:53.174]收←◆AT+QIDEACT=1
+[13:31:53.877]收←◆
+OK
+
+[13:31:57.238]发→◇AT+QIACT?
+□
+[13:31:57.252]收←◆AT+QIACT?
+OK
+
+[13:32:18.763]发→◇AT+QFTPGET="test.mp3","COM:",0,100
+□
+[13:32:18.781]收←◆AT+QFTPGET="test.mp3","COM:",0,100
++CME ERROR: 625
+
+
+// 再次激活移动场景，FTPGET还是失败
+[13:32:32.202]发→◇AT+QIACT=1
+□
+[13:32:32.216]收←◆AT+QIACT=1
+[13:32:33.096]收←◆
+OK
+
+[13:32:37.436]发→◇AT+QIACT?
+□
+[13:32:37.446]收←◆AT+QIACT?
++QIACT: 1,1,1,"100.111.102.80"
+
+OK
+
+[13:32:41.786]发→◇AT+QFTPGET="test.mp3","COM:",0,100
+□
+[13:32:41.797]收←◆AT+QFTPGET="test.mp3","COM:",0,100
++CME ERROR: 625
+
+// 此时显示FTP已经被关闭了
+[13:35:38.720]发→◇AT+QFTPSTAT
+□
+[13:35:38.738]收←◆AT+QFTPSTAT
+OK
+
++QFTPSTAT: 0,4
+	reply: +QFTPSTAT: 0,<ftpstat> or +CME ERROR: <err>, below is ftpstat:
+	0 Opening an FTP(S) server
+	1 The FTP(S) server is open and idle
+	2 Transferring data with FTP(S) server
+	3 Closing the FTP(S) server
+	4 The FTP(S) server is closed
+
+// 此时无需重新配置账号密码，直接可以连上FTP:
+[13:39:06.832]发→◇AT+QFTPOPEN="122.4.233.119",10218
+□
+[13:39:06.845]收←◆AT+QFTPOPEN="122.4.233.119",10218
+OK
+
+[13:39:08.926]收←◆
++QFTPOPEN: 0,0
+
+[13:39:32.034]发→◇AT+QFTPCWD="/"
+□
+[13:39:32.044]收←◆AT+QFTPCWD="/"
+OK
+
+[13:39:32.716]收←◆
++QFTPCWD: 0,0
+
+[13:39:40.610]发→◇AT+QFTPGET="test.mp3","COM:",0,100
+□
+[13:39:40.629]收←◆AT+QFTPGET="test.mp3","COM:",0,100
+[13:39:42.676]收←◆
+CONNECT
+
+[13:39:43.160]收←◆ID3\0\0\0\0![TIT3\0\0\0\0\0\0站长素材(sc.chinaz.com)TALB\0\0\0\0\0\0站长素材(sc.chinaz.com)TYER\0\0\0\0\0\02016TPE2\0\0\0
+OK
+
++QFTPGET: 0,100
+
+
+[13:41:11.662]发→◇AT+QFTPCLOSE
+□
+[13:41:11.674]收←◆AT+QFTPCLOSE
+OK
+
+[13:41:12.490]收←◆
++QFTPCLOSE: 0,0
+
+// 重复关闭
+[13:41:14.534]发→◇AT+QFTPCLOSE
+□
+[13:41:14.541]收←◆AT+QFTPCLOSE
++CME ERROR: 625 // Not logged in
+
+// 移动场景应该是不会被主动关闭的
+[13:42:23.121]发→◇AT+QIACT?
+□
+[13:42:23.128]收←◆AT+QIACT?
++QIACT: 1,1,1,"100.111.102.80"
+
+OK
+
+[13:43:28.189]发→◇AT+QIDEACT=1
+□
+[13:43:28.200]收←◆AT+QIDEACT=1
+[13:43:28.952]收←◆
+OK
+
+// 移动场景关闭后就，查询不到IP地址了
+[13:43:32.868]发→◇AT+QIACT?
+□
+[13:43:32.875]收←◆AT+QIACT?
+OK
+
+// TCP未连接的情况下，查询不到IP信息:
+[13:47:13.455]发→◇AT+QISTATE
+□
+[13:47:13.472]收←◆AT+QISTATE
+OK
+
+[13:47:34.823]发→◇AT+QISTATE?
+□
+[13:47:34.828]收←◆AT+QISTATE?
+OK
+
+[13:47:58.128]发→◇AT+QIACT?
+□
+[13:47:58.133]收←◆AT+QIACT?
+OK
+
+// FTP连接会自动激活移动场景
+[13:48:07.128]发→◇AT+QFTPOPEN="122.4.233.119",10218
+□
+[13:48:07.138]收←◆AT+QFTPOPEN="122.4.233.119",10218
+OK
+
+[13:48:10.674]收←◆
++QFTPOPEN: 0,0
+
+[13:48:18.962]发→◇AT+QIACT?
+□
+[13:48:18.976]收←◆AT+QIACT?
++QIACT: 1,1,1,"100.127.224.58"
+
+OK
+
+[13:48:44.098]发→◇AT+QFTPSTAT
+□
+[13:48:44.106]收←◆AT+QFTPSTAT
+OK
+
++QFTPSTAT: 0,1
+
+[13:48:55.818]发→◇AT+QFTPCLOSE
+□
+[13:48:55.831]收←◆AT+QFTPCLOSE
+OK
+
+[13:48:56.598]收←◆
++QFTPCLOSE: 0,0
+
+[13:49:06.290]发→◇AT+QIACT?
+□
+[13:49:06.308]收←◆AT+QIACT?
++QIACT: 1,1,1,"100.127.224.58"
+
+OK
+
+// FTP自动打开的移动场景，TCP也能继续使用
+[13:54:31.036]发→◇AT+QIOPEN=1,0,"TCP","122.4.233.119",10211,0,1
+□
+[13:54:31.047]收←◆AT+QIOPEN=1,0,"TCP","122.4.233.119",10211,0,1
+OK
+
+[13:54:31.719]收←◆
++QIOPEN: 0,0
+
+[13:54:57.294]发→◇AT+QISTATE=1,0
+□
+[13:54:57.297]收←◆AT+QISTATE=1,0
++QIST
+[13:54:57.318]收←◆ATE: 0,"TCP","122.4.233.119",10211,24226,2,1,0,1,"uart1"
+
+OK
+
+[13:55:02.511]发→◇AT+QISTATE
+□
+[13:55:02.532]收←◆AT+QISTATE
++QISTATE: 0,"TCP","122.4.233.119",10211,24226,2,1,0,1,"uart1"
+
+OK
+
+// 关闭TCP，等待OK的时间有点长
+[13:59:35.499]发→◇AT+QICLOSE=0
+□
+[13:59:35.513]收←◆AT+QICLOSE=0
+[13:59:45.511]收←◆
+OK
+
+// 重复关闭就很快，而且不会报错
+[14:03:29.059]发→◇AT+QICLOSE=0
+□
+[14:03:29.064]收←◆AT+QICLOSE=0
+OK
+
+// 关闭TCP后，查询不到IP信息了
+[14:00:08.621]发→◇AT+QISTATE
+□
+[14:00:08.627]收←◆AT+QISTATE
+OK
+
+// TCP CLose也是会有ERROR返回的
+[14:05:08.731]发→◇AT+QICLOSE=100
+□
+[14:05:08.737]收←◆AT+QICLOSE=100
+ERROR

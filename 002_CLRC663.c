@@ -78,7 +78,6 @@ uint8_t clrc663_read_error(){
 // ---------------------------------------------------------------------------
 // Command functions.
 // ---------------------------------------------------------------------------
-
 void clrc663_cmd_read_E2(uint16_t address, uint16_t length) {
   uint8_t parameters[3] = {(uint8_t) (address >> 8), (uint8_t) (address & 0xFF), length};
   clrc663_flush_fifo();
@@ -137,7 +136,6 @@ void clrc663_cmd_load_key(const uint8_t* key) {
 // ---------------------------------------------------------------------------
 // Utility functions.
 // ---------------------------------------------------------------------------
-
 void clrc663_flush_fifo() {
   clrc663_write_reg(CLRC630_REG_FIFOCONTROL, 1<<4);
 }
@@ -363,7 +361,6 @@ void CLRC663_configure_communication_protocol(uint8_t protocol) {
 // ---------------------------------------------------------------------------
 // ISO 14443A
 // ---------------------------------------------------------------------------
-
 uint16_t clrc663_iso14443a_REQA() {
   return clrc663_iso14443a_WUPA_REQA(CLRC630_ISO14443_CMD_REQA);
 }
@@ -462,7 +459,7 @@ uint8_t clrc663_iso14443a_select(uint8_t* uid, uint8_t* sak) {
 
   clrc663_cmd_idle();
   clrc663_flush_fifo();
-  
+
   // clear interrupts
   clrc663_clear_irq0();
   clrc663_clear_irq1();
@@ -507,7 +504,6 @@ uint8_t clrc663_iso14443a_select(uint8_t* uid, uint8_t* sak) {
     clrc663_write_reg(CLRC630_REG_TXCRCPRESET, CLRC630_RECOM_14443A_CRC | CLRC630_CRC_OFF);
     clrc663_write_reg(CLRC630_REG_RXCRCCON, CLRC630_RECOM_14443A_CRC | CLRC630_CRC_OFF);
 
-
     // max 32 loops of the collision loop.
     uint8_t collision_n;
     for (collision_n=0; collision_n < 32; collision_n++) {
@@ -518,7 +514,6 @@ uint8_t clrc663_iso14443a_select(uint8_t* uid, uint8_t* sak) {
       // clear interrupts
       clrc663_clear_irq0();
       clrc663_clear_irq1();
-
 
       send_req[0] = cmd;
       send_req[1] = 0x20 + known_bits;
@@ -535,7 +530,6 @@ uint8_t clrc663_iso14443a_select(uint8_t* uid, uint8_t* sak) {
       CLRC630_PRINTF("Setting rx align to: %hhd\n", rxalign);
       clrc663_write_reg(CLRC630_REG_RXBITCTRL, (0<<7) | (rxalign<<4));
 
-
       // then sent the send_req to the hardware,
       // (known_bits / 8) + 1): The ceiled number of bytes by known bits.
       // +2 for cmd and NVB.
@@ -550,7 +544,6 @@ uint8_t clrc663_iso14443a_select(uint8_t* uid, uint8_t* sak) {
       CLRC630_PRINTF("\n");
 
       clrc663_cmd_transceive(send_req, message_length);
-
 
       // block until we are done
       uint8_t irq1_value = 0;
@@ -592,7 +585,6 @@ uint8_t clrc663_iso14443a_select(uint8_t* uid, uint8_t* sak) {
             uint8_t choice_pos = known_bits + collision_pos;
             uint8_t selection = (uid[((choice_pos + (cascade_level-1)*3)/8)] >> ((choice_pos) % 8))&1;
 
-
             // We just OR this into the UID at the right position, later we
             // OR the UID up to this point into uid_this_level.
             uid_this_level[((choice_pos)/8)] |= selection << ((choice_pos) % 8);
@@ -601,7 +593,6 @@ uint8_t clrc663_iso14443a_select(uint8_t* uid, uint8_t* sak) {
             CLRC630_PRINTF("uid_this_level now kb %hhd long: ", known_bits);
             clrc663_print_block(uid_this_level, 10);
             CLRC630_PRINTF("\n");
-
           } else {
             // Datasheet of clrc663:
             // bit 7 (CollPosValid) not set:
@@ -757,7 +748,7 @@ uint8_t clrc663_iso14443a_select(uint8_t* uid, uint8_t* sak) {
 uint8_t clrc663_communicate(uint8_t* tx_buffer, uint8_t tx_buffer_len, uint8_t* rx_buffer){
   clrc663_cmd_idle();
   clrc663_flush_fifo();
-  
+
   // clear interrupts
   clrc663_clear_irq0();
   clrc663_clear_irq1();
@@ -778,7 +769,7 @@ uint8_t clrc663_communicate(uint8_t* tx_buffer, uint8_t tx_buffer_len, uint8_t* 
 
   // Go into send, then straight after in receive.
   clrc663_cmd_transceive(tx_buffer, tx_buffer_len);
-  
+
   CLRC630_PRINTF("Sending REQB\n");
   // block until we are done
   uint8_t irq1_value = 0;
@@ -791,7 +782,7 @@ uint8_t clrc663_communicate(uint8_t* tx_buffer, uint8_t tx_buffer_len, uint8_t* 
 
   CLRC630_PRINTF("After waiting for answer\n");
   clrc663_cmd_idle();
-  
+
   // if no Rx IRQ, or if there's an error somehow, return 0
   uint8_t irq0 = clrc663_irq0();
   if ((!(irq0 & CLRC630_IRQ0_RX_IRQ)) || (irq0 & CLRC630_IRQ0_ERR_IRQ)) {
@@ -871,7 +862,6 @@ uint8_t clrc663_MF_read_block(uint8_t block_address, uint8_t* dest) {
   // enable the global IRQ for idle, errors and timer.
   clrc663_write_reg(CLRC630_REG_IRQ0EN, CLRC630_IRQ0EN_IDLE_IRQEN | CLRC630_IRQ0EN_ERR_IRQEN);
   clrc663_write_reg(CLRC630_REG_IRQ1EN, CLRC630_IRQ1EN_TIMER0_IRQEN);
-
 
   // Set timer to 221 kHz clock, start at the end of Tx.
   clrc663_timer_set_control(timer_for_timeout, CLRC630_TCONTROL_CLK_211KHZ | CLRC630_TCONTROL_START_TX_END);

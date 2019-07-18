@@ -11,17 +11,17 @@
 ******************************************************************************/
 
 #ifndef GPIO_H
-#define	GPIO_H
+#define GPIO_H
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
 void GPIOB_Init(void);
 void GPIOB_SetPin(short pin,char value);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 
-#endif	/* GPIO_H */
+#endif /* GPIO_H */

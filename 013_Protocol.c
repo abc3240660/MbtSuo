@@ -11,9 +11,10 @@
 ******************************************************************************/
 #include <stdio.h>
 #include <string.h>
+
+#include "003_BG96.h"
 #include "013_Protocol.h"
 #include "014_md5.h"
-#include "003_BG96.h"
 
 const char* cmd_list[] = {
     // DEV Auto CMDs
@@ -53,34 +54,15 @@ const char* cmd_list[] = {
 u32 g_need_ack = 0;
 u32 g_till_svr_ack = 0;
 
-// DOOR Sta:
-u8 g_door_state = 0;
-
-// Door LOCK Sta:
-// BIT7: 0-idle, 1-changed
-// BIT0: 0-locked, 1-unlocked
-u8 g_drlock_sta_chged = 0;
-
 // Door Open/Close Sta:
 // BIT7: 0-idle, 1-changed
 // BIT0: 0-closed, 1-opened
 u8 g_dropen_sta_chged = 0;
 
-// HandBrake LOCK Sta:
-// BIT7: 0-idle, 1-changed
-// BIT0: 0-locked, 1-unlocked
-u8 g_hbrake_sta_chged = 0;
-
-u16 g_gps_trace_gap = 0;
-
-u8 g_server_time[LEN_SYS_TIME+1] = "";
+u8 g_swap_passwd[LEN_SYS_TIME+1] = "";
 
 u8 g_msg_md5[LEN_DW_MD5+1] = "";
 u8 g_card_ids[(LEN_CARD_ID+1)*10] = "";
-
-u8 g_net_ip[LEN_NET_TCP+1] = "";
-u8 g_net_port[LEN_NET_TCP+1] = "";
-u8 g_net_apn[LEN_NET_TCP+1] = "";
 
 u8 g_alarm_on[LEN_COMMON_USE+1] = "1";
 u8 g_beep_on[LEN_COMMON_USE+1] = "1";
@@ -92,21 +74,21 @@ u8 g_iap_update_url[LEN_DW_URL+1] = "";
 
 u8 g_hbeat_gap = 6;// default 6s
 
-u8 g_CHANGE_APN_name[LEN_FILE_NAME+1];
+u8 g_first_md5[LEN_COMMON_USE] = "";
 
-extern u8 g_first_md5[LEN_COMMON_USE];
-extern u8 g_imei_str[LEN_COMMON_USE];
-extern u8 g_iccid_str[LEN_COMMON_USE];
-
-char bg96_send_buf[LEN_MAX_SEND] = "";
 char send_md5[LEN_DW_MD5] = "e10adc3949ba59abbe56e057f20f883e";
 
 unsigned long g_dw_size_total = 0;
 unsigned long g_dw_recved_sum = 0;
 
-extern u8 g_svr_ip[32];
-extern u8 g_svr_port[8];
-extern u8 g_svr_apn[32];
+extern u8 g_imei_str[LEN_COMMON_USE];
+extern u8 g_iccid_str[LEN_COMMON_USE];
+
+extern u8 g_svr_ip[LEN_NET_TCP];
+extern u8 g_svr_port[LEN_NET_TCP];
+extern u8 g_svr_apn[LEN_NET_TCP];
+
+extern char bg96_send_buf[LEN_MAX_SEND];
 
 void calc_first_md5()
 {
@@ -272,9 +254,9 @@ void parse_mobit_msg(char* msg)
                         printf("change g_hbeat_gap = %d\n", g_hbeat_gap);
                     }
                 } else if (4 == index) {
-                    strncpy((char*)g_server_time, split_str, LEN_SYS_TIME);
-                    g_server_time[LEN_SYS_TIME] = '\0';
-                    printf("g_swap_pw = %s\n", g_server_time);
+                    strncpy((char*)g_swap_passwd, split_str, LEN_SYS_TIME);
+                    g_swap_passwd[LEN_SYS_TIME] = '\0';
+                    printf("g_swap_passwd = %s\n", g_swap_passwd);
                 }
             // below is all SVR CMDs with params
             } else if (IAP_UPGRADE == cmd_type) {
@@ -290,17 +272,17 @@ void parse_mobit_msg(char* msg)
                 }
             } else if (CHANGE_APN == cmd_type) {
                 if (3 == index) {
-                    memset(g_net_ip, 0, LEN_NET_TCP);
-                    strncpy((char*)g_net_ip, split_str, LEN_NET_TCP);
-                    printf("g_net_ip = %s\n", g_net_ip);
+                    memset(g_svr_ip, 0, LEN_NET_TCP);
+                    strncpy((char*)g_svr_ip, split_str, LEN_NET_TCP);
+                    printf("g_svr_ip = %s\n", g_svr_ip);
                 } else if (4 == index) {
-                    memset(g_net_port, 0, LEN_NET_TCP);
-                    strncpy((char*)g_net_port, split_str, LEN_NET_TCP);
-                    printf("g_net_port = %s\n", g_net_port);
+                    memset(g_svr_port, 0, LEN_NET_TCP);
+                    strncpy((char*)g_svr_port, split_str, LEN_NET_TCP);
+                    printf("g_svr_port = %s\n", g_svr_port);
                 } else if (5 == index) {
-                    memset(g_net_apn, 0, LEN_NET_TCP);
-                    strncpy((char*)g_net_apn, split_str, LEN_NET_TCP);
-                    printf("g_net_apn = %s\n", g_net_apn);
+                    memset(g_svr_apn, 0, LEN_NET_TCP);
+                    strncpy((char*)g_svr_apn, split_str, LEN_NET_TCP);
+                    printf("g_svr_apn = %s\n", g_svr_apn);
                 }
             } else if (DELETE_NFC == cmd_type) {
                 if (3 == index) {

@@ -9,12 +9,7 @@
 // Date 26/12/2018
 //******************************************************************************
 
-#include <p24fxxxx.h> 
-#include "---_Variables.h"
 #include "004_LB1938.h"
-
-extern VAR Mobit;
-extern NonVolatile NonVolatileDATA;
 
 //******************************************************************************
 // Configure BG96

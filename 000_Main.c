@@ -13,10 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
 #include <p24fxxxx.h>
-
-#include "---_Variables.h"
 
 #include "001_Tick_10ms.h"
 #include "002_CLRC663.h"
@@ -30,29 +27,13 @@
 #include "012_CLRC663_NFC.h"
 #include "013_Protocol.h"
 
-extern int temp;
-
-VAR Mobit __attribute__((section("MobitVAR")));
-NonVolatile NonVolatileDATA;
-
-char one_svr_cmds[RX_RINGBUF_MAX_LEN] = {0};
-
-int is_mode_nb = 0;
+u8 is_mode_nb = 0;
 
 // BIT7: have ever connected at least once
 // BIT0: current connect status
 u8 g_net_sta = 0;
 
-extern u32 g_need_ack;
-
-u8 g_imei_str[LEN_COMMON_USE] = "868446032285351";
-u8 g_iccid_str[LEN_COMMON_USE] = "898602B4151830031698";
-
-u8 g_first_md5[LEN_COMMON_USE] = "";
-
-u8 g_svr_ip[32]  = "122.4.233.119";
-u8 g_svr_port[8] = "10211";
-u8 g_svr_apn[32] = "CMNET";
+char one_svr_cmds[RX_RINGBUF_MAX_LEN] = {0};
 
 void process_bg96(void)
 {

@@ -10,24 +10,23 @@
  * @Create time  : 02/20/2019
 ******************************************************************************/
 
-#include "stdio.h"
-#include "string.h"
-#include <p24fxxxx.h> 
-#include "---_Variables.h"
-#include "003_BG96.h"
-#include "008_RingBuffer.h"
+#include <stdio.h>
+#include <string.h>
+#include <p24fxxxx.h>
+
 #include "001_Tick_10ms.h"
+#include "003_BG96.h"
 #include "007_Uart.h"
+#include "008_RingBuffer.h"
 #include "013_Protocol.h"
 
 ringbuffer_t tmp_rbuf;
 ringbuffer_t at_rbuf;
 ringbuffer_t net_rbuf;
 
-int rx_debug_flag = 0;
-
 int errorCode = -1;
 unsigned int bufferHead = 0;
+
 // Read data from RingBuffer into rxBuffer
 // buffer for searched result
 char rxBuffer[RX_BUFFER_LENGTH] = "";
@@ -41,23 +40,20 @@ char netRingbuf[RX_RINGBUF_MAX_LEN] = {0};
 // ringbuf for temp recved
 char tmpRingbuf[RX_RINGBUF_MAX_LEN] = {0};
 
-extern VAR Mobit;
-extern NonVolatile NonVolatileDATA;
-extern unsigned long MobitTimes;
-
-extern u8 g_imei_str[LEN_COMMON_USE];
-extern u8 g_iccid_str[LEN_COMMON_USE];
-
 u8 g_devtime_str[LEN_COMMON_USE];
 u8 g_devzone_str[LEN_COMMON_USE];
 
+u8 g_imei_str[LEN_COMMON_USE] = "868446032285351";
+u8 g_iccid_str[LEN_COMMON_USE] = "898602B4151830031698";
+
+u8 g_svr_ip[LEN_NET_TCP]  = "122.4.233.119";
+u8 g_svr_port[LEN_NET_TCP] = "10211";
+u8 g_svr_apn[LEN_NET_TCP] = "CMNET";
+
+char bg96_send_buf[LEN_MAX_SEND] = "";
+
 extern u8 g_net_sta;
-
-extern u8 g_svr_ip[32];
-extern u8 g_svr_port[8];
-extern u8 g_svr_apn[32];
-
-extern char bg96_send_buf[LEN_MAX_SEND];
+extern unsigned long MobitTimes;
 
 //******************************************************************************
 // Configure BG96
@@ -942,14 +938,12 @@ bool SocketSendData(unsigned int socket_index, Socket_Type_t socket, char *data_
     }
     strcat(cmd, buf);
 
-    rx_debug_flag = 1;
     if (SendAndSearchChr(cmd, '>', 2)) {// 2s
         if (SendDataAndCheck(data_buf, RESPONSE_SEND_OK, RESPONSE_SEND_FAIL, 10)) {
             return true;
         }
     }
 
-    rx_debug_flag = 0;
     return false;
 }
 

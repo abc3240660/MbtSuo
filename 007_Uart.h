@@ -11,9 +11,9 @@
 ******************************************************************************/
 
 #ifndef MUART_H
-#define	MUART_H
+#define MUART_H
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -38,8 +38,8 @@ int Uart2_Printf(char *fmt,...);
 void Uart3_Init(void);
 int Uart3_Putc(char ch);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 
-#endif	/* MUART_H */
+#endif /* MUART_H */

@@ -12,8 +12,9 @@
 #ifndef __BNO055_H
 #define __BNO055_H
 
-#include <p24fxxxx.h> 
-#include "---_Defines.h"
+#include <p24fxxxx.h>
+
+#include "015_Common.h"
 
 // BNO055 Register Map
 //
