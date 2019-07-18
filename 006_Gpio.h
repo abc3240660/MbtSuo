@@ -17,6 +17,34 @@
 extern "C" {
 #endif
 
+typedef enum {
+    MAIN_LED_R = 0,
+    MAIN_LED_G,
+    MAIN_LED_B,
+    EXTE_LED_R,
+    EXTE_LED_G,
+    EXTE_LED_B,
+} LED_INDEX;
+
+typedef enum {
+    LED_OFF = 0,
+    LED_ON,
+} LED_STA;
+
+typedef enum {
+    BANKB = 0,
+    BANKC,
+    BANKD,
+    BANKE,
+    BANKF,
+    BANKG,
+} GPIO_BANKx;
+
+typedef enum {
+    OUTPUT_DIR = 0,
+    INPUT_DIR,
+} GPIO_DIR;
+
 void GPIOB_Init(void);
 void GPIOB_SetPin(short pin,char value);
 
