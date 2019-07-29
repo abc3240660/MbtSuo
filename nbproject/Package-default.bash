@@ -10,9 +10,9 @@ CND_CONF=default
 CND_DISTDIR=dist
 TMPDIR=build/${CND_CONF}/${IMAGE_TYPE}/tmp-packaging
 TMPDIRNAME=tmp-packaging
-OUTPUT_PATH=dist/${CND_CONF}/${IMAGE_TYPE}/MobitLock.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
-OUTPUT_BASENAME=MobitLock.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
-PACKAGE_TOP_DIR=mobitlock/
+OUTPUT_PATH=dist/${CND_CONF}/${IMAGE_TYPE}/Mbtsuo.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+OUTPUT_BASENAME=Mbtsuo.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+PACKAGE_TOP_DIR=mbtsuo/
 
 # Functions
 function checkReturnCode
@@ -57,15 +57,15 @@ mkdir -p ${TMPDIR}
 
 # Copy files and create directories and links
 cd "${TOP}"
-makeDirectory ${TMPDIR}/mobitlock/bin
+makeDirectory ${TMPDIR}/mbtsuo/bin
 copyFileToTmpDir "${OUTPUT_PATH}" "${TMPDIR}/${PACKAGE_TOP_DIR}bin/${OUTPUT_BASENAME}" 0755
 
 
 # Generate tar file
 cd "${TOP}"
-rm -f ${CND_DISTDIR}/${CND_CONF}/package/mobitlock.tar
+rm -f ${CND_DISTDIR}/${CND_CONF}/package/mbtsuo.tar
 cd ${TMPDIR}
-tar -vcf ../../../../${CND_DISTDIR}/${CND_CONF}/package/mobitlock.tar *
+tar -vcf ../../../../${CND_DISTDIR}/${CND_CONF}/package/mbtsuo.tar *
 checkReturnCode
 
 # Cleanup

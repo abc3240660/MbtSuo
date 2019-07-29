@@ -22,7 +22,7 @@ typedef enum {
 } MOTOR_FWD;
 
 void LB1938_Init(void);
-void LB1938_MotorCtrl(MOTOR_FWD motor_fwd, u8 hold_ms);
+void LB1938_MotorCtrl(MOTOR_FWD motor_fwd, uint8_t hold_ms);
 
 #endif //__LB1938_H
 

@@ -30,7 +30,7 @@ extern bool WaitUartTmpRxIdle();
 
 char tmpuse_buf[RX_RINGBUF_MAX_LEN] = {0};
 
-extern int g_net_sta;
+extern u8 g_net_sta;
 
 //******************************************************************************
 //* Timer 1

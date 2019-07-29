@@ -85,31 +85,31 @@ void GPIOx_Output(GPIO_BANKx port, u8 pin, u8 value)
             LATB &= ~(1<<pin);
         }
     } else if (BANKC == port) {
-        if(dir){
+        if(value){
             LATC |= (1<<pin);
         } else {
             LATC &= ~(1<<pin);
         }
     } else if (BANKD == port) {
-        if(dir){
+        if(value){
             LATD |= (1<<pin);
         } else {
             LATD &= ~(1<<pin);
         }
     } else if (BANKE == port) {
-        if(dir){
+        if(value){
             LATE |= (1<<pin);
         } else {
             LATE &= ~(1<<pin);
         }
     } else if (BANKF == port) {
-        if(dir){
+        if(value){
             LATF |= (1<<pin);
         } else {
             LATF &= ~(1<<pin);
         }
     } else if (BANKG == port) {
-        if(dir){
+        if(value){
             LATG |= (1<<pin);
         } else {
             LATG &= ~(1<<pin);

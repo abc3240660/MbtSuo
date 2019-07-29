@@ -14,14 +14,25 @@
 
 #include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
+#include "007_Uart.h"
 
 void print_block(uint8_t * block, uint8_t length);
+
+// maybe is not correct
+void __delay_us(uint16_t ms)
+{
+    int i=0,j=0;
+    for(i=0;i<ms;i++){
+        for(j=0;j<200;j++);
+    }
+}
 
 uint16_t clrc663_SPI_transfer(const uint8_t* tx, uint8_t* rx, uint16_t len)
 {
     uint16_t tempLen = 0;
     tempLen = SPI2_Exchange8bitBuffer((uint8_t*)tx, len, rx);
-    print_block(rx,tempLen);
+    // print_block(rx,tempLen);
+    __delay_us(2);
     return tempLen;
 }
 
@@ -160,5 +171,8 @@ void read_iso14443B_nfc_card(){
       print_serial_nr(apdu_receive_buffer);
       print_card_ID(apdu_receive_buffer_1, sizeof(apdu_receive_buffer_1));
     #endif
+
+      print_serial_nr(apdu_receive_buffer);
+      print_card_ID(apdu_receive_buffer_1, sizeof(apdu_receive_buffer_1));
   }
 }

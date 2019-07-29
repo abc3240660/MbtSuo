@@ -13,6 +13,8 @@
 #ifndef GPIO_H
 #define GPIO_H
 
+#include "015_Common.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

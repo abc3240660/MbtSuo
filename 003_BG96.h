@@ -130,11 +130,6 @@ static const char GNSS_ACQUIRE_NMEA[] = "+QGPSGNMEA";
 #define RESET_PIN   5
 
 /////////////////////////////////// BG96 MACRO ///////////////////////////////////
-// For Common
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-
 typedef enum functionality {
     MINIMUM_FUNCTIONALITY = 0,
     FULL_FUNCTIONALITY = 1,

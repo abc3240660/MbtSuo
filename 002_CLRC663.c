@@ -11,6 +11,7 @@
 ******************************************************************************/
 
 #include "002_CLRC663.h"
+#include "007_Uart.h"
 
 /** @file */
 
@@ -787,6 +788,7 @@ uint8_t clrc663_communicate(uint8_t* tx_buffer, uint8_t tx_buffer_len, uint8_t* 
   uint8_t irq0 = clrc663_irq0();
   if ((!(irq0 & CLRC630_IRQ0_RX_IRQ)) || (irq0 & CLRC630_IRQ0_ERR_IRQ)) {
     CLRC630_PRINTF("No RX, irq1: %hhx irq0: %hhx\n", irq1_value, irq0);
+    return 0;
   }
 
   uint8_t rx_buffer_len = clrc663_fifo_length();

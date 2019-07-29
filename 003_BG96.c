@@ -2485,7 +2485,7 @@ bool ConnectToTcpServer(void)
 
     trycnt = 10;
     while(trycnt--) {
-        if (OpenSocketService(comm_pdp_index, comm_socket_index, socket, (char *)g_svr_ip, atoi(g_svr_port), 0, DIRECT_PUSH_MODE)){
+        if (OpenSocketService(comm_pdp_index, comm_socket_index, socket, (char *)g_svr_ip, atoi((char *)g_svr_port), 0, DIRECT_PUSH_MODE)){
             break;
         }
 

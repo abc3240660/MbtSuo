@@ -4,12 +4,6 @@
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
                    projectFiles="true">
-      <logicalFolder name="MCC Generated Files"
-                     displayName="MCC Generated Files"
-                     projectFiles="true">
-      </logicalFolder>
-      <itemPath>---_Defines.h</itemPath>
-      <itemPath>---_Variables.h</itemPath>
       <itemPath>000_Main.h</itemPath>
       <itemPath>001_Tick_10ms.h</itemPath>
       <itemPath>002_CLRC663.h</itemPath>
@@ -72,7 +66,7 @@
         <platform>3</platform>
       </toolsSet>
       <packs>
-        <pack name="PIC24F-GA-GB_DFP" vendor="Microchip" version="1.0.28"/>
+        <pack name="PIC24F-GA-GB_DFP" vendor="Microchip" version="1.0.58"/>
       </packs>
       <compileType>
         <linkerTool>

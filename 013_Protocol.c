@@ -161,9 +161,9 @@ void parse_mobit_msg(char* msg)
 #endif
 
     // MD5 Validation
-    memcpy(g_msg_md5, msg+strlen(msg)-32, LEN_DW_MD5);
-    g_msg_md5[LEN_DW_MD5] = '\0';
-    printf("g_msg_md5 = %s\n", g_msg_md5);
+    // memcpy(g_msg_md5, msg+strlen(msg)-32, LEN_DW_MD5);
+    // g_msg_md5[LEN_DW_MD5] = '\0';
+    // printf("g_msg_md5 = %s\n", g_msg_md5);
 
     if (0) {// MD5 is invalid
         return;
@@ -198,7 +198,7 @@ void parse_mobit_msg(char* msg)
 
             printf("cmd_type = %d\r\n", cmd_type);
 
-            if (cmd_type != UNKNOWN_CMD) {
+            if (UNKNOWN_CMD == cmd_type) {
                 break;
             }
 
