@@ -30,6 +30,7 @@
 u8 is_mode_nb = 0;
 
 // BIT7: have ever connected at least once
+// BIT6: CMCC registered
 // BIT0: current connect status
 u8 g_net_sta = 0;
 
@@ -120,13 +121,13 @@ int main(void)
     Uart1_Init();
     Uart2_Init();
     Uart3_Init();
-    // clrc663_SPI_init();
+    LB1938_Init();
+    SPI2_Init();
 
-    // Configure_CLRC663();
-    // Configure_LB1938();
+    // BNO055 Testing
     // Configure_BNO055();
-
     // bno055_calibrate_demo();
+    // bno055_demo();
 
     // printf("Hello PIC24F Uart1... 0x%.8lX\r\n", xxx);
     printf("Hello PIC24F Uart1...\r\n");
@@ -135,24 +136,27 @@ int main(void)
 
     InitRingBuffers();
 
-    // exit till CMCC net registered
-    Configure_BG96();
-
     while(1)
     {
-        // TcpClientDemo10s();
-        // read_iso14443B_nfc_card();
-        // bno055_demo();
-
         task_cnt++;
 
-        if ((0x80==g_net_sta) || (0==g_net_sta)) {// lost connection
-            ConnectToTcpServer();
+        // retry initial or connection every 10s
+        // if net-register failed or lost connection
+        if (0 == (task_cnt%200)) {
+            if (0 == g_net_sta) {
+                Configure_BG96();
+            }
+
+            if ((0x80==g_net_sta) || (0x40==g_net_sta)) {// lost connection
+                ConnectToTcpServer();
+            }
         }
 
-        if (10 == task_cnt) {// 500MS -> process task1
+        // if task_cnt = N*4*11, will lost one time for 11
+        if (0 == (task_cnt%4)) {// every 0.2s
+        } else if (0 == (task_cnt%11)) {  // every 0.5s
             process_bg96();
-        } else if (20 == task_cnt) {// 1000MS -> process task2
+        } else if (0 == (task_cnt%21)) {  // every 1.0s
             // Auto Dev Send Test
             if (0 ==  test_cnt) {
                 TcpHeartBeat();
@@ -184,10 +188,15 @@ int main(void)
             if (test_cnt > 12) {
                 test_cnt = 0;
             }
-        } else if (30 == task_cnt) {// 1500MS -> process task3
+        } else if (0 == (task_cnt%31)) {  // every 1.5s
             ProcessTcpServerCommand();
-        } else if (40 == task_cnt) {// 2000MS -> process task4
-        } else if (64 == task_cnt) {// 2500MS -> process task4
+        } else if (0 == (task_cnt%41)) {  // every 2.0s
+            // read_iso14443B_nfc_card();
+        } else if (0 == (task_cnt%99)) {  // every 5.0s
+        } else if (0 == (task_cnt%199)) { // every 10.0s
+        }
+
+        if (10000 == task_cnt) {
             task_cnt = 0;
         }
 

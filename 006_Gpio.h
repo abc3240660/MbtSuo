@@ -47,6 +47,14 @@ typedef enum {
 
 void GPIOB_Init(void);
 void GPIOB_SetPin(short pin,char value);
+void GPIOx_Config(GPIO_BANKx port, u8 pin, GPIO_DIR dir);
+void GPIOx_Output(GPIO_BANKx port, u8 pin, u8 value);
+u8 GPIOx_Input(GPIO_BANKx port, u8 pin);
+
+void LEDs_Init(void);
+void LEDs_Ctrl(LED_INDEX led_id,LED_STA led_sta);
+void LEDs_AllON(void);
+void LEDs_AllOff(void);
 
 #ifdef __cplusplus
 }

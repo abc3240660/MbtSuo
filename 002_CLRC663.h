@@ -697,8 +697,6 @@ uint8_t clrc663_MF_write_block(uint8_t block_address, const uint8_t* source);
 void clrc663_MF_example_dump();
 //!  @}
 
-void Configure_CLRC663(void);
-
 #ifdef __cplusplus
 }
 #endif

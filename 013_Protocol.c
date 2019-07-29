@@ -13,8 +13,9 @@
 #include <string.h>
 
 #include "003_BG96.h"
+#include "004_LB1938.h"
 #include "013_Protocol.h"
-#include "014_md5.h"
+#include "014_Md5.h"
 
 const char* cmd_list[] = {
     // DEV Auto CMDs
@@ -627,6 +628,8 @@ bool TcpReDeleteNFCs(void)
 // ============================================ DEV Action ============================================ //
 bool DoUnLockTheLockerFast(void)
 {
+    LB1938_MotorCtrl(MOTOR_LEFT, 10);
+
     printf("DoUnLockTheLockerFast...\n");
 
     return true;
@@ -677,6 +680,6 @@ bool DoAddNFCFast(void)
 bool DoHttpIAP(void)
 {
     printf("DoHttpIAP...\n");
-    
+
     return true;
 }

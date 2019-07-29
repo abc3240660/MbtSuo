@@ -16,7 +16,13 @@
 
 #include "015_Common.h"
 
-void Configure_LB1938(void);
+typedef enum {
+    MOTOR_LEFT = 0,
+    MOTOR_RIGHT,
+} MOTOR_FWD;
+
+void LB1938_Init(void);
+void LB1938_MotorCtrl(MOTOR_FWD motor_fwd, u8 hold_ms);
 
 #endif //__LB1938_H
 

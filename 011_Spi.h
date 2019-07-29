@@ -129,7 +129,7 @@ typedef enum {
 
 */
 
-void SPI2_Initialize (void);
+void SPI2_Init(void);
 
 /**
   @Summary

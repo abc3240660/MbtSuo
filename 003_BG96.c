@@ -60,9 +60,10 @@ extern unsigned long MobitTimes;
 //******************************************************************************
 void Configure_BG96(void)
 {
+    u8 trycnt = 2;
 //    bool resultBool = false;
 
-    while (1) {
+    while(trycnt--) {
 //    resultBool = InitModule();
 //    if(resultBool){
 //        printf("init bg96 success!\r\n");
@@ -2436,6 +2437,7 @@ bool BG96ATInitialize(void)
         return false;
     }
 
+    g_net_sta = 0x40;
     GetDevIMEI((char *)g_imei_str);
     GetDevSimICCID((char *)g_iccid_str);
     GetCurrentTimeZone((char *)g_devtime_str);

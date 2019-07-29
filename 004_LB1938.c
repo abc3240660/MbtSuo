@@ -10,12 +10,37 @@
 //******************************************************************************
 
 #include "004_LB1938.h"
+#include "007_Uart.h"
 
 //******************************************************************************
-// Configure BG96
+// Configure LB1938
 //******************************************************************************
-void Configure_LB1938(void)
+void LB1938_Init(void)
 {
+    // Motor LB1938FA:
+    // RD9 -> MOTOR_FWD
+    // RD8 -> nMOTOR_FWD
+
+    GPIOx_Config(BANKD, 8, OUTPUT_DIR);
+    GPIOx_Config(BANKD, 9, OUTPUT_DIR);
+
+    GPIOx_Output(BANKD, 8, LED_OFF);
+    GPIOx_Output(BANKD, 9, LED_OFF);
+}
+
+void LB1938_MotorCtrl(MOTOR_FWD motor_fwd, u8 hold_ms)
+{
+    u8 pin = 0;
+
+    if (MOTOR_LEFT == motor_fwd) {
+        pin = 8;
+    } else {
+        pin = 9;
+    }
+
+    GPIOx_Output(BANKD, pin, LED_ON);
+    delay_ms(hold_ms);
+    GPIOx_Output(BANKD, pin, LED_OFF);
 }
 
 //******************************************************************************

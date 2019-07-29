@@ -39,7 +39,7 @@ uint16_t SPI2_ExchangeBuffer(uint8_t *pTransmitData, uint16_t byteCount, uint8_t
  Section: Driver Interface Function Definitions
 */
 
-void SPI2_Initialize (void)
+void SPI2_Init(void)
 {
     RPINR22bits.SDI2R = 0x0015;    // RG6->SPI2:SDI2
     RPOR9bits.RP19R = 0x000B;      // RG8->SPI2:SCK2OUT

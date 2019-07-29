@@ -25,7 +25,7 @@ RE4 <- SWITCH1
 RE5 <- SWITCH2
 	detect the rotation of the motor
 
-CLRC663(XTAL: 27.12MHz):
+CLRC663(XTAL: 27.12MHz): (the same with demoboard)
 RE6 ->  IFSEL0
 RE7 ->  IFSEL1
 RB5 ->  IF0
