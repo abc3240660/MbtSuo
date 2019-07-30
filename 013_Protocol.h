@@ -43,7 +43,6 @@
 #define CMD_QUERY_ICCID     "ICCID"// DEV ACK
 
 #define LEN_NET_TCP    32
-#define LEN_CARD_ID    32
 
 #define LEN_COMMON_USE    32
 
@@ -92,8 +91,8 @@ enum CMD_TYPE {
     UNKNOWN_CMD
 };
 
-void calc_first_md5();
-void parse_mobit_msg(char* msg);
+void CalcFirstMd5(void);
+void ParseMobitMsg(char* msg);
 
 bool TcpHeartBeat(void);
 bool TcpDeviceRegister(void);
@@ -104,7 +103,7 @@ bool TcpInvalidMovingAlarm(void);
 bool TcpRiskAlarm(void);
 bool TcpFinishIAP(void);
 bool TcpFinishAddNFCCard(void);
-bool TcpReadedOneCard(void);
+bool TcpReadedOneCard(u8* card_id, u8* serial_nr);
 bool TcpLockerLocked(void);
 bool TcpLockerUnlocked(void);
 bool TcpChargeStarted(void);
@@ -128,5 +127,9 @@ bool DoQueryGPSFast(void);
 bool DoQueryNFCFast(void);
 bool DoAddNFCFast(void);
 bool DoHttpIAP(void);
+
+void ReportFinishAddNFC(void);
+void ReportLockerUnlocked(void);
+u16 GetHeartBeatGap(void);
 
 #endif

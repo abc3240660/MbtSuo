@@ -12,9 +12,15 @@
 
 #include <xc.h>
 
+#include "004_LB1938.h"
+#include "007_Uart.h"
 #include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
-#include "007_Uart.h"
+
+static unsigned long start_time_nfc = 0;
+static u8 g_tmp_card_id[LEN_BYTE_SZ32] = {0};
+static u8 g_tmp_serial_nr[LEN_BYTE_SZ32] = {0};
+static u8 g_bind_cards[LEN_MAX_CARD][LEN_BYTE_SZ64] = {0};
 
 void print_block(uint8_t * block, uint8_t length);
 
@@ -121,7 +127,7 @@ void print_card_ID(uint8_t* buf, uint8_t bufsize){
     print_card_ID_block(buf, bufsize);
 }
 
-void read_iso14443B_nfc_card(){
+u8 read_iso14443B_nfc_card(u8* card_id, u8* serial_nr);
 
   //  Configure CLRC663
   CLRC663_configure_communication_protocol(CLRC630_PROTO_ISO14443B_106_NRZ_BPSK);
@@ -175,4 +181,118 @@ void read_iso14443B_nfc_card(){
       print_serial_nr(apdu_receive_buffer);
       print_card_ID(apdu_receive_buffer_1, sizeof(apdu_receive_buffer_1));
   }
+}
+
+u8 ReadMobibNFCCard(void)
+{
+    u8 i = 0;
+    u8 tmp_len = 0;
+
+    memset(g_tmp_card_id, 0, LEN_BYTE_SZ16);
+    memset(g_tmp_serial_nr, 0, LEN_BYTE_SZ16);
+
+    if (IsDuringBind()) {
+        if (0 == start_time_nfc) {
+            start_time_nfc = GetTimeStamp();
+        }
+    } else {
+        start_time_nfc = 0;
+    }
+
+    if (read_iso14443B_nfc_card(g_tmp_card_id, g_tmp_serial_nr) > 0) {
+        tmp_len = strlen(g_tmp_card_id);
+        tmp_len = strlen(g_tmp_serial_nr);
+
+         TcpReadedOneCard(g_tmp_card_id, g_tmp_serial_nr);
+
+        if (IsDuringBind()) {
+            start_time_nfc = GetTimeStamp();
+            AddNewMobibCard(g_tmp_card_id, g_tmp_serial_nr);
+        } else {
+            for (i=0; i<LEN_MAX_CARD; i++) {
+                if (0 == strncmp(g_bind_cards[i], g_tmp_card_id, LEN_CARD_ID)) {
+                    LB1938_MotorCtrl(MOTOR_LEFT, MOTOR_HOLD_TIME);
+                    ReportLockerUnlocked();
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    // cannot readout any MOBIB card for 10s
+    // so just finish this ADDC command
+    if (IsDuringBind()) {
+        if (start_time_nfc != 0) {
+            if (isDelayTimeout(start_time_nfc,10*1000UL)) {
+                ReportFinishAddNFC();
+            }
+        }
+    }
+
+    return 1:
+}
+
+void AddNewMobibCard(u8* card_id, u8* serial_nr)
+{
+    u8 i = 0;
+
+    if (NULL == card_id) {
+        return;
+    }
+
+    for (i=0; i<LEN_MAX_CARD; i++) {
+        if (0 == strlen(g_bind_cards[i])) {
+            memcpy(g_bind_cards[i], card_id, LEN_BYTE_SZ32);
+            memcpy(g_bind_cards[i]+32, serial_nr, LEN_BYTE_SZ32);
+        }
+    }
+}
+
+void DeleteMobibCard(u8* card_id, u8* serial_nr)
+{
+    u8 i = 0;
+
+    if (NULL == card_id) {
+        return;
+    }
+
+    for (i=0; i<LEN_MAX_CARD; i++) {
+        if (0 == strncmp(g_bind_cards[i], card_id, LEN_CARD_ID)) {
+            memset(g_bind_cards[i], 0, LEN_BYTE_SZ64);
+        }
+    }
+}
+
+void DeleteAllMobibCard(void)
+{
+    u8 i = 0;
+
+    for (i=0; i<LEN_MAX_CARD; i++) {
+        memset(g_bind_cards[i], 0, LEN_BYTE_SZ64);
+    }
+}
+
+u8 QueryMobibCard(u8* card_dats)
+{
+    u8 count = 0;
+    u8 offset = 0;
+
+    if (NULL == card_dats) {
+        return;
+    }
+
+    for (i=0; i<LEN_MAX_CARD; i++) {
+        if (strlen(g_bind_cards[i]) > 0) {
+            if (count != 0) {
+                card_dats[offset++] = '|';
+            }
+
+            memcpy(card_dats+offset, g_bind_cards[i], LEN_CARD_ID);
+
+            count++;
+        }
+    }
+
+    return count;
 }

@@ -17,7 +17,7 @@
 #include "013_Protocol.h"
 #include "014_Md5.h"
 
-const char* cmd_list[] = {
+static const char* cmd_list[] = {
     // DEV Auto CMDs
     CMD_DEV_REGISTER,
     CMD_HEART_BEAT,
@@ -52,36 +52,43 @@ const char* cmd_list[] = {
     NULL
 };
 
-u32 g_need_ack = 0;
-u32 g_till_svr_ack = 0;
+static u32 gs_need_ack = 0;
+static u32 gs_till_svr_ack = 0;
 
-// Door Open/Close Sta:
-// BIT7: 0-idle, 1-changed
-// BIT0: 0-closed, 1-opened
-u8 g_dropen_sta_chged = 0;
+static u8 gs_swap_passwd[LEN_SYS_TIME+1] = "";
 
-u8 g_swap_passwd[LEN_SYS_TIME+1] = "";
+static u8 gs_msg_md5[LEN_DW_MD5+1] = "";
 
-u8 g_msg_md5[LEN_DW_MD5+1] = "";
-u8 g_card_ids[(LEN_CARD_ID+1)*10] = "";
+static u8 gs_alarm_on[LEN_COMMON_USE+1] = "1";
+static u8 gs_beep_on[LEN_COMMON_USE+1] = "1";
+static u8 gs_alarm_level[LEN_COMMON_USE+1] = "80";
 
-u8 g_alarm_on[LEN_COMMON_USE+1] = "1";
-u8 g_beep_on[LEN_COMMON_USE+1] = "1";
-u8 g_alarm_level[LEN_COMMON_USE+1] = "80";
+static u8 gs_iap_update = 0;
+static u8 gs_iap_update_md5[LEN_DW_MD5+1] = "";
+static u8 gs_iap_update_url[LEN_DW_URL+1] = "";
 
-u8 g_iap_update = 0;
-u8 g_iap_update_md5[LEN_DW_MD5+1] = "";
-u8 g_iap_update_url[LEN_DW_URL+1] = "";
+static u16 gs_hbeat_gap = DEFAULT_HBEAT_GAP;
 
-u8 g_hbeat_gap = 6;// default 6s
+static u8 gs_during_bind = 0;
+static unsigned long start_time_risk = 0;
+static unsigned long start_time_locked = 0;
+static unsigned long start_time_unlocked = 0;
+static unsigned long start_time_finish_addc = 0;
 
-u8 g_first_md5[LEN_COMMON_USE] = "";
+static u8 gs_first_md5[LEN_COMMON_USE] = "";
 
-char send_md5[LEN_DW_MD5] = "e10adc3949ba59abbe56e057f20f883e";
+static char gs_send_md5[LEN_DW_MD5] = "e10adc3949ba59abbe56e057f20f883e";
 
-unsigned long g_dw_size_total = 0;
-unsigned long g_dw_recved_sum = 0;
+static unsigned long gs_dw_size_total = 0;
+static unsigned long gs_dw_recved_sum = 0;
 
+static char tcp_send_buf[LEN_MAX_SEND] = "";
+
+static u8 tmp_buf_big[LEN_BYTE_SZ512] = "";
+
+// --
+// ---------------------- global variables -------------------- //
+// --
 extern u8 g_imei_str[LEN_COMMON_USE];
 extern u8 g_iccid_str[LEN_COMMON_USE];
 
@@ -89,9 +96,7 @@ extern u8 g_svr_ip[LEN_NET_TCP];
 extern u8 g_svr_port[LEN_NET_TCP];
 extern u8 g_svr_apn[LEN_NET_TCP];
 
-extern char bg96_send_buf[LEN_MAX_SEND];
-
-void calc_first_md5()
+void CalcFirstMd5(void)
 {
     u8 i = 0;
     MD5_CTX g_ota_md5_ctx;
@@ -99,11 +104,11 @@ void calc_first_md5()
     GAgent_MD5Init(&g_ota_md5_ctx);
     GAgent_MD5Update(&g_ota_md5_ctx, g_imei_str, strlen((char*)g_imei_str));
     GAgent_MD5Update(&g_ota_md5_ctx, g_iccid_str, strlen((char*)g_iccid_str));
-    GAgent_MD5Final(&g_ota_md5_ctx, g_first_md5);
+    GAgent_MD5Final(&g_ota_md5_ctx, gs_first_md5);
 
     printf("MD5 = ");
     for (i=0; i<16; i++) {
-        printf("%.2X", g_first_md5[i]);
+        printf("%.2X", gs_first_md5[i]);
     }
     printf("\r\n");
 }
@@ -144,7 +149,7 @@ u8 is_supported_mobit_cmd(u8 pos, char* str)
     return i;
 }
 
-void parse_mobit_msg(char* msg)
+void ParseMobitMsg(char* msg)
 {
     u8 k = 0;
     u16 i = 0;
@@ -161,9 +166,9 @@ void parse_mobit_msg(char* msg)
 #endif
 
     // MD5 Validation
-    // memcpy(g_msg_md5, msg+strlen(msg)-32, LEN_DW_MD5);
-    // g_msg_md5[LEN_DW_MD5] = '\0';
-    // printf("g_msg_md5 = %s\n", g_msg_md5);
+    // memcpy(gs_msg_md5, msg+strlen(msg)-32, LEN_DW_MD5);
+    // gs_msg_md5[LEN_DW_MD5] = '\0';
+    // printf("gs_msg_md5 = %s\n", gs_msg_md5);
 
     if (0) {// MD5 is invalid
         return;
@@ -192,7 +197,7 @@ void parse_mobit_msg(char* msg)
 
                 // need to ack for every SVR CMDs
                 if (cmd_type != UNKNOWN_CMD) {
-                    g_need_ack |= (temp<<cmd_type);
+                    gs_need_ack |= (temp<<cmd_type);
                 }
             }
 
@@ -232,13 +237,13 @@ void parse_mobit_msg(char* msg)
 
                 if (DOOR_LOCKED == cmd_type) {
                     // clear the loop send flag
-                    g_till_svr_ack &= ~(temp<<cmd_type);
+                    gs_till_svr_ack &= ~(temp<<cmd_type);
                 } else if (DOOR_UNLOCKED == cmd_type) {
-                    g_till_svr_ack &= ~(temp<<cmd_type);
+                    gs_till_svr_ack &= ~(temp<<cmd_type);
                 } else if (FINISH_ADDNFC == cmd_type) {
-                    g_till_svr_ack &= ~(temp<<cmd_type);
+                    gs_till_svr_ack &= ~(temp<<cmd_type);
                 } else if (RISK_REPORT == cmd_type) {
-                    g_till_svr_ack &= ~(temp<<cmd_type);
+                    gs_till_svr_ack &= ~(temp<<cmd_type);
                 } else {
                     // Needn't do anything
                     // Just Skip
@@ -248,28 +253,28 @@ void parse_mobit_msg(char* msg)
             // Parse CMD or ACK with params
             if (DEV_REGISTER == cmd_type) {// only one SVR ACK with params
                 if (3 == index) {
-                    g_hbeat_gap = atoi(split_str);
-                    printf("g_hbeat_gap = %d\n", g_hbeat_gap);
-                    if (g_hbeat_gap < 5) {
-                        g_hbeat_gap = 5;
-                        printf("change g_hbeat_gap = %d\n", g_hbeat_gap);
+                    gs_hbeat_gap = atoi(split_str);
+                    printf("gs_hbeat_gap = %d\n", g_hbeat_gap);
+                    if (gs_hbeat_gap < 5) {
+                        gs_hbeat_gap = 5;
+                        printf("change gs_hbeat_gap = %d\n", g_hbeat_gap);
                     }
                 } else if (4 == index) {
-                    strncpy((char*)g_swap_passwd, split_str, LEN_SYS_TIME);
-                    g_swap_passwd[LEN_SYS_TIME] = '\0';
-                    printf("g_swap_passwd = %s\n", g_swap_passwd);
+                    strncpy((char*)gs_swap_passwd, split_str, LEN_SYS_TIME);
+                    gs_swap_passwd[LEN_SYS_TIME] = '\0';
+                    printf("gs_swap_passwd = %s\n", gs_swap_passwd);
                 }
             // below is all SVR CMDs with params
             } else if (IAP_UPGRADE == cmd_type) {
                 if (3 == index) {
-                    g_iap_update = 1;
-                    memset(g_iap_update_url, 0, LEN_DW_URL);
-                    strncpy((char*)g_iap_update_url, split_str, LEN_DW_URL);
-                    printf("g_iap_update_url = %s\n", g_iap_update_url);
+                    gs_iap_update = 1;
+                    memset(gs_iap_update_url, 0, LEN_DW_URL);
+                    strncpy((char*)gs_iap_update_url, split_str, LEN_DW_URL);
+                    printf("gs_iap_update_url = %s\n", gs_iap_update_url);
                 } else if (4 == index) {
-                    memset(g_iap_update_md5, 0, LEN_DW_URL);
-                    strncpy((char*)g_iap_update_md5, split_str, LEN_DW_URL);
-                    printf("g_iap_update_md5 = %s\n", g_iap_update_md5);
+                    memset(gs_iap_update_md5, 0, LEN_DW_URL);
+                    strncpy((char*)gs_iap_update_md5, split_str, LEN_DW_URL);
+                    printf("gs_iap_update_md5 = %s\n", gs_iap_update_md5);
                 }
             } else if (CHANGE_APN == cmd_type) {
                 if (3 == index) {
@@ -287,39 +292,39 @@ void parse_mobit_msg(char* msg)
                 }
             } else if (DELETE_NFC == cmd_type) {
                 if (3 == index) {
-                    u8 tmp_card[32]="";
-                    memset(g_card_ids, 0, LEN_CARD_ID);
-                    strncpy((char*)g_card_ids, split_str, LEN_CARD_ID);
-                    printf("g_card_ids = %s\n", g_card_ids);
+                    u8 tmp_card[LEN_BYTE_SZ32] = "";
+                    memset(tmp_buf_big, 0, LEN_BYTE_SZ512);
+                    strncpy((char*)tmp_buf_big, split_str, LEN_BYTE_SZ512);
+                    printf("gs_delete_cards = %s\n", tmp_buf_big);
 
-                    for (i=0; i<strlen((char*)g_card_ids);i++) {
-                        if ('|' == g_card_ids[i]) {
-                            // do delete
+                    for (i=0; i<strlen((char*)tmp_buf_big);i++) {
+                        if ('|' == tmp_buf_big[i]) {
+                            DeleteMobibCard(tmp_card, NULL);
                             printf("To deleteX %s\n", tmp_card);
 
                             k = 0;
-                            memset(tmp_card, 0, 32);
+                            memset(tmp_card, 0, LEN_BYTE_SZ512);
                         } else {
-                            tmp_card[k++] = g_card_ids[i];
+                            tmp_card[k++] = tmp_buf_big[i];
                         }
                     }
 
-                    // do delete
+                    DeleteMobibCard(tmp_card, NULL);
                     printf("To delete %s\n", tmp_card);
                 }
             } else if (MODIFY_ALARM == cmd_type) {
                 if (3 == index) {
-                    memset(g_alarm_on, 0, LEN_NET_TCP);
-                    strncpy((char*)g_alarm_on, split_str, LEN_NET_TCP);
-                    printf("g_alarm_on = %s\n", g_alarm_on);
+                    memset(gs_alarm_on, 0, LEN_NET_TCP);
+                    strncpy((char*)gs_alarm_on, split_str, LEN_NET_TCP);
+                    printf("gs_alarm_on = %s\n", gs_alarm_on);
                 } else if (4 == index) {
-                    memset(g_beep_on, 0, LEN_NET_TCP);
-                    strncpy((char*)g_beep_on, split_str, LEN_NET_TCP);
-                    printf("g_beep_on = %s\n", g_beep_on);
+                    memset(gs_beep_on, 0, LEN_NET_TCP);
+                    strncpy((char*)gs_beep_on, split_str, LEN_NET_TCP);
+                    printf("gs_beep_on = %s\n", gs_beep_on);
                 } else if (5 == index) {
-                    memset(g_alarm_level, 0, LEN_NET_TCP);
-                    strncpy((char*)g_alarm_level, split_str, LEN_NET_TCP);
-                    printf("g_alarm_level = %s\n", g_alarm_level);
+                    memset(gs_alarm_level, 0, LEN_NET_TCP);
+                    strncpy((char*)gs_alarm_level, split_str, LEN_NET_TCP);
+                    printf("gs_alarm_level = %s\n", gs_alarm_level);
                 }
             }
         }
@@ -334,18 +339,18 @@ void ProcessTcpServerCommand(void)
 {
     // during download mode, skip other operations
     // till download success or failed
-    if (g_iap_update != 0) {
+    if (gs_iap_update != 0) {
         DoHttpIAP();
 
         // try twice NG, skip this request
-        if (g_iap_update != 0) {
-            g_iap_update = 0;
+        if (gs_iap_update != 0) {
+            gs_iap_update = 0;
 
-            memset(g_iap_update_md5, 0, LEN_DW_MD5);
-            memset(g_iap_update_url, 0, LEN_DW_URL);
+            memset(gs_iap_update_md5, 0, LEN_DW_MD5);
+            memset(gs_iap_update_url, 0, LEN_DW_URL);
 
-            g_dw_size_total = 0;
-            g_dw_recved_sum = 0;
+            gs_dw_size_total = 0;
+            gs_dw_recved_sum = 0;
         }
 
         return;
@@ -353,25 +358,25 @@ void ProcessTcpServerCommand(void)
 
     unsigned long temp = 1;
 
-    if (g_need_ack & (temp<<QUERY_PARAMS)) {
-        g_need_ack &= ~(temp<<QUERY_PARAMS);
+    if (gs_need_ack & (temp<<QUERY_PARAMS)) {
+        gs_need_ack &= ~(temp<<QUERY_PARAMS);
         TcpReQueryParams();
-    } else if (g_need_ack & (temp<<QUERY_GPS)) {
-        g_need_ack &= ~(temp<<QUERY_GPS);
+    } else if (gs_need_ack & (temp<<QUERY_GPS)) {
+        gs_need_ack &= ~(temp<<QUERY_GPS);
         TcpReQueryGPS();
-    } else if (g_need_ack & (temp<<QUERY_NFC)) {
-        g_need_ack &= ~(temp<<QUERY_NFC);
+    } else if (gs_need_ack & (temp<<QUERY_NFC)) {
+        gs_need_ack &= ~(temp<<QUERY_NFC);
         TcpReQueryNFCs();
-    } else if (g_need_ack & (temp<<QUERY_ALARM)) {
-        g_need_ack &= ~(temp<<QUERY_ALARM);
+    } else if (gs_need_ack & (temp<<QUERY_ALARM)) {
+        gs_need_ack &= ~(temp<<QUERY_ALARM);
         TcpReQueryAlarm();
-    } else if (g_need_ack & (temp<<QUERY_ICCID)) {
-        g_need_ack &= ~(temp<<QUERY_ICCID);
+    } else if (gs_need_ack & (temp<<QUERY_ICCID)) {
+        gs_need_ack &= ~(temp<<QUERY_ICCID);
         TcpReQueryIccid();
     } else {
         u8 i = 0;
         for (i=0 ;i<32; i++) {
-            if (g_need_ack & (temp<<i)) {
+            if (gs_need_ack & (temp<<i)) {
                 if (QUERY_PARAMS == i) {
                     continue;
                 } else if (QUERY_GPS == i) {
@@ -383,23 +388,59 @@ void ProcessTcpServerCommand(void)
                 } else if (QUERY_ICCID == i) {
                     continue;
                 } else {
-                    TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("0"));
-                    g_need_ack &= ~(temp<<i);
+                    if ((IAP_UPGRADE==i) || (ADD_NFC==i) ||
+                        (MODIFY_ALARM==i) || (RING_ALARM==i)) {
+                        TcpReNormalAck((u8*)(cmd_list[i]), NULL);
+                    } else if ((IAP_UPGRADE==i) || (ADD_NFC==i)) {
+                        // TODO: must check if unlock success
+                        // read the value of PIN connected to the locker position
+                        if (1) {// TODO
+                            TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("1"));
+                        } else {
+                            TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("0"));
+                        }
+                    } else if (DELETE_NFC == i) {
+                        TcpReDeleteNFCs();
+                    } else {
+                        TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("1"));
+                    }
+
+                    if (FACTORY_RST == i) {
+                        TcpFinishFactoryReset();
+                    }
+
+                    gs_need_ack &= ~(temp<<i);
                 }
             }
         }
     }
 
-    // TODO: add some time delay between twice tcp-send
     // always send till received ACK from server
-    if (g_till_svr_ack & (temp<<DOOR_LOCKED)) {
-        TcpLockerLocked();
-    } else if (g_till_svr_ack & (temp<<DOOR_UNLOCKED)) {
-        TcpLockerUnlocked();
-    } else if (g_till_svr_ack & (temp<<FINISH_ADDNFC)) {
-        TcpFinishAddNFCCard();
-    } else if (g_till_svr_ack & (temp<<RISK_REPORT)) {
-        TcpRiskAlarm();
+    // period: 10s
+    if (gs_till_svr_ack & (temp<<DOOR_LOCKED)) {
+        if (start_time_locked != 0) {
+            if (isDelayTimeout(start_time_locked,10*1000UL)) {
+                TcpLockerLocked();
+            }
+        }
+    } else if (gs_till_svr_ack & (temp<<DOOR_UNLOCKED)) {
+        if (start_time_unlocked != 0) {
+            if (isDelayTimeout(start_time_unlocked,10*1000UL)) {
+                TcpLockerUnlocked();
+            }
+        }
+    } else if (gs_till_svr_ack & (temp<<FINISH_ADDNFC)) {
+        if (start_time_finish_addc != 0) {
+            if (isDelayTimeout(start_time_finish_addc,10*1000UL)) {
+                TcpFinishAddNFCCard();
+            }
+        }
+    } else if (gs_till_svr_ack & (temp<<RISK_REPORT)) {
+        if (start_time_risk != 0) {
+            if (isDelayTimeout(start_time_risk,10*1000UL)) {
+                TcpRiskAlarm();
+            }
+        }
     }
 }
 
@@ -408,30 +449,30 @@ bool TcpHeartBeat(void)
 {
     // const char send_data[] = "#MOBIT,868446032285351,HB,4.0,1,20,e10adc3949ba59abbe56e057f20f883e$";
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,%s,%s,%s$", g_imei_str, CMD_HEART_BEAT, "4.0", "1", "20", send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,%s$", g_imei_str, CMD_HEART_BEAT, "4.0", "1", "20", gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpDeviceRegister(void)
 {
     // const char send_data[] = "#MOBIT,868446032285351,REG,898602B4151830031698,1.0.0,1.0.0,4.0,1561093302758,2,e10adc3949ba59abbe56e057f20f883e$";
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,%s,%s,%s,%s,%s,%s$", g_imei_str, CMD_DEV_REGISTER, g_iccid_str, "1.0.0", "1.00", "4.0", "20190709180030", "2", send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,%s,%s,%s,%s$", g_imei_str, CMD_DEV_REGISTER, g_iccid_str, "1.0.0", "1.00", "4.0", "20190709180030", "2", gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpFinishFactoryReset(void)
 {
     // DEV: #MOBIT,868446032285351,RSOK,1,111111111,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,%s,%s$", g_imei_str, CMD_FINISH_RST, "1", "111111111", send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s$", g_imei_str, CMD_FINISH_RST, "1", "111111111", gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 // after lock the locker by hand
@@ -439,110 +480,114 @@ bool TcpExitCarriageSleep(void)
 {
     // #MOBIT,868446032285351,WU,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_EXIT_SLEEP, send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_EXIT_SLEEP, gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpReportGPS(void)
 {
     // #MOBIT,868446032285351,GEO,51.106922|3.702681|20|180,0,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,%s,%s$", g_imei_str, CMD_REPORT_GPS, "51.106922|3.702681|20|180", "0", send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s$", g_imei_str, CMD_REPORT_GPS, "51.106922|3.702681|20|180", "0", gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpInvalidMovingAlarm(void)
 {
     // #MOBIT,868446032285351,AL,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_INVALID_MOVE, send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_INVALID_MOVE, gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpRiskAlarm(void)
 {
     // #MOBIT,868446032285351,FA,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_RISK_REPORT, send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_RISK_REPORT, gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpFinishIAP(void)
 {
     // #MOBIT,868446032285351,UP,1,1.0.0,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,%s,%s$", g_imei_str, CMD_IAP_SUCCESS, "1", "1.0.0", send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s$", g_imei_str, CMD_IAP_SUCCESS, "1", "1.0.0", gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpFinishAddNFCCard(void)
 {
     // #MOBIT,868446032285351,ADDCR,a|b|c|d|e|f,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,%s$", g_imei_str, CMD_FINISH_ADDNFC, "a|b|c|d|e|f", send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s$", g_imei_str, CMD_FINISH_ADDNFC, "a|b|c|d|e|f", gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
-bool TcpReadedOneCard(void)
+bool TcpReadedOneCard(u8* card_id, u8* serial_nr)
 {
     // #MOBIT,868446032285351,RC,1234567,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,%s$", g_imei_str, CMD_CALYPSO_UPLOAD, "1234567", send_md5);
+    if ((NULL==card_id) || (NULL==serial_nr)) {
+        return false;
+    }
 
-    return BG96TcpSend();
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s$", g_imei_str, CMD_CALYPSO_UPLOAD, card_id, gs_send_md5);
+
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpLockerLocked(void)
 {
     // #MOBIT,868446032285351,LC,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_DOOR_LOCKED, send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_DOOR_LOCKED, gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpLockerUnlocked(void)
 {
     // #MOBIT,868446032285351,OL,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_DOOR_LOCKED, send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_DOOR_LOCKED, gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpChargeStarted(void)
 {
     // #MOBIT,868446032285351,CG,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_CHARGE_STARTED, send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_CHARGE_STARTED, gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpChargeStoped(void)
 {
     // #MOBIT,868446032285351,CGE,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_CHARGE_STARTED, send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_CHARGE_STARTED, gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 // ============================================ DEV TCP Slave ============================================ //
@@ -553,76 +598,91 @@ bool TcpChargeStoped(void)
 // #MOBIT,868446032285351,OL,0,Re,e10adc3949ba59abbe56e057f20f883e$
 // #MOBIT,868446032285351,UP,Re,e10adc3949ba59abbe56e057f20f883e$
 // #MOBIT,868446032285351,ADDC,Re,e10adc3949ba59abbe56e057f20f883e$
-// #MOBIT,868446032285351,ICCID,Re,e10adc3949ba59abbe56e057f20f883e$
-// #MOBIT,868446032285351,1,1,80,Re,e10adc3949ba59abbe56e057f20f883e$
 // #MOBIT,868446032285351,MALC,Re,e10adc3949ba59abbe56e057f20f883e$
 // #MOBIT,868446032285351,DD,Re,e10adc3949ba59abbe56e057f20f883e$
 bool TcpReNormalAck(u8* cmd_str, u8* sta)
 {
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,Re,%s,%s$", g_imei_str, cmd_str, sta, send_md5);
+    if (NULL == cmd_str) {
+        return false;
+    }
 
-    return BG96TcpSend();
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    if (NULL == sta) {
+        sprintf(tcp_send_buf, "#MOBIT,%s,%s,Re,%s$", g_imei_str, cmd_str, gs_send_md5);
+    } else {
+        sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, cmd_str, sta, gs_send_md5);
+    }
+
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpReQueryParams(void)
 {
     // #MOBIT,868446032285351,QG,lock.mobit.eu,1000,mobit.apn,Re,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_PARAMS, g_svr_ip, g_svr_port, g_svr_apn, send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_PARAMS, g_svr_ip, g_svr_port, g_svr_apn, gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
+// TODO 07/30
 bool TcpReQueryGPS(void)
 {
     // #MOBIT,868446032285351,GGEO,51.106922|3.702681|20|180,0,Re,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s|%s|%s|%s,%s,Re,%s$", g_imei_str, CMD_QUERY_GPS, "51.106922", "3.702681", "20", "180", "0", send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s|%s|%s|%s,%s,Re,%s$", g_imei_str, CMD_QUERY_GPS, "51.106922", "3.702681", "20", "180", "0", gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpReQueryNFCs(void)
 {
     // #MOBIT,868446032285351,QCL,a|b|c|d|e|f|g|h,Re,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_NFC, "a|b|c|d|e|f|g|h", send_md5);
+    // Max Size: 19*16 = 304B
+    memset(tmp_buf_big, 0, LEN_BYTE_SZ512);
+    QueryMobibCard(tmp_buf_big);
 
-    return BG96TcpSend();
+    if (0 == strlen(tmp_buf_big)) {
+        tmp_buf_big[0] = 'F';
+    }
+
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_NFC, tmp_buf_big, gs_send_md5);
+
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpReQueryAlarm(void)
 {
     // #MOBIT,868446032285351,ALC,1,1,80,Re,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_ALARM, g_alarm_on, g_beep_on, g_alarm_level, send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_ALARM, gs_alarm_on, gs_beep_on, gs_alarm_level, gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpReQueryIccid(void)
 {
-    // #MOBIT,868446032285351,ALC,1,1,80,Re,e10adc3949ba59abbe56e057f20f883e$
+    // #MOBIT,868446032285351,ICCID,898602B4151830031698,Re,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_ALARM, g_alarm_on, g_beep_on, g_alarm_level, send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_ICCID, g_iccid_str, gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 bool TcpReDeleteNFCs(void)
 {
     // #MOBIT,868446032285351,RMC,a|b|c|d|e,Re,e10adc3949ba59abbe56e057f20f883e$
 
-    memset(bg96_send_buf, 0, LEN_MAX_SEND);
-    sprintf(bg96_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_NFC, "a|b|c|d|e|f|g|h", send_md5);
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_DELETE_NFC, "1", gs_send_md5);
 
-    return BG96TcpSend();
+    return BG96TcpSend(tcp_send_buf);
 }
 
 // ============================================ DEV Action ============================================ //
@@ -646,12 +706,17 @@ bool DoFactoryResetFast(void)
 {
     printf("DoFactoryResetFast...\n");
 
+    DeleteAllMobibCard();
+
     return true;
 }
 
 bool DoEnterSleepFast(void)
 {
     printf("DoEnterSleepFast...\n");
+
+    // TODO: must check if unlock success
+    // read the value of PIN connected to the locker position
 
     return true;
 }
@@ -674,6 +739,8 @@ bool DoAddNFCFast(void)
 {
     printf("DoAddNFCFast...\n");
 
+    gs_during_bind = 1;
+
     return true;
 }
 
@@ -682,4 +749,37 @@ bool DoHttpIAP(void)
     printf("DoHttpIAP...\n");
 
     return true;
+}
+
+u8 IsDuringBind(void)
+{
+    return (gs_during_bind ? 1 : 0);
+}
+
+u16 GetHeartBeatGap(void)
+{
+    return gs_hbeat_gap;
+}
+
+void ReportFinishAddNFC(void)
+{
+    unsigned long temp = 1;
+
+    if (0 == start_time_finish_addc) {
+        start_time_finish_addc = GetTimeStamp();
+    }
+
+    gs_during_bind = 0;
+    gs_till_svr_ack |= (temp<<FINISH_ADDNFC);
+}
+
+void ReportLockerUnlocked(void);
+{
+    unsigned long temp = 1;
+
+    if (0 == start_time_unlocked) {
+        start_time_unlocked = GetTimeStamp();
+    }
+
+    gs_till_svr_ack |= (temp<<DOOR_UNLOCKED);
 }

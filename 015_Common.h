@@ -26,6 +26,21 @@
 #define false 0
 #define true 1
 
+#define LEN_MAX_CARD     8
+
+#define LEN_BYTE_SZ8     8
+#define LEN_BYTE_SZ16    16
+#define LEN_BYTE_SZ32    32
+#define LEN_BYTE_SZ64    64
+#define LEN_BYTE_SZ128   128
+#define LEN_BYTE_SZ256   256
+#define LEN_BYTE_SZ512   512
+
+#define LEN_CARD_ID      19
+#define LEN_SERIAL_NR    16
+
+#define DEFAULT_HBEAT_GAP 120
+
 typedef unsigned char bool;
 
 // For Common

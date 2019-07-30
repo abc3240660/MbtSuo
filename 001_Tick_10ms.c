@@ -10,27 +10,20 @@
 //******************************************************************************
 
 #include "001_Tick_10ms.h"
+#include "003_BG96.h"
 #include "007_Uart.h"
 #include "008_RingBuffer.h"
 
-unsigned long MobitTimes = 0UL;// unit: ms
+static unsigned long MobitTimes = 0UL;// unit: ms
+static unsigned long Timer2Cnt = 0UL;// unit: ms
 
-unsigned long Timer2Cnt = 0UL;// unit: ms
+static char tmpuse_buf[RX_RINGBUF_MAX_LEN] = {0};
 
-extern ringbuffer_t tmp_rbuf;
-extern ringbuffer_t at_rbuf;
-extern ringbuffer_t net_rbuf;
-
-extern int IsTmpRingBufferAvailable();
-extern char ReadByteFromTmpRingBuffer();
-
-extern int IsTmpRingBufferAvailable();
-
-extern bool WaitUartTmpRxIdle();
-
-char tmpuse_buf[RX_RINGBUF_MAX_LEN] = {0};
-
-extern u8 g_net_sta;
+// --
+// ---------------------- global variables -------------------- //
+// --
+extern ringbuffer_t g_at_rbuf;
+extern ringbuffer_t g_net_rbuf;
 
 //******************************************************************************
 //* Timer 1
@@ -132,12 +125,12 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
 
                         for (i=0; i<(tmp_len-5); i++) {
                             printf("%c", tmpuse_buf[i]);
-                            ringbuffer_write_byte(&at_rbuf,tmpuse_buf[i]);
+                            ringbuffer_write_byte(&g_at_rbuf,tmpuse_buf[i]);
                         }
                         printf("<<<\n");
 
                         // if tail->head, printf may NG
-                        // printf("Total ACKs = %s<<<\n", at_rbuf.head);
+                        // printf("Total ACKs = %s<<<\n", g_at_rbuf.head);
                     }
                 } else {// process uncompleted MSGs + new MSGs again:
                     // just skip the previous uncompleted MSGs
@@ -182,7 +175,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                 printf("Receive XACKs: %s<<<\n", tmpuse_buf);
 
                 for (i=0; i<tmp_len; i++) {
-                    ringbuffer_write_byte(&at_rbuf,tmpuse_buf[i]);
+                    ringbuffer_write_byte(&g_at_rbuf,tmpuse_buf[i]);
                 }
 
                 msg_done = 0;
@@ -212,14 +205,14 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
 
                         if ((p=strstr(tmpuse_buf, "+QIURC: ")) != NULL) {
                             if ((p=strstr(tmpuse_buf, "closed")) != NULL) {// TCP mode only
-                                g_net_sta = 0x80;
+                                SetNetStatus(0x80);
                                 printf("******* TCP Closed *******\n");
                             } else if ((p=strstr(tmpuse_buf, "recv")) != NULL) {// TCP or UDP
                                 cnt_tail = 0;
 
-                                ringbuffer_write_byte(&net_rbuf,'S');
-                                ringbuffer_write_byte(&net_rbuf,'T');
-                                ringbuffer_write_byte(&net_rbuf,'A');
+                                ringbuffer_write_byte(&g_net_rbuf,'S');
+                                ringbuffer_write_byte(&g_net_rbuf,'T');
+                                ringbuffer_write_byte(&g_net_rbuf,'A');
 
                                 for (i=(p-tmpuse_buf)+1; i<tmp_len; i++) {
                                     if (('\r'==tmpuse_buf[i-1]) && ('\n'==tmpuse_buf[i])) {
@@ -232,16 +225,16 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
 
                                     if (cnt_tail >= 1) {
                                         if (('\r'!=tmpuse_buf[i]) && ('\n'!=tmpuse_buf[i])) {
-                                            ringbuffer_write_byte(&net_rbuf,tmpuse_buf[i]);
+                                            ringbuffer_write_byte(&g_net_rbuf,tmpuse_buf[i]);
                                         }
                                     }
                                 }
 
-                                ringbuffer_write_byte(&net_rbuf,'E');
-                                ringbuffer_write_byte(&net_rbuf,'N');
-                                ringbuffer_write_byte(&net_rbuf,'D');
+                                ringbuffer_write_byte(&g_net_rbuf,'E');
+                                ringbuffer_write_byte(&g_net_rbuf,'N');
+                                ringbuffer_write_byte(&g_net_rbuf,'D');
 
-                                // printf("MSGs = %s\n", net_rbuf.head);
+                                // printf("MSGs = %s\n", g_net_rbuf.head);
                             } else if ((p=strstr(tmpuse_buf, "incoming full")) != NULL) {// BG96 act as TCP server
                                 printf("******* incoming full *******\n");
                             } else if ((p=strstr(tmpuse_buf, "incoming")) != NULL) {// BG96 act as TCP server
@@ -258,10 +251,10 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                         printf("Receive XACKs: %s<<<\n", tmpuse_buf);
 
                         for (i=0; i<tmp_len; i++) {
-                            ringbuffer_write_byte(&at_rbuf,tmpuse_buf[i]);
+                            ringbuffer_write_byte(&g_at_rbuf,tmpuse_buf[i]);
                         }
 
-                        // printf("Total XACKs = %s\n", at_rbuf.head);
+                        // printf("Total XACKs = %s\n", g_at_rbuf.head);
                     }
 
                     msg_done = 0;

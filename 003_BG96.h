@@ -295,10 +295,6 @@ typedef enum cmd_response {
     SUCCESS_RESPONSE  = 1,
 } Cmd_Response_t;
 
-extern unsigned int bufferHead;
-extern char rxBuffer[RX_BUFFER_LENGTH];
-extern int errorCode;
-
 /////////////////////////////////// BG96 API ///////////////////////////////////
 bool InitModule();
 
@@ -481,7 +477,6 @@ char *SearchChrBuffer(const char test_chr);
 
 void Configure_BG96(void);
 
-int IsTmpRingBufferAvailable();
 bool WaitUartNetRxIdle();
 int IsNetRingBufferAvailable();
 char ReadByteFromNetRingBuffer();
@@ -493,7 +488,10 @@ void InitRingBuffers(void);
 
 bool BG96ATInitialize(void);
 bool ConnectToTcpServer(void);
-bool BG96TcpSend(void);
+bool BG96TcpSend(char* send_buf);
+
+u8 GetNetStatus(void);
+void SetNetStatus(u8 sta);
 
 #endif //__BG96_H
 

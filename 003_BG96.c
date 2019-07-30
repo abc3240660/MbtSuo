@@ -20,25 +20,29 @@
 #include "008_RingBuffer.h"
 #include "013_Protocol.h"
 
-ringbuffer_t tmp_rbuf;
-ringbuffer_t at_rbuf;
-ringbuffer_t net_rbuf;
-
-int errorCode = -1;
-unsigned int bufferHead = 0;
+static int errorCode = -1;
+static unsigned int bufferHead = 0;
 
 // Read data from RingBuffer into rxBuffer
 // buffer for searched result
-char rxBuffer[RX_BUFFER_LENGTH] = "";
+static char rxBuffer[RX_BUFFER_LENGTH] = "";
 
 // ringbuf for at acks
-char atRingbuf[RX_RINGBUF_MAX_LEN] = {0};
+static char atRingbuf[RX_RINGBUF_MAX_LEN] = {0};
 
 // ringbuf for net recved
-char netRingbuf[RX_RINGBUF_MAX_LEN] = {0};
+static char netRingbuf[RX_RINGBUF_MAX_LEN] = {0};
 
-// ringbuf for temp recved
-char tmpRingbuf[RX_RINGBUF_MAX_LEN] = {0};
+// BIT7: have ever connected at least once
+// BIT6: CMCC registered
+// BIT0: current connect status
+static u8 gs_net_sta = 0;
+
+// --
+// ---------------------- global variables -------------------- //
+// --
+ringbuffer_t g_at_rbuf;
+ringbuffer_t g_net_rbuf;
 
 u8 g_devtime_str[LEN_COMMON_USE];
 u8 g_devzone_str[LEN_COMMON_USE];
@@ -49,11 +53,6 @@ u8 g_iccid_str[LEN_COMMON_USE] = "898602B4151830031698";
 u8 g_svr_ip[LEN_NET_TCP]  = "122.4.233.119";
 u8 g_svr_port[LEN_NET_TCP] = "10211";
 u8 g_svr_apn[LEN_NET_TCP] = "CMNET";
-
-char bg96_send_buf[LEN_MAX_SEND] = "";
-
-extern u8 g_net_sta;
-extern unsigned long MobitTimes;
 
 //******************************************************************************
 // Configure BG96
@@ -81,9 +80,8 @@ void Configure_BG96(void)
 
 void InitRingBuffers(void)
 {
-    ringbuffer_init(&tmp_rbuf,tmpRingbuf,RX_RINGBUF_MAX_LEN);
-    ringbuffer_init(&at_rbuf,atRingbuf,RX_RINGBUF_MAX_LEN);
-    ringbuffer_init(&net_rbuf,netRingbuf,RX_RINGBUF_MAX_LEN);
+    ringbuffer_init(&g_at_rbuf,atRingbuf,RX_RINGBUF_MAX_LEN);
+    ringbuffer_init(&g_net_rbuf,netRingbuf,RX_RINGBUF_MAX_LEN);
 }
 
 /////////////////////////////////// Wait Implement ///////////////////////////////////
@@ -135,18 +133,7 @@ char ReadByteFromRingBuffer()
     if(IsRingBufferAvailable()<=0){
         return -1;
     }
-    len = ringbuffer_read_len(&at_rbuf,&dat,len);
-    return dat;
-}
-
-char ReadByteFromTmpRingBuffer()
-{
-    char dat = 0;
-    int len = 1;
-    if(IsTmpRingBufferAvailable()<=0){
-        return -1;
-    }
-    len = ringbuffer_read_len(&tmp_rbuf,&dat,len);
+    len = ringbuffer_read_len(&g_at_rbuf,&dat,len);
     return dat;
 }
 
@@ -157,7 +144,7 @@ char ReadByteFromNetRingBuffer()
     if(IsNetRingBufferAvailable()<=0){
         return -1;
     }
-    len = ringbuffer_read_len(&net_rbuf,&dat,len);
+    len = ringbuffer_read_len(&g_net_rbuf,&dat,len);
     return dat;
 }
 
@@ -170,7 +157,7 @@ int IsRingBufferAvailable()
 {
     int ret;
 
-    ret = ringbuffer_buf_use_size(&at_rbuf);
+    ret = ringbuffer_buf_use_size(&g_at_rbuf);
 
     return ret;
 }
@@ -179,16 +166,7 @@ int IsNetRingBufferAvailable()
 {
     int ret;
 
-    ret = ringbuffer_buf_use_size(&net_rbuf);
-
-    return ret;
-}
-
-int IsTmpRingBufferAvailable()
-{
-    int ret;
-
-    ret = ringbuffer_buf_use_size(&tmp_rbuf);
+    ret = ringbuffer_buf_use_size(&g_net_rbuf);
 
     return ret;
 }
@@ -198,32 +176,11 @@ bool WaitUartRxIdle()
     int size1 = 0;
     int size2 = 0;
 
-    size1 = ringbuffer_buf_use_size(&at_rbuf);
+    size1 = ringbuffer_buf_use_size(&g_at_rbuf);
 
     while (1) {
         delay_ms(50);
-        size2 = ringbuffer_buf_use_size(&at_rbuf);
-
-        if ((size1 == size2)) {// RX stopped for 50MS
-            break;
-        }
-
-        size1 = size2;
-    }
-
-    return true;
-}
-
-bool WaitUartTmpRxIdle()
-{
-    int size1 = 0;
-    int size2 = 0;
-
-    size1 = ringbuffer_buf_use_size(&tmp_rbuf);
-
-    while (1) {
-        delay_ms(50);
-        size2 = ringbuffer_buf_use_size(&tmp_rbuf);
+        size2 = ringbuffer_buf_use_size(&g_at_rbuf);
 
         if ((size1 == size2)) {// RX stopped for 50MS
             break;
@@ -240,11 +197,11 @@ bool WaitUartNetRxIdle()
     int size1 = 0;
     int size2 = 0;
 
-    size1 = ringbuffer_buf_use_size(&net_rbuf);
+    size1 = ringbuffer_buf_use_size(&g_net_rbuf);
 
     while (1) {
         delay_ms(50);
-        size2 = ringbuffer_buf_use_size(&net_rbuf);
+        size2 = ringbuffer_buf_use_size(&g_net_rbuf);
 
         if ((size1 == size2)) {// RX stopped for 50MS
             break;
@@ -507,7 +464,7 @@ bool GetCurrentTimeZone(char *timezone)
         char *sta_buf = SearchStrBuffer(": ");
         memset(g_devzone_str, 0, LEN_COMMON_USE);
         memset(g_devtime_str, 0, LEN_COMMON_USE);
-        
+
         for (i=0; i<strlen(sta_buf); i++) {
             if ('"' == sta_buf[i]) {
                 j++;
@@ -516,12 +473,12 @@ bool GetCurrentTimeZone(char *timezone)
                 if (1 == j) {
                     if ((sta_buf[i]>='0') && (sta_buf[i]<='9')) {
                         g_devtime_str[k++] = sta_buf[i];
-                        
+
                         if (12 == k) {
                             continue;
                         }
                     }
-                    
+
                     if (k >= 12) {
                         g_devzone_str[m++] = sta_buf[i];
                     }
@@ -533,7 +490,7 @@ bool GetCurrentTimeZone(char *timezone)
 
         printf("\ndevzone = %s\n", g_devzone_str);
         printf("devtime = %s\n", g_devtime_str);
-                
+
         return true;
     }
 
@@ -2437,7 +2394,7 @@ bool BG96ATInitialize(void)
         return false;
     }
 
-    g_net_sta = 0x40;
+    gs_net_sta = 0x40;
     GetDevIMEI((char *)g_imei_str);
     GetDevSimICCID((char *)g_iccid_str);
     GetCurrentTimeZone((char *)g_devtime_str);
@@ -2445,12 +2402,16 @@ bool BG96ATInitialize(void)
     return true;
 }
 
-bool BG96TcpSend(void)
+bool BG96TcpSend(char* send_buf)
 {
+    if (NULL == send_buf) {
+        return false;
+    }
+
     unsigned int comm_socket_index = 0;  // The range is 0 ~ 11
     Socket_Type_t socket = TCP_CLIENT;
 
-    if(SocketSendData(comm_socket_index, socket, (char *)bg96_send_buf, "", 88)){
+    if(SocketSendData(comm_socket_index, socket, (char *)send_buf, "", 88)){
         printf("Socket Send Data Success!\n");
 
         return true;
@@ -2497,7 +2458,7 @@ bool ConnectToTcpServer(void)
         return false;
     }
 
-    g_net_sta = 0x81;
+    gs_net_sta = 0x81;
     printf("Open Socket Service Success!\n");
 
     TcpDeviceRegister();
@@ -2614,6 +2575,16 @@ int GNSSDemo(void)
         printf("gnss_posi = %s\n", gnss_posi);
     }
     return 0;
+}
+
+u8 GetNetStatus(void)
+{
+    return gs_net_sta;
+}
+
+void SetNetStatus(u8 sta)
+{
+    gs_net_sta = sta;
 }
 
 //******************************************************************************

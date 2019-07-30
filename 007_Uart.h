@@ -33,6 +33,9 @@ void Uart2_Init(void);
 int Uart2_Putc(char ch);
 int Uart2_String(char *ch);
 int Uart2_Printf(char *fmt,...);
+int IsTmpRingBufferAvailable();
+char ReadByteFromTmpRingBuffer();
+bool WaitUartTmpRxIdle();
 
 // for BNO055
 void Uart3_Init(void);

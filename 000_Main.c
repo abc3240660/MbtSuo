@@ -27,14 +27,9 @@
 #include "012_CLRC663_NFC.h"
 #include "013_Protocol.h"
 
-u8 is_mode_nb = 0;
-
-// BIT7: have ever connected at least once
-// BIT6: CMCC registered
-// BIT0: current connect status
-u8 g_net_sta = 0;
-
-char one_svr_cmds[RX_RINGBUF_MAX_LEN] = {0};
+static u8 is_mode_nb = 0;
+static unsigned long start_time_hbeat = 0;
+static char one_svr_cmds[RX_RINGBUF_MAX_LEN] = {0};
 
 void process_bg96(void)
 {
@@ -86,7 +81,7 @@ void process_bg96(void)
                     one_svr_cmds[i-1] = '\0';// E
                     if (('#'==one_svr_cmds[3]) && ('$'==one_svr_cmds[i-4])) {
                         one_svr_cmds[i-4] = '\0';// $
-                        parse_mobit_msg(one_svr_cmds+3);
+                        ParseMobitMsg(one_svr_cmds+3);
                     } else {
                         printf("Error MSGs %c:%c\n", one_svr_cmds[3], one_svr_cmds[i-4]);
                     }
@@ -111,6 +106,9 @@ void process_bg96(void)
 int main(void)
 {
     u8 test_cnt = 0;
+    u8 net_sta = 0;
+    u16 hbeat_gap = DEFAULT_HBEAT_GAP;
+
     // unsigned long xxx = 0x1345678;
     unsigned long task_cnt = 0;
 
@@ -132,68 +130,125 @@ int main(void)
     // printf("Hello PIC24F Uart1... 0x%.8lX\r\n", xxx);
     printf("Hello PIC24F Uart1...\r\n");
 
-    // calc_first_md5();
+    CalcFirstMd5();
 
     InitRingBuffers();
 
     while(1)
     {
         task_cnt++;
+        hbeat_gap = GetHeartBeatGap();
+        net_sta = GetNetStatus();
 
+        // -- TODO: cannot waste long time which will affect NFC-Read
+        // -------------------- Re-Connect ------------------ //
+        // --
         // retry initial or connection every 10s
         // if net-register failed or lost connection
         if (0 == (task_cnt%200)) {
-            if (0 == g_net_sta) {
+            if (0 == net_sta) {
                 Configure_BG96();
             }
 
-            if ((0x80==g_net_sta) || (0x40==g_net_sta)) {// lost connection
+            if ((0x80==net_sta) || (0x40==net_sta)) {// lost connection
                 ConnectToTcpServer();
             }
         }
 
-        // if task_cnt = N*4*11, will lost one time for 11
+        // -- use accuate time gap to hbeat
+        // ---------------------- H Beat -------------------- //
+        // --
+        if (0x81 == net_sta) {
+            if (0 == start_time_hbeat) {
+                start_time_hbeat = GetTimeStamp();
+            }
+
+            if (start_time_hbeat != 0) {
+                if (isDelayTimeout(start_time_hbeat,hbeat_gap*1000UL)) {
+                    start_time_hbeat = GetTimeStamp();
+                    TcpHeartBeat();
+                }
+            }
+        } else {
+            start_time_hbeat = 0;
+        }
+
+        // --
+        // ---------------------- TASK 1 -------------------- //
+        // --
         if (0 == (task_cnt%4)) {// every 0.2s
-        } else if (0 == (task_cnt%11)) {  // every 0.5s
+        }
+
+        // --
+        // ---------------------- TASK 2 -------------------- //
+        // --
+        if (0 == (task_cnt%11)) {  // every 0.5s
             process_bg96();
-        } else if (0 == (task_cnt%21)) {  // every 1.0s
-            // Auto Dev Send Test
-            if (0 ==  test_cnt) {
-                TcpHeartBeat();
-            } else if (1 ==  test_cnt) {
-                TcpExitCarriageSleep();
-            } else if (2 ==  test_cnt) {
-                TcpReportGPS();
-            } else if (3 ==  test_cnt) {
-                TcpInvalidMovingAlarm();
-            } else if (4 ==  test_cnt) {
-                TcpRiskAlarm();
-            } else if (5 ==  test_cnt) {
-                TcpFinishIAP();
-            } else if (6 ==  test_cnt) {
-                TcpFinishAddNFCCard();
-            } else if (7 ==  test_cnt) {
-                TcpReadedOneCard();
-            } else if (8 ==  test_cnt) {
-                TcpLockerLocked();
-            } else if (9 ==  test_cnt) {
-                TcpChargeStarted();
-            } else if (10 ==  test_cnt) {
-                TcpChargeStoped();
-            } else if (11 ==  test_cnt) {
-                TcpFinishFactoryReset();
+        }
+
+        // --
+        // ---------------------- TASK 3 -------------------- //
+        if (0 == (task_cnt%21)) {  // every 1.0s
+        // --
+        }
+
+        // --
+        // ---------------------- TASK 4 -------------------- //
+        // --
+        if (0 == (task_cnt%31)) {  // every 1.5s
+            ProcessTcpServerCommand();
+        }
+
+        // --
+        // ---------------------- TASK 5 -------------------- //
+        // --
+        if (0 == (task_cnt%41)) {  // every 2.0s
+            ReadMobibNFCCard();
+        }
+
+        // --
+        // ---------------------- TASK 6 -------------------- //
+        // --
+        if (0 == (task_cnt%99)) {  // every 5.0s
+        }
+
+        // -- just for engineer testing
+        // ---------------------- TASK 7 -------------------- //
+        // --
+        if (0 == (task_cnt%199)) { // every 10.0s
+            if (0x81 == net_sta) {
+                // Auto Dev Send Test
+                if (0 ==  test_cnt) {
+                    TcpHeartBeat();
+                } else if (1 ==  test_cnt) {
+                    TcpExitCarriageSleep();
+                } else if (2 ==  test_cnt) {
+                    TcpReportGPS();
+                } else if (3 ==  test_cnt) {
+                    TcpInvalidMovingAlarm();
+                } else if (4 ==  test_cnt) {
+                    TcpRiskAlarm();
+                } else if (5 ==  test_cnt) {
+                    TcpFinishIAP();
+                } else if (6 ==  test_cnt) {
+                    TcpFinishAddNFCCard();
+                } else if (7 ==  test_cnt) {
+                    TcpReadedOneCard(NULL, NULL);
+                } else if (8 ==  test_cnt) {
+                    TcpLockerLocked();
+                } else if (9 ==  test_cnt) {
+                    TcpChargeStarted();
+                } else if (10 ==  test_cnt) {
+                    TcpChargeStoped();
+                } else if (11 ==  test_cnt) {
+                    TcpFinishFactoryReset();
+                }
             }
 
             test_cnt++;
             if (test_cnt > 12) {
                 test_cnt = 0;
             }
-        } else if (0 == (task_cnt%31)) {  // every 1.5s
-            ProcessTcpServerCommand();
-        } else if (0 == (task_cnt%41)) {  // every 2.0s
-            // read_iso14443B_nfc_card();
-        } else if (0 == (task_cnt%99)) {  // every 5.0s
-        } else if (0 == (task_cnt%199)) { // every 10.0s
         }
 
         if (10000 == task_cnt) {

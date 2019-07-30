@@ -19,18 +19,17 @@
 #include "007_Uart.h"
 #include "008_RingBuffer.h"
 
-char Uart2_Send_Buf[UART2_BUFFER_MAX_LEN] = {0};
+static char Uart2_Send_Buf[UART2_BUFFER_MAX_LEN] = {0};
 
-extern ringbuffer_t tmp_rbuf;
-extern ringbuffer_t at_rbuf;
-extern ringbuffer_t net_rbuf;
+static ringbuffer_t tmp_rbuf;
+
+// ringbuf for temp recved
+static char tmpRingbuf[RX_RINGBUF_MAX_LEN] = {0};
 
 uint8_t Uart3_Buffer[64] = {0};
 int Uart3_Use_Len = 0;
 
 extern int rx_debug_flag;
-
-extern int IsTmpRingBufferAvailable();
 
 // 115200
 void Uart1_Init(void)
@@ -77,6 +76,8 @@ void Uart2_Init(void)
     _U2RXIF = 0;
     _U2TXIE = 0;
     _U2RXIE = 1;
+
+    ringbuffer_init(&tmp_rbuf,tmpRingbuf,RX_RINGBUF_MAX_LEN);
 }
 
 // 115200
@@ -222,4 +223,45 @@ void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
             Uart3_Buffer[Uart3_Use_Len++] = temp;
         }
     } while (U3STAbits.URXDA);
+}
+
+int IsTmpRingBufferAvailable()
+{
+    int ret;
+
+    ret = ringbuffer_buf_use_size(&tmp_rbuf);
+
+    return ret;
+}
+
+char ReadByteFromTmpRingBuffer()
+{
+    char dat = 0;
+    int len = 1;
+    if(IsTmpRingBufferAvailable()<=0){
+        return -1;
+    }
+    len = ringbuffer_read_len(&tmp_rbuf,&dat,len);
+    return dat;
+}
+
+bool WaitUartTmpRxIdle()
+{
+    int size1 = 0;
+    int size2 = 0;
+
+    size1 = ringbuffer_buf_use_size(&tmp_rbuf);
+
+    while (1) {
+        delay_ms(50);
+        size2 = ringbuffer_buf_use_size(&tmp_rbuf);
+
+        if ((size1 == size2)) {// RX stopped for 50MS
+            break;
+        }
+
+        size1 = size2;
+    }
+
+    return true;
 }
