@@ -88,6 +88,8 @@ static char tcp_send_buf[LEN_MAX_SEND] = "";
 
 static u8 tmp_buf_big[LEN_BYTE_SZ512] = "";
 
+static char gs_gnss_part[LEN_BYTE_SZ128] = "";
+
 // --
 // ---------------------- global variables -------------------- //
 // --
@@ -492,8 +494,12 @@ bool TcpReportGPS(void)
 {
     // #MOBIT,868446032285351,GEO,51.106922|3.702681|20|180,0,e10adc3949ba59abbe56e057f20f883e$
 
+    if (0 == strlen(gs_gnss_part)) {
+        gs_gnss_part[0] = 'F';
+    }
+
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s$", g_imei_str, CMD_REPORT_GPS, "51.106922|3.702681|20|180", "0", gs_send_md5);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_REPORT_GPS, gs_gnss_part, "0", gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -632,9 +638,13 @@ bool TcpReQueryParams(void)
 bool TcpReQueryGPS(void)
 {
     // #MOBIT,868446032285351,GGEO,51.106922|3.702681|20|180,0,Re,e10adc3949ba59abbe56e057f20f883e$
+    
+    if (0 == strlen(gs_gnss_part)) {
+        gs_gnss_part[0] = 'F';
+    }
 
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s|%s|%s|%s,%s,Re,%s$", g_imei_str, CMD_QUERY_GPS, "51.106922", "3.702681", "20", "180", "0", gs_send_md5);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_GPS, gs_gnss_part, "0", gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -726,6 +736,8 @@ bool DoEnterSleepFast(void)
 bool DoQueryGPSFast(void)
 {
     printf("DoQueryGPSFast...\n");
+    
+    GetGPSInfo(gs_gnss_part);
 
     return true;
 }

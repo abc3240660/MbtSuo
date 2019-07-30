@@ -136,7 +136,6 @@ int main(void)
 
     while(1)
     {
-        task_cnt++;
         hbeat_gap = GetHeartBeatGap();
         net_sta = GetNetStatus();
 
@@ -145,11 +144,12 @@ int main(void)
         // --
         // retry initial or connection every 10s
         // if net-register failed or lost connection
-        if (0 == (task_cnt%200)) {
+        if (0 == (task_cnt++%200)) {
             if (0 == net_sta) {
                 Configure_BG96();
             }
 
+            net_sta = GetNetStatus();
             if ((0x80==net_sta) || (0x40==net_sta)) {// lost connection
                 ConnectToTcpServer();
             }
@@ -203,7 +203,7 @@ int main(void)
         // ---------------------- TASK 5 -------------------- //
         // --
         if (0 == (task_cnt%41)) {  // every 2.0s
-            ReadMobibNFCCard();
+            // ReadMobibNFCCard();
         }
 
         // --
@@ -223,6 +223,7 @@ int main(void)
                 } else if (1 ==  test_cnt) {
                     TcpExitCarriageSleep();
                 } else if (2 ==  test_cnt) {
+                    DoQueryGPSFast();
                     TcpReportGPS();
                 } else if (3 ==  test_cnt) {
                     TcpInvalidMovingAlarm();

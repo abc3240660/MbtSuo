@@ -38,6 +38,8 @@ static char netRingbuf[RX_RINGBUF_MAX_LEN] = {0};
 // BIT0: current connect status
 static u8 gs_net_sta = 0;
 
+static char gs_gnss_posi[LEN_BYTE_SZ128] = "";
+
 // --
 // ---------------------- global variables -------------------- //
 // --
@@ -2347,7 +2349,7 @@ bool CloseTcpService(void)
 {
     const char *cmd = "+QICLOSE=0";
 
-    if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
+    if (SendAndSearch(cmd, RESPONSE_OK, 10)) {
         return true;
     }
     return false;
@@ -2398,6 +2400,9 @@ bool BG96ATInitialize(void)
     GetDevIMEI((char *)g_imei_str);
     GetDevSimICCID((char *)g_iccid_str);
     GetCurrentTimeZone((char *)g_devtime_str);
+    
+    TurnOffGNSS();
+    TurnOnGNSS(STAND_ALONE, WRITE_MODE);
 
     return true;
 }
@@ -2550,8 +2555,8 @@ int GNSSDemo(void)
         printf("Dev Info: %s!\n", inf);
     }
 
-    while (!TurnOnGNSS(mode, WRITE_MODE)){
-        printf("Open the GNSS Function Fali!\n");
+    while (!TurnOnGNSS(STAND_ALONE, WRITE_MODE)){
+        printf("Open the GNSS Function Failed!\n");
         if(TurnOnGNSS(mode, READ_MODE)){
             printf("The GNSS Function is Opened!\n");
             TurnOffGNSS();
@@ -2559,10 +2564,10 @@ int GNSSDemo(void)
     }
     printf("Open the GNSS Function Success!\n");
 
-    char gnss_posi[128];
+    char gs_gnss_posi[128];
 
     while(1) {
-        while (!GetGNSSPositionInformation(gnss_posi)){
+        while (!GetGNSSPositionInformation(gs_gnss_posi)){
             printf("Get the GNSS Position Fail!\n");
             int e_code;
             if (ReturnErrorCode(&e_code)){
@@ -2572,7 +2577,7 @@ int GNSSDemo(void)
             DelayMs(5000);
         }
         printf("Get the GNSS Position Success!\n");
-        printf("gnss_posi = %s\n", gnss_posi);
+        printf("gs_gnss_posi = %s\n", gs_gnss_posi);
     }
     return 0;
 }
@@ -2586,7 +2591,51 @@ void SetNetStatus(u8 sta)
 {
     gs_net_sta = sta;
 }
+    
+void GetGPSInfo(char* gnss_part)
+{
+    u8 i = 0;
+    u8 k = 0;
+    u8 m = 0;
 
+    if (NULL == gnss_part) {
+        return;
+    }
+
+    memset(gs_gnss_posi, 0, LEN_BYTE_SZ128);
+    if (!GetGNSSPositionInformation(gs_gnss_posi)){
+        printf("Get the GNSS Position Fail!\n");
+        int e_code;
+        if (ReturnErrorCode(&e_code)){
+            printf("ERROR CODE: %d\n", e_code);
+            printf("Please check the documentation for error details.\n");
+        }
+        
+        return;
+    }
+
+    printf("Get the GNSS Position Success!\n");
+
+    memset(gnss_part, 0, LEN_BYTE_SZ128);
+    for (i=0; i<strlen(gs_gnss_posi); i++) {
+        if (',' == gs_gnss_posi[i]) {
+            k++;
+            
+            if ((2==k) || (3==k) || (7==k)) {
+                gnss_part[m++] = '|';
+            }
+            
+            continue;
+        }
+            
+        if ((1==k) || (2==k) || (6==k) || (7==k)) {
+            gnss_part[m++] = gs_gnss_posi[i];
+        }
+    }
+
+    printf("gs_gnss_posi = %s\n", gs_gnss_posi);
+    printf("gnss_defi = %s\n", gnss_part);
+}
 //******************************************************************************
 //* END OF FILE
 //******************************************************************************

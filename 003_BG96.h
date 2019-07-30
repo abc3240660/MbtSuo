@@ -492,6 +492,7 @@ bool BG96TcpSend(char* send_buf);
 
 u8 GetNetStatus(void);
 void SetNetStatus(u8 sta);
+void GetGPSInfo(char* gnss_part);
 
 #endif //__BG96_H
 
