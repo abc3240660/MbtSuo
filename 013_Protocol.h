@@ -131,5 +131,6 @@ bool DoHttpIAP(void);
 void ReportFinishAddNFC(void);
 void ReportLockerUnlocked(void);
 u16 GetHeartBeatGap(void);
+u8 IsDuringBind(void);
 
 #endif

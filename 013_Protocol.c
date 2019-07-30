@@ -12,8 +12,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "001_Tick_10ms.h"
 #include "003_BG96.h"
 #include "004_LB1938.h"
+#include "012_CLRC663_NFC.h"
 #include "013_Protocol.h"
 #include "014_Md5.h"
 
@@ -254,10 +256,10 @@ void ParseMobitMsg(char* msg)
             if (DEV_REGISTER == cmd_type) {// only one SVR ACK with params
                 if (3 == index) {
                     gs_hbeat_gap = atoi(split_str);
-                    printf("gs_hbeat_gap = %d\n", g_hbeat_gap);
+                    printf("gs_hbeat_gap = %d\n", gs_hbeat_gap);
                     if (gs_hbeat_gap < 5) {
                         gs_hbeat_gap = 5;
-                        printf("change gs_hbeat_gap = %d\n", g_hbeat_gap);
+                        printf("change gs_hbeat_gap = %d\n", gs_hbeat_gap);
                     }
                 } else if (4 == index) {
                     strncpy((char*)gs_swap_passwd, split_str, LEN_SYS_TIME);
@@ -645,7 +647,7 @@ bool TcpReQueryNFCs(void)
     memset(tmp_buf_big, 0, LEN_BYTE_SZ512);
     QueryMobibCard(tmp_buf_big);
 
-    if (0 == strlen(tmp_buf_big)) {
+    if (0 == strlen((const char*)tmp_buf_big)) {
         tmp_buf_big[0] = 'F';
     }
 
@@ -773,7 +775,7 @@ void ReportFinishAddNFC(void)
     gs_till_svr_ack |= (temp<<FINISH_ADDNFC);
 }
 
-void ReportLockerUnlocked(void);
+void ReportLockerUnlocked(void)
 {
     unsigned long temp = 1;
 

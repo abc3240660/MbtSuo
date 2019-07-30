@@ -15,6 +15,7 @@
 #include <stdarg.h>
 #include <p24fxxxx.h>
 
+#include "001_Tick_10ms.h"
 #include "003_BG96.h"
 #include "007_Uart.h"
 #include "008_RingBuffer.h"
@@ -225,7 +226,7 @@ void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
     } while (U3STAbits.URXDA);
 }
 
-int IsTmpRingBufferAvailable()
+int IsTmpRingBufferAvailable(void)
 {
     int ret;
 
@@ -234,7 +235,7 @@ int IsTmpRingBufferAvailable()
     return ret;
 }
 
-char ReadByteFromTmpRingBuffer()
+char ReadByteFromTmpRingBuffer(void)
 {
     char dat = 0;
     int len = 1;
@@ -245,7 +246,7 @@ char ReadByteFromTmpRingBuffer()
     return dat;
 }
 
-bool WaitUartTmpRxIdle()
+bool WaitUartTmpRxIdle(void)
 {
     int size1 = 0;
     int size2 = 0;

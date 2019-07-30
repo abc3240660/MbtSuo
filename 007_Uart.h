@@ -19,6 +19,8 @@ extern "C" {
 
 #include <stdio.h>
 
+#include "015_Common.h"
+
 #define UART2_BUFFER_MAX_LEN 512
 
 #define UART2_RX_BUFFER_MAX_LEN 1024
@@ -33,9 +35,9 @@ void Uart2_Init(void);
 int Uart2_Putc(char ch);
 int Uart2_String(char *ch);
 int Uart2_Printf(char *fmt,...);
-int IsTmpRingBufferAvailable();
-char ReadByteFromTmpRingBuffer();
-bool WaitUartTmpRxIdle();
+int IsTmpRingBufferAvailable(void);
+char ReadByteFromTmpRingBuffer(void);
+bool WaitUartTmpRxIdle(void);
 
 // for BNO055
 void Uart3_Init(void);

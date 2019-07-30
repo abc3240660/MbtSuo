@@ -12,15 +12,17 @@
 
 #include <xc.h>
 
+#include "001_Tick_10ms.h"
 #include "004_LB1938.h"
 #include "007_Uart.h"
 #include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
+#include "013_Protocol.h"
 
 static unsigned long start_time_nfc = 0;
 static u8 g_tmp_card_id[LEN_BYTE_SZ32] = {0};
 static u8 g_tmp_serial_nr[LEN_BYTE_SZ32] = {0};
-static u8 g_bind_cards[LEN_MAX_CARD][LEN_BYTE_SZ64] = {0};
+static u8 g_bind_cards[LEN_MAX_CARD][LEN_BYTE_SZ64] = {{0}};
 
 void print_block(uint8_t * block, uint8_t length);
 
@@ -127,8 +129,8 @@ void print_card_ID(uint8_t* buf, uint8_t bufsize){
     print_card_ID_block(buf, bufsize);
 }
 
-u8 read_iso14443B_nfc_card(u8* card_id, u8* serial_nr);
-
+u8 read_iso14443B_nfc_card(u8* card_id, u8* serial_nr)
+{
   //  Configure CLRC663
   CLRC663_configure_communication_protocol(CLRC630_PROTO_ISO14443B_106_NRZ_BPSK);
 
@@ -181,6 +183,8 @@ u8 read_iso14443B_nfc_card(u8* card_id, u8* serial_nr);
       print_serial_nr(apdu_receive_buffer);
       print_card_ID(apdu_receive_buffer_1, sizeof(apdu_receive_buffer_1));
   }
+  
+  return 0;
 }
 
 u8 ReadMobibNFCCard(void)
@@ -200,8 +204,8 @@ u8 ReadMobibNFCCard(void)
     }
 
     if (read_iso14443B_nfc_card(g_tmp_card_id, g_tmp_serial_nr) > 0) {
-        tmp_len = strlen(g_tmp_card_id);
-        tmp_len = strlen(g_tmp_serial_nr);
+        tmp_len = strlen((const char*)g_tmp_card_id);
+        tmp_len = strlen((const char*)g_tmp_serial_nr);
 
          TcpReadedOneCard(g_tmp_card_id, g_tmp_serial_nr);
 
@@ -210,7 +214,7 @@ u8 ReadMobibNFCCard(void)
             AddNewMobibCard(g_tmp_card_id, g_tmp_serial_nr);
         } else {
             for (i=0; i<LEN_MAX_CARD; i++) {
-                if (0 == strncmp(g_bind_cards[i], g_tmp_card_id, LEN_CARD_ID)) {
+                if (0 == strncmp((const char*)g_bind_cards[i], (const char*)g_tmp_card_id, LEN_CARD_ID)) {
                     LB1938_MotorCtrl(MOTOR_LEFT, MOTOR_HOLD_TIME);
                     ReportLockerUnlocked();
                 }
@@ -230,7 +234,7 @@ u8 ReadMobibNFCCard(void)
         }
     }
 
-    return 1:
+    return 1;
 }
 
 void AddNewMobibCard(u8* card_id, u8* serial_nr)
@@ -242,7 +246,7 @@ void AddNewMobibCard(u8* card_id, u8* serial_nr)
     }
 
     for (i=0; i<LEN_MAX_CARD; i++) {
-        if (0 == strlen(g_bind_cards[i])) {
+        if (0 == strlen((const char*)g_bind_cards[i])) {
             memcpy(g_bind_cards[i], card_id, LEN_BYTE_SZ32);
             memcpy(g_bind_cards[i]+32, serial_nr, LEN_BYTE_SZ32);
         }
@@ -258,7 +262,7 @@ void DeleteMobibCard(u8* card_id, u8* serial_nr)
     }
 
     for (i=0; i<LEN_MAX_CARD; i++) {
-        if (0 == strncmp(g_bind_cards[i], card_id, LEN_CARD_ID)) {
+        if (0 == strncmp((const char*)g_bind_cards[i], (const char*)card_id, LEN_CARD_ID)) {
             memset(g_bind_cards[i], 0, LEN_BYTE_SZ64);
         }
     }
@@ -275,15 +279,16 @@ void DeleteAllMobibCard(void)
 
 u8 QueryMobibCard(u8* card_dats)
 {
+    u8 i = 0;
     u8 count = 0;
     u8 offset = 0;
 
     if (NULL == card_dats) {
-        return;
+        return 0;
     }
 
     for (i=0; i<LEN_MAX_CARD; i++) {
-        if (strlen(g_bind_cards[i]) > 0) {
+        if (strlen((const char*)g_bind_cards[i]) > 0) {
             if (count != 0) {
                 card_dats[offset++] = '|';
             }

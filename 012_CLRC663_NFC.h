@@ -35,6 +35,7 @@ u8 QueryMobibCard(u8* card_dats);
 void AddNewMobibCard(u8* card_id, u8* serial_nr);
 void DeleteMobibCard(u8* card_id, u8* serial_nr);
 void DeleteAllMobibCard(void);
+u8 ReadMobibNFCCard(void);
 
 #ifdef __cplusplus
 }
