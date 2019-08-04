@@ -35,14 +35,14 @@ void LB1938_MotorCtrl(MOTOR_FWD motor_fwd, u8 hold_ms)
     u8 pin = 0;
 
     if (MOTOR_LEFT == motor_fwd) {
-        pin = 8;
+        pin = 4;
     } else {
-        pin = 9;
+        pin = 4;
     }
 
-    GPIOx_Output(BANKD, pin, LED_ON);
+    GPIOx_Output(BANKB, pin, LED_ON);
     delay_ms(hold_ms);
-    GPIOx_Output(BANKD, pin, LED_OFF);
+    GPIOx_Output(BANKB, pin, LED_OFF);
 }
 
 //******************************************************************************

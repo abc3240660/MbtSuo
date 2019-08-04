@@ -184,6 +184,7 @@ int main(void)
         // --
         if (0 == (task_cnt%11)) {  // every 0.5s
             process_bg96();
+            ReadMobibNFCCard();
         }
 
         // --
@@ -203,7 +204,7 @@ int main(void)
         // ---------------------- TASK 5 -------------------- //
         // --
         if (0 == (task_cnt%41)) {  // every 2.0s
-            // ReadMobibNFCCard();
+            ReadMobibNFCCard();
         }
 
         // --
@@ -216,6 +217,7 @@ int main(void)
         // ---------------------- TASK 7 -------------------- //
         // --
         if (0 == (task_cnt%199)) { // every 10.0s
+#if 0
             if (0x81 == net_sta) {
                 // Auto Dev Send Test
                 if (0 ==  test_cnt) {
@@ -250,6 +252,7 @@ int main(void)
             if (test_cnt > 12) {
                 test_cnt = 0;
             }
+#endif
         }
 
         if (10000 == task_cnt) {
@@ -257,9 +260,9 @@ int main(void)
         }
 
         if ((task_cnt%16) < 8) {
-            GPIOB_SetPin(task_cnt%8, 1);
+            GPIOB_SetPin(task_cnt%4, 1);
         } else {
-            GPIOB_SetPin(task_cnt%8, 0);
+            GPIOB_SetPin(task_cnt%4, 0);
         }
 
         delay_ms(50);

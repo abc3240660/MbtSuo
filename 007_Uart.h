@@ -27,6 +27,9 @@ extern "C" {
 
 #define RX_RINGBUF_MAX_LEN 512
 
+uint8_t Uart3_Read(uint16_t postion);
+uint16_t Uart3_GetSize(void);
+    
 // for debug
 void Uart1_Init(void);
 void Uart2_Init(void);
@@ -42,6 +45,7 @@ bool WaitUartTmpRxIdle(void);
 // for BNO055
 void Uart3_Init(void);
 int Uart3_Putc(char ch);
+void Uart3_Clear(void);
 
 #ifdef __cplusplus
 }

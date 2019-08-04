@@ -35,6 +35,14 @@ void __delay_us(uint16_t ms)
     }
 }
 
+static void __delay_usx(uint16_t ms)
+{
+    int i=0,j=0;
+    for(i=0;i<ms;i++){
+        for(j=0;j<20;j++);
+    }
+}
+
 uint16_t clrc663_SPI_transfer(const uint8_t* tx, uint8_t* rx, uint16_t len)
 {
     uint16_t tempLen = 0;
@@ -123,10 +131,35 @@ void shift(uint8_t* buf, uint8_t buf_size){
     }
 }
 
+
 //  Print MOBIB Original Card ID
-void print_card_ID(uint8_t* buf, uint8_t bufsize){
+void print_card_ID(uint8_t* buf, uint8_t bufsize, u8* card_id, u8* serial_nr){
+    u8 i = 0;
+    u8 k = 0;
+    u8 tmp = 0;
+    
     shift(buf, bufsize);
-    print_card_ID_block(buf, bufsize);
+    
+    for (i = 3; i < 13; i++){
+        tmp = (buf[i]>>4)&0x0F;
+        if ((tmp>=0x00) && (tmp<=0x09)) {
+            card_id[k++] = tmp + '0';
+        } else if ((tmp>=0x0A) && (tmp<=0x0F)) {
+            card_id[k++] = tmp-0x0A + 'A';
+        }
+        if (i != 12) {
+            tmp = buf[i]&0x0F;
+            if ((tmp>=0x00) && (tmp<=0x09)) {
+                card_id[k++] = tmp + '0';
+            } else if ((tmp>=0x0A) && (tmp<=0x0F)) {
+                card_id[k++] = tmp-0x0A + 'A';
+            }
+        }
+//        printf("%02X\n", buf[i]);
+    }
+    
+    printf("CardId = %s\n", card_id);
+ //   print_card_ID_block(buf, bufsize);
 }
 
 u8 read_iso14443B_nfc_card(u8* card_id, u8* serial_nr)
@@ -181,7 +214,13 @@ u8 read_iso14443B_nfc_card(u8* card_id, u8* serial_nr)
     #endif
 
       print_serial_nr(apdu_receive_buffer);
-      print_card_ID(apdu_receive_buffer_1, sizeof(apdu_receive_buffer_1));
+      print_card_ID(apdu_receive_buffer_1, sizeof(apdu_receive_buffer_1), card_id, serial_nr);
+      
+      if (('0'==card_id[0]) && ('0'==card_id[1]) && ('0'==card_id[2])) {
+          return 0;
+      }
+
+      return 1;
   }
   
   return 0;
@@ -207,7 +246,21 @@ u8 ReadMobibNFCCard(void)
         tmp_len = strlen((const char*)g_tmp_card_id);
         tmp_len = strlen((const char*)g_tmp_serial_nr);
 
-         TcpReadedOneCard(g_tmp_card_id, g_tmp_serial_nr);
+//        LATB |= (1<<4);
+//        delay_ms(5000);
+//        LATB &= ~(1<<4);
+        LB1938_MotorCtrl(MOTOR_LEFT, MOTOR_HOLD_TIME);
+        
+        for (i=0; i<20; i++) {
+            if(i%2){
+                LATD |= (1<<8);
+            }else{
+                LATD &= ~(1<<8);
+            }
+            __delay_usx(25UL);
+        }
+        
+        TcpReadedOneCard(g_tmp_card_id, g_tmp_serial_nr);
 
         if (IsDuringBind()) {
             start_time_nfc = GetTimeStamp();

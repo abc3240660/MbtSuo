@@ -80,7 +80,9 @@ void Uart2_Init(void)
 
     ringbuffer_init(&tmp_rbuf,tmpRingbuf,RX_RINGBUF_MAX_LEN);
 }
-
+#define UART3_BUFFER_MAX_LEN 32
+static uint8_t Uart3Buffer[UART3_BUFFER_MAX_LEN] = {0};
+static uint16_t Uart3Length = 0;
 // 115200
 void Uart3_Init(void)
 {
@@ -102,6 +104,37 @@ void Uart3_Init(void)
     _U3RXIF = 0;
     _U3TXIE = 0;
     _U3RXIE = 1;
+}
+
+void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
+{
+    char temp = 0;
+    
+    do {
+        temp = U3RXREG;
+        _U3RXIF = 0;
+        if (U3STAbits.OERR) {
+            U3STAbits.OERR = 0;
+        } else {
+            Uart3Buffer[Uart3Length++] = temp;
+        }
+    } while (U3STAbits.URXDA);
+}
+void Uart3_Clear(void)
+{
+    memset(Uart3Buffer,0,UART3_BUFFER_MAX_LEN);
+    Uart3Length = 0;
+}
+uint8_t Uart3_Read(uint16_t postion)
+{
+    if(postion > Uart3Length){
+        return 0x00;
+    }
+    return Uart3Buffer[postion];
+}
+uint16_t Uart3_GetSize(void)
+{
+    return Uart3Length;
 }
 
 int fputc(int ch,FILE * f)
@@ -210,6 +243,7 @@ void __attribute__((__interrupt__,no_auto_psv)) _U1RXInterrupt(void)
     } while (U1STAbits.URXDA);
 }
 
+#if 0
 void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
 {
     char temp = 0;
@@ -225,6 +259,7 @@ void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
         }
     } while (U3STAbits.URXDA);
 }
+#endif
 
 int IsTmpRingBufferAvailable(void)
 {

@@ -15,6 +15,7 @@
 #include "005_BNO055.h"
 #include "007_Uart.h"
 
+#if 0
 extern void delay_ms(unsigned long val);
 
 extern uint8_t Uart3_Buffer[64];
@@ -875,3 +876,4 @@ int16_t Configure_BNO055(void)
 //******************************************************************************
 //* END OF FILE
 //******************************************************************************
+#endif

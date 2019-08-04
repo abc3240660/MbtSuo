@@ -96,6 +96,9 @@ static char gs_gnss_part[LEN_BYTE_SZ128] = "";
 extern u8 g_imei_str[LEN_COMMON_USE];
 extern u8 g_iccid_str[LEN_COMMON_USE];
 
+extern u8 g_devtime_str[LEN_COMMON_USE];
+extern u8 g_devzone_str[LEN_COMMON_USE];
+
 extern u8 g_svr_ip[LEN_NET_TCP];
 extern u8 g_svr_port[LEN_NET_TCP];
 extern u8 g_svr_apn[LEN_NET_TCP];
@@ -464,7 +467,7 @@ bool TcpDeviceRegister(void)
     // const char send_data[] = "#MOBIT,868446032285351,REG,898602B4151830031698,1.0.0,1.0.0,4.0,1561093302758,2,e10adc3949ba59abbe56e057f20f883e$";
 
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,%s,%s,%s,%s$", g_imei_str, CMD_DEV_REGISTER, g_iccid_str, "1.0.0", "1.00", "4.0", "20190709180030", "2", gs_send_md5);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,%s,%s,%s,%s$", g_imei_str, CMD_DEV_REGISTER, g_iccid_str, "1.0.0", "1.00", "4.0", g_devtime_str, g_devzone_str, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -547,6 +550,10 @@ bool TcpFinishAddNFCCard(void)
 bool TcpReadedOneCard(u8* card_id, u8* serial_nr)
 {
     // #MOBIT,868446032285351,RC,1234567,e10adc3949ba59abbe56e057f20f883e$
+
+    if (GetNetStatus() != 0x81) {
+        return false;
+    }
 
     if ((NULL==card_id) || (NULL==serial_nr)) {
         return false;
@@ -697,10 +704,29 @@ bool TcpReDeleteNFCs(void)
     return BG96TcpSend(tcp_send_buf);
 }
 
+static void __delay_usx(uint16_t ms)
+{
+    int i=0,j=0;
+    for(i=0;i<ms;i++){
+        for(j=0;j<20;j++);
+    }
+}
+
 // ============================================ DEV Action ============================================ //
 bool DoUnLockTheLockerFast(void)
 {
-    LB1938_MotorCtrl(MOTOR_LEFT, 10);
+    u8 i = 0;
+
+    LB1938_MotorCtrl(MOTOR_LEFT, MOTOR_HOLD_TIME);
+        
+    for (i=0; i<20; i++) {
+        if(i%2){
+            LATD |= (1<<8);
+        }else{
+            LATD &= ~(1<<8);
+        }
+        __delay_usx(25UL);
+    }
 
     printf("DoUnLockTheLockerFast...\n");
 
@@ -709,6 +735,17 @@ bool DoUnLockTheLockerFast(void)
 
 bool DoRingAlarmFast(void)
 {
+    u8 i = 0;
+        
+    for (i=0; i<20; i++) {
+        if(i%2){
+            LATD |= (1<<8);
+        }else{
+            LATD &= ~(1<<8);
+        }
+        __delay_usx(25UL);
+    }
+
     printf("DoRingAlarmFast...\n");
 
     return true;

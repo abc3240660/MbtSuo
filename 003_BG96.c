@@ -46,8 +46,8 @@ static char gs_gnss_posi[LEN_BYTE_SZ128] = "";
 ringbuffer_t g_at_rbuf;
 ringbuffer_t g_net_rbuf;
 
-u8 g_devtime_str[LEN_COMMON_USE];
-u8 g_devzone_str[LEN_COMMON_USE];
+u8 g_devtime_str[LEN_COMMON_USE] = "";
+u8 g_devzone_str[LEN_COMMON_USE] = "";
 
 u8 g_imei_str[LEN_COMMON_USE] = "868446032285351";
 u8 g_iccid_str[LEN_COMMON_USE] = "898602B4151830031698";

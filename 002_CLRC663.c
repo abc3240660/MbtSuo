@@ -12,6 +12,70 @@
 
 #include "002_CLRC663.h"
 #include "007_Uart.h"
+#include "001_Tick_10ms.h"
+
+void __delayx_us(uint16_t ms)
+{
+    int i=0,j=0;
+    for(i=0;i<ms;i++){
+        for(j=0;j<100;j++);
+    }
+}
+
+uint16_t Uart3ReadPostion = 0;
+void Clrc663_Send(uint8_t byte)
+{
+    Uart3_Putc(byte);
+}
+
+uint8_t Clrc663_Recv(void)
+{
+    uint8_t try_cnt = 20;
+    uint16_t len = Uart3_GetSize();
+    uint8_t temp = 0;
+    do{
+        len = Uart3_GetSize();
+        if((len > 0) && (len > Uart3ReadPostion)){
+            //printf("%.2X\r\n", Uart3_Buffer[Uart3_Read_Postion]);
+            temp = Uart3_Read(Uart3ReadPostion);
+            return temp;
+        }else{
+            __delayx_us(2);
+        }
+    }while(--try_cnt);
+    return 0xff;
+}
+void Clrc663_Clear(void)
+{
+    Uart3ReadPostion = 0;
+    Uart3_Clear();
+}
+unsigned int Clrc663_GetSize(void)
+{
+    return Uart3_GetSize();
+}
+
+void Clrc663_SendRegValue(uint8_t addr,uint8_t data)
+{
+    Clrc663_Send(addr);
+    Clrc663_Send(data);
+}
+uint8_t Clrc663_RecvRegValue(uint8_t addr)
+{
+    Clrc663_Send(addr);
+    return Clrc663_Recv();
+}
+
+void Clrc663_SendSpiMode(uint8_t *tx,uint16_t len)
+{
+    uint16_t i = 0;
+    uint8_t addr = tx[0];
+    --len;
+    for(i=1;i<len;i++){
+        Clrc663_SendRegValue(addr++,tx[i]);
+    }
+}
+static uint8_t g_test_flag = 0;
 
 /** @file */
 
@@ -19,57 +83,38 @@
 // Register interaction functions.
 // ---------------------------------------------------------------------------
 uint8_t clrc663_read_reg(uint8_t reg) {
-  uint8_t instruction_tx[2] = {(reg << 1) | 0x01, 0};
-  uint8_t instruction_rx[2] = {0};
-  clrc663_SPI_select();
-  clrc663_SPI_transfer(instruction_tx, instruction_rx, 2);
-  clrc663_SPI_unselect();
-  return instruction_rx[1];  // the second byte the returned value.
+  Clrc663_Clear();
+  return Clrc663_RecvRegValue(reg|0x80);  // the second byte the returned value.
 }
 
 void clrc663_write_reg(uint8_t reg, uint8_t value) {
-  uint8_t instruction_tx[2] = {(reg << 1) | 0x00, value};
-  uint8_t discard[2] = {0};
-  clrc663_SPI_select();
-    clrc663_SPI_transfer(instruction_tx, discard, 2);
-  clrc663_SPI_unselect();
+  Clrc663_SendRegValue(reg,value);
 }
 
 void clrc663_write_regs(uint8_t reg, const uint8_t* values, uint8_t len) {
-  uint8_t instruction_tx[len+1];
-  uint8_t discard[len+1];
-  instruction_tx[0] = (reg << 1) | 0x00;
-  uint8_t i;
-  for (i=0 ; i < len; i++) {
-    instruction_tx[i+1] = values[i];
-  }
-  clrc663_SPI_select();
-    clrc663_SPI_transfer(instruction_tx, discard, len+1);
-  clrc663_SPI_unselect();
+    uint16_t i = 0;
+    for(i=0;i<len;i++){
+      clrc663_write_reg(reg++,values[i]);
+    }
 }
 
 void clrc663_write_fifo(const uint8_t* data, uint16_t len) {
-  uint8_t write_instruction[] = {(CLRC630_REG_FIFODATA << 1) | 0};
-  uint8_t discard[len + 1];
-  clrc663_SPI_select();
-    clrc663_SPI_transfer(write_instruction, discard, 1);
-    clrc663_SPI_transfer(data, discard, len);
-  clrc663_SPI_unselect();
+  uint16_t i = 0;
+  for(i=0;i<len;i++){
+      clrc663_write_reg(CLRC630_REG_FIFODATA,data[i]);
+  }
 }
 
 void clrc663_read_fifo(uint8_t* rx, uint16_t len) {
-  uint8_t read_instruction[] = {(CLRC630_REG_FIFODATA << 1) | 0x01, (CLRC630_REG_FIFODATA << 1) | 0x01};
-  uint8_t read_finish[] = {0};
-  uint8_t discard[2];
-  // this is less than ideal, since we have to call the transfer method multiple times.
-  clrc663_SPI_select();
-    clrc663_SPI_transfer(read_instruction, discard, 1);
+    uint8_t addr = CLRC630_REG_FIFODATA | 0x80;
+    Clrc663_RecvRegValue(addr);
     uint16_t i;
     for (i=0; i < (len - 1) ; i++) {
-      clrc663_SPI_transfer(read_instruction, rx++, 1);
+      *rx = Clrc663_RecvRegValue(addr);
+      rx++;
     }
-    clrc663_SPI_transfer(read_finish, rx++, 1);
-  clrc663_SPI_unselect();
+    *rx = Clrc663_RecvRegValue(addr);
+    rx++;
 }
 
 uint8_t clrc663_read_error(){
