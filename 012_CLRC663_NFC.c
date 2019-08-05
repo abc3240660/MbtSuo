@@ -19,10 +19,11 @@
 #include "012_CLRC663_NFC.h"
 #include "013_Protocol.h"
 
-static unsigned long start_time_nfc = 0;
 static u8 g_tmp_card_id[LEN_BYTE_SZ32] = {0};
 static u8 g_tmp_serial_nr[LEN_BYTE_SZ32] = {0};
 static u8 g_bind_cards[LEN_MAX_CARD][LEN_BYTE_SZ64] = {{0}};
+
+static unsigned long start_time_nfc = 0;
 
 void print_block(uint8_t * block, uint8_t length);
 
@@ -236,6 +237,14 @@ u8 ReadMobibNFCCard(void)
 
     if (IsDuringBind()) {
         if (0 == start_time_nfc) {
+            for (i=0; i<20; i++) {
+                if(i%2){
+                    LATD |= (1<<8);
+                }else{
+                    LATD &= ~(1<<8);
+                }
+                __delay_usx(25UL);
+            }
             start_time_nfc = GetTimeStamp();
         }
     } else {
@@ -249,7 +258,6 @@ u8 ReadMobibNFCCard(void)
 //        LATB |= (1<<4);
 //        delay_ms(5000);
 //        LATB &= ~(1<<4);
-        LB1938_MotorCtrl(MOTOR_LEFT, MOTOR_HOLD_TIME);
         
         for (i=0; i<20; i++) {
             if(i%2){
@@ -282,6 +290,18 @@ u8 ReadMobibNFCCard(void)
     if (IsDuringBind()) {
         if (start_time_nfc != 0) {
             if (isDelayTimeout(start_time_nfc,10*1000UL)) {
+                for (i=0; i<60; i++) {
+                    if (0 == i%20) {
+                        delay_ms(200);
+                    }
+
+                    if(i%2){
+                        LATD |= (1<<8);
+                    }else{
+                        LATD &= ~(1<<8);
+                    }
+                    __delay_usx(25UL);
+                }
                 ReportFinishAddNFC();
             }
         }
@@ -299,9 +319,16 @@ void AddNewMobibCard(u8* card_id, u8* serial_nr)
     }
 
     for (i=0; i<LEN_MAX_CARD; i++) {
+        if (0 == strncmp((const char*)g_bind_cards[i], card_id, strlen(card_id))) {
+            return;
+        }
+    }
+    
+    for (i=0; i<LEN_MAX_CARD; i++) {
         if (0 == strlen((const char*)g_bind_cards[i])) {
             memcpy(g_bind_cards[i], card_id, LEN_BYTE_SZ32);
             memcpy(g_bind_cards[i]+32, serial_nr, LEN_BYTE_SZ32);
+            break;
         }
     }
 

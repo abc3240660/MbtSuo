@@ -434,12 +434,16 @@ void ProcessTcpServerCommand(void)
         if (start_time_unlocked != 0) {
             if (isDelayTimeout(start_time_unlocked,10*1000UL)) {
                 TcpLockerUnlocked();
+                // TODO: delete this test
+                gs_till_svr_ack = 0;
             }
         }
     } else if (gs_till_svr_ack & (temp<<FINISH_ADDNFC)) {
         if (start_time_finish_addc != 0) {
             if (isDelayTimeout(start_time_finish_addc,10*1000UL)) {
                 TcpFinishAddNFCCard();
+                // TODO: delete this test
+                gs_till_svr_ack = 0;
             }
         }
     } else if (gs_till_svr_ack & (temp<<RISK_REPORT)) {

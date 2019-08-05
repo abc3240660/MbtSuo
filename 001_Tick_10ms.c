@@ -65,6 +65,17 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
     if(MobitTimes > 100000UL){
         MobitTimes = 0;
     }
+    
+    if (GetNetStatus() != 0x81) {
+        if (0 == (MobitTimes%21)) {
+            GPIOB_SetPin(1, 1);
+        }
+
+        if (0 == (MobitTimes%41)) {
+            GPIOB_SetPin(1, 0);
+        }
+    }
+
     IFS0bits.T1IF = 0;// Clear Timer1 interrupt flag
 }
 

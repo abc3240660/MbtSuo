@@ -113,9 +113,10 @@ int main(void)
     unsigned long task_cnt = 0;
 
     System_Config();
+
+    GPIOB_Init();
     Configure_Tick_10ms();
     Configure_Tick2_10ms();
-    GPIOB_Init();
     Uart1_Init();
     Uart2_Init();
     Uart3_Init();
@@ -259,10 +260,18 @@ int main(void)
             task_cnt = 0;
         }
 
-        if ((task_cnt%16) < 8) {
-            GPIOB_SetPin(task_cnt%4, 1);
+        if (0x81 == net_sta) {
+            if ((task_cnt%16) < 8) {
+                GPIOB_SetPin(task_cnt%4, 1);
+            } else {
+                GPIOB_SetPin(task_cnt%4, 0);
+            }
         } else {
-            GPIOB_SetPin(task_cnt%4, 0);
+            if ((task_cnt%16) < 8) {
+                GPIOB_SetPin(task_cnt%2+1, 1);
+            } else {
+                GPIOB_SetPin(task_cnt%2+1, 0);
+            }
         }
 
         delay_ms(50);

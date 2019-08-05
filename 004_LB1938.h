@@ -16,7 +16,7 @@
 
 #include "015_Common.h"
 
-#define MOTOR_HOLD_TIME 10
+#define MOTOR_HOLD_TIME 30
 
 typedef enum {
     MOTOR_LEFT = 0,
