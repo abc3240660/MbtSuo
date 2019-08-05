@@ -304,6 +304,12 @@ void AddNewMobibCard(u8* card_id, u8* serial_nr)
             memcpy(g_bind_cards[i]+32, serial_nr, LEN_BYTE_SZ32);
         }
     }
+
+    for (i=0; i<LEN_MAX_CARD; i++) {
+        if (strlen((const char*)g_bind_cards[i]) != 0) {
+            printf("Binded CardId[%d]: %s\n", i, g_bind_cards[i]);
+        }
+    }
 }
 
 void DeleteMobibCard(u8* card_id, u8* serial_nr)

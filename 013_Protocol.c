@@ -816,6 +816,8 @@ void ReportFinishAddNFC(void)
 {
     unsigned long temp = 1;
 
+    printf("ReportFinishAddNFC...\n");
+
     if (0 == start_time_finish_addc) {
         start_time_finish_addc = GetTimeStamp();
     }
