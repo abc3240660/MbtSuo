@@ -27,7 +27,7 @@
 #include "012_CLRC663_NFC.h"
 #include "013_Protocol.h"
 
-static u8 is_mode_nb = 0;
+// static u8 is_mode_nb = 0;
 static unsigned long start_time_hbeat = 0;
 static char one_svr_cmds[RX_RINGBUF_MAX_LEN] = {0};
 
@@ -105,7 +105,6 @@ void process_bg96(void)
 
 int main(void)
 {
-    u8 test_cnt = 0;
     u8 net_sta = 0;
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
 

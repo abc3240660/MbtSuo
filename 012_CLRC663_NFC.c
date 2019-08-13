@@ -319,7 +319,7 @@ void AddNewMobibCard(u8* card_id, u8* serial_nr)
     }
 
     for (i=0; i<LEN_MAX_CARD; i++) {
-        if (0 == strncmp((const char*)g_bind_cards[i], card_id, strlen(card_id))) {
+        if (0 == strncmp((const char*)g_bind_cards[i], (const char*)card_id, strlen((const char*)card_id))) {
             return;
         }
     }

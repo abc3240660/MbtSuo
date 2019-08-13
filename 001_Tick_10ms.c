@@ -11,6 +11,7 @@
 
 #include "001_Tick_10ms.h"
 #include "003_BG96.h"
+#include "006_Gpio.h"
 #include "007_Uart.h"
 #include "008_RingBuffer.h"
 

@@ -75,7 +75,6 @@ void Clrc663_SendSpiMode(uint8_t *tx,uint16_t len)
         Clrc663_SendRegValue(addr++,tx[i]);
     }
 }
-static uint8_t g_test_flag = 0;
 
 /** @file */
 

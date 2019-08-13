@@ -59,7 +59,7 @@ static u32 gs_till_svr_ack = 0;
 
 static u8 gs_swap_passwd[LEN_SYS_TIME+1] = "";
 
-static u8 gs_msg_md5[LEN_DW_MD5+1] = "";
+// static u8 gs_msg_md5[LEN_DW_MD5+1] = "";
 
 static u8 gs_alarm_on[LEN_COMMON_USE+1] = "1";
 static u8 gs_beep_on[LEN_COMMON_USE+1] = "1";

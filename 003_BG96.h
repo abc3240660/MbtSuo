@@ -23,7 +23,7 @@
 // AT commands response
 static const char RESPONSE_READY[] = "RDY";
 static const char RESPONSE_OK[] = "OK";
-static const char RESPONSE_CRLF_OK[] = "\r\n\r\nOK";
+ static const char RESPONSE_CRLF_OK[] = "\r\n\r\nOK";
 static const char RESPONSE_ERROR[] = "ERROR";
 static const char RESPONSE_POWER_DOWN[] = "POWERED DOWN";
 static const char RESPONSE_CONNECT[] = "CONNECT";
@@ -101,6 +101,11 @@ static const char HTTP_POST_REQUEST[] = "+QHTTPPOST";
 static const char HTTP_FILE_POST_REQUEST[] = "+QHTTPPOSTFILE";
 static const char HTTP_READ_RESPONSE[] = "+QHTTPREAD";
 static const char HTTP_FILE_READ_RESPONSE[] = "+QHTTPREADFILE";
+
+// FTP AT Commands
+static const char FTP_CONFIG_PARAMETER[] = "+QFTPCFG";
+static const char FTP_OPEN_SESSION[] = "+QFTPOPEN";
+static const char FTP_DOWNLOAD_DAT[] = "+QFTPGET";
 
 // MQTT AT Commands
 static const char MQTT_CONFIG_PARAMETER[] = "+QMTCFG";
@@ -273,7 +278,7 @@ static const char ssl_client_cert_name[] = "client_cert.pem";
 static const char ssl_client_key_name[] = "client_key.pem";
 
 // For BG96 Serial
-#define RX_BUFFER_LENGTH  512
+#define RX_BUFFER_LENGTH  1024
 #define RX_RINGBUFFER_LENGTH 512
 // #define UART_DEBUG
 
@@ -488,6 +493,7 @@ void InitRingBuffers(void);
 
 bool BG96ATInitialize(void);
 bool ConnectToTcpServer(void);
+bool ConnectToFtpServer(void);
 bool BG96TcpSend(char* send_buf);
 
 u8 GetNetStatus(void);

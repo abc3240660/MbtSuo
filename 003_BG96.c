@@ -38,6 +38,8 @@ static char netRingbuf[RX_RINGBUF_MAX_LEN] = {0};
 // BIT0: current connect status
 static u8 gs_net_sta = 0;
 
+static u8 gs_ftp_sta = 0;
+
 static char gs_gnss_posi[LEN_BYTE_SZ128] = "";
 
 // --
@@ -55,6 +57,9 @@ u8 g_iccid_str[LEN_COMMON_USE] = "898602B4151830031698";
 u8 g_svr_ip[LEN_NET_TCP]  = "122.4.233.119";
 u8 g_svr_port[LEN_NET_TCP] = "10211";
 u8 g_svr_apn[LEN_NET_TCP] = "CMNET";
+
+static u8 gs_ftp_ip[LEN_NET_TCP]  = "122.4.233.119";
+static u8 gs_ftp_port[LEN_NET_TCP] = "10218";
 
 //******************************************************************************
 // Configure BG96
@@ -2355,6 +2360,16 @@ bool CloseTcpService(void)
     return false;
 }
 
+bool CloseFtpService(void)
+{
+    const char *cmd = "+QFTPCLOSE";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 10)) {
+        return true;
+    }
+    return false;
+}
+
 bool QueryNetStatus(void)
 {
     const char *cmd = "+CGATT?";
@@ -2467,6 +2482,130 @@ bool ConnectToTcpServer(void)
     printf("Open Socket Service Success!\n");
 
     TcpDeviceRegister();
+
+    return true;
+}
+
+/////////////////////////////////// BG96 FTP ///////////////////////////////////
+bool OpenFtpSession(unsigned int pdp_index)
+{
+    char cmd[64];
+    char buf[32];
+
+    strcpy(cmd, FTP_CONFIG_PARAMETER);
+    sprintf(buf, "=\"contextid\",%d", pdp_index);
+    strcat(cmd, buf);
+    if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
+        return false;
+    }
+
+    memset(cmd, '\0', 64);
+    strcpy(cmd, FTP_CONFIG_PARAMETER);
+    strcat(cmd, "=\"account\",\"lide\",\"Lide2019!@#\"");    
+    if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
+        return false;
+    }
+
+    memset(cmd, '\0', 64);
+    strcpy(cmd, FTP_CONFIG_PARAMETER);
+    strcat(cmd, "=\"filetype\",1");
+    if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
+        return false;
+    }
+
+    memset(cmd, '\0', 64);
+    strcpy(cmd, FTP_CONFIG_PARAMETER);
+    strcat(cmd, "=\"transmode\",1");
+    if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
+        return false;
+    }
+
+    memset(cmd, '\0', 64);
+    strcpy(cmd, FTP_CONFIG_PARAMETER);
+    strcat(cmd, "=\"rsptimeout\",90");
+    if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
+        return false;
+    }
+
+    memset(buf, '\0', 32);
+    memset(cmd, '\0', 64);
+    strcpy(cmd, FTP_OPEN_SESSION);
+    sprintf(buf, "=\"%s\",%s", gs_ftp_ip, gs_ftp_port);    
+    strcat(cmd, buf);
+    if(!SendAndSearch_multi(cmd, "+QFTPOPEN: 0,0", RESPONSE_ERROR, 2)){
+        return false;
+    }
+
+    return true;
+}
+
+bool ConnectToFtpServer(void)
+{
+    u8 trycnt = 10;
+    unsigned int comm_pdp_index = 1;  // The range is 1 ~ 16
+
+    CloseFtpService();
+
+    while(trycnt--) {
+        if (OpenFtpSession(comm_pdp_index)){
+            break;
+        }
+
+        printf("Open FTP Service Fail!\n");
+        CloseFtpService();
+    }
+
+    if (trycnt < 1) {
+        return false;
+    }
+
+    gs_ftp_sta = 0x81;
+    printf("Open FTP Service Success!\n");
+
+    return true;
+}
+
+bool BG96FtpGetData(u32 offset, u32 length)
+{
+    u8 trycnt = 10;
+
+    char cmd[64];
+    char buf[32];
+
+    while(trycnt--) {
+        if (SetDevCommandEcho(true)) {
+            break;
+        }
+    }
+
+    if (trycnt < 1) {
+        return false;
+    }
+
+    strcpy(cmd, FTP_DOWNLOAD_DAT);
+    sprintf(buf, "=\"test.mp3\",\"COM:\",%ld,%ld", offset, length);
+    strcat(cmd, buf);
+    if(!SendAndSearch_multi(cmd, "+QFTPGET: 0,", RESPONSE_ERROR, 2)){
+        return false;
+    }
+    
+    char *sta_buf = SearchStrBuffer("CONNECT\r\n");
+    char *end_buf = SearchChrBuffer("\r\nOK\r\n\r\n+QFTPGET: 0");
+    
+    if ((sta_buf!=NULL) && (end_buf!=NULL)) {
+        printf("FTP DW size = %d\n", (end_buf-sta_buf-strlen("CONNECT\r\n")));
+    }
+
+    trycnt = 10;
+    while(trycnt--) {
+        if (SetDevCommandEcho(false)) {
+            break;
+        }
+    }
+
+    if (trycnt < 1) {
+        return false;
+    }
 
     return true;
 }
