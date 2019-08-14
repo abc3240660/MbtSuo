@@ -42,6 +42,8 @@ static u8 gs_ftp_sta = 0;
 
 static char gs_gnss_posi[LEN_BYTE_SZ128] = "";
 
+static u8 gs_ftp_test = 0;
+
 // --
 // ---------------------- global variables -------------------- //
 // --
@@ -1187,9 +1189,14 @@ unsigned int ReadResponseByteToBuffer()
     char c = ReadByteFromRingBuffer();
 
     rxBuffer[bufferHead] = c;
+    
+//    if (1 == gs_ftp_test) {
+//        printf("rxBuffer = %s\n", rxBuffer);
+//    }
+    
     bufferHead = (bufferHead + 1) % RX_BUFFER_LENGTH;
 
-#if 1// defined UART_DEBUG
+#if 0// defined UART_DEBUG
     if (c == '\n'){
         printf("%c", c);
         printf("<--- ");
@@ -1393,6 +1400,26 @@ Cmd_Response_t SendAndSearch_multi(const char *command, const char *test_str, co
 //        -->ReadResponseByteToBuffer
 char *SearchStrBuffer(const char *test_str)
 {
+#if 1
+    u16 i = 0;
+    u16 valid_len = 150;
+
+    for (i=0; i<RX_BUFFER_LENGTH; i++) {
+        if (test_str[i] != 0) {
+            valid_len = i;
+        }
+    }
+
+    for (i=0; i<valid_len; i++) {
+        if (rxBuffer[i] == test_str[0]) {
+            if (0 == memcmp(rxBuffer+i, test_str, strlen(test_str))) {
+                return (rxBuffer+i);
+            }
+        }
+    }
+    
+    return NULL;
+#else
     int buf_len = strlen((const char *)rxBuffer);
 
     if (buf_len < RX_BUFFER_LENGTH) {
@@ -1400,6 +1427,7 @@ char *SearchStrBuffer(const char *test_str)
     } else {
         return NULL;
     }
+#endif
 }
 
 char *SearchChrBuffer(const char test_chr)
@@ -2354,7 +2382,7 @@ bool CloseTcpService(void)
 {
     const char *cmd = "+QICLOSE=0";
 
-    if (SendAndSearch(cmd, RESPONSE_OK, 10)) {
+    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
         return true;
     }
     return false;
@@ -2364,7 +2392,7 @@ bool CloseFtpService(void)
 {
     const char *cmd = "+QFTPCLOSE";
 
-    if (SendAndSearch(cmd, RESPONSE_OK, 10)) {
+    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
         return true;
     }
     return false;
@@ -2428,6 +2456,10 @@ bool BG96TcpSend(char* send_buf)
         return false;
     }
 
+    if (gs_net_sta != 0x81) {
+        return false;
+    }
+    
     unsigned int comm_socket_index = 0;  // The range is 0 ~ 11
     Socket_Type_t socket = TCP_CLIENT;
 
@@ -2532,7 +2564,7 @@ bool OpenFtpSession(unsigned int pdp_index)
     strcpy(cmd, FTP_OPEN_SESSION);
     sprintf(buf, "=\"%s\",%s", gs_ftp_ip, gs_ftp_port);    
     strcat(cmd, buf);
-    if(!SendAndSearch_multi(cmd, "+QFTPOPEN: 0,0", RESPONSE_ERROR, 2)){
+    if(!SendAndSearch_multi(cmd, "+QFTPOPEN: 0,0", RESPONSE_ERROR, 150)){
         return false;
     }
 
@@ -2544,6 +2576,7 @@ bool ConnectToFtpServer(void)
     u8 trycnt = 10;
     unsigned int comm_pdp_index = 1;  // The range is 1 ~ 16
 
+    SetDevCommandEcho(false);
     CloseFtpService();
 
     while(trycnt--) {
@@ -2559,7 +2592,13 @@ bool ConnectToFtpServer(void)
         return false;
     }
 
+    // Close TCP temporarily
+    // After FTP download finished(whatever success or failed))
+    // Need to Re-OpenTCP or Reset directly
+    CloseTcpService();
+
     gs_ftp_sta = 0x81;
+
     printf("Open FTP Service Success!\n");
 
     return true;
@@ -2567,44 +2606,30 @@ bool ConnectToFtpServer(void)
 
 bool BG96FtpGetData(u32 offset, u32 length)
 {
-    u8 trycnt = 10;
-
     char cmd[64];
     char buf[32];
+    unsigned int recv_len = 0;
 
-    while(trycnt--) {
-        if (SetDevCommandEcho(true)) {
-            break;
-        }
-    }
-
-    if (trycnt < 1) {
-        return false;
-    }
+    gs_ftp_test = 1;
 
     strcpy(cmd, FTP_DOWNLOAD_DAT);
     sprintf(buf, "=\"test.mp3\",\"COM:\",%ld,%ld", offset, length);
     strcat(cmd, buf);
-    if(!SendAndSearch_multi(cmd, "+QFTPGET: 0,", RESPONSE_ERROR, 2)){
+    
+    if(!SendAndSearch_multi(cmd, "+QFTPGET: 0", RESPONSE_ERROR, 15)){
         return false;
     }
     
+    while (IsRingBufferAvailable()) {
+        recv_len += ReadResponseByteToBuffer();
+    }
+
     char *sta_buf = SearchStrBuffer("CONNECT\r\n");
-    char *end_buf = SearchChrBuffer("\r\nOK\r\n\r\n+QFTPGET: 0");
-    
+    char *end_buf = SearchStrBuffer("\r\nOK\r\n\r\n+QFTPGET: 0");
+
     if ((sta_buf!=NULL) && (end_buf!=NULL)) {
-        printf("FTP DW size = %d\n", (end_buf-sta_buf-strlen("CONNECT\r\n")));
-    }
-
-    trycnt = 10;
-    while(trycnt--) {
-        if (SetDevCommandEcho(false)) {
-            break;
-        }
-    }
-
-    if (trycnt < 1) {
-        return false;
+        printf("FTPGET size = %s\n", strchr(end_buf,',')+1);
+//        printf("FTP DW size = %d\n", (end_buf-sta_buf-strlen("CONNECT\r\n")));
     }
 
     return true;
@@ -2724,6 +2749,11 @@ int GNSSDemo(void)
 u8 GetNetStatus(void)
 {
     return gs_net_sta;
+}
+
+u8 GetFtpStatus(void)
+{
+    return gs_ftp_sta;
 }
 
 void SetNetStatus(u8 sta)

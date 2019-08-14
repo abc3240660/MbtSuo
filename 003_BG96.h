@@ -495,10 +495,13 @@ bool BG96ATInitialize(void);
 bool ConnectToTcpServer(void);
 bool ConnectToFtpServer(void);
 bool BG96TcpSend(char* send_buf);
+bool BG96FtpGetData(u32 offset, u32 length);
 
 u8 GetNetStatus(void);
 void SetNetStatus(u8 sta);
 void GetGPSInfo(char* gnss_part);
+
+u8 GetFtpStatus(void);
 
 #endif //__BG96_H
 

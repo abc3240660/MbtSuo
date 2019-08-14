@@ -106,6 +106,12 @@ void process_bg96(void)
 int main(void)
 {
     u8 net_sta = 0;
+    u8 ftp_sta = 0;
+    
+    u32 ftp_offset = 0;
+    u32 ftp_len_per = 900;
+    u32 ftp_goal = 69895;
+
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
 
     // unsigned long xxx = 0x1345678;
@@ -138,7 +144,8 @@ int main(void)
     {
         hbeat_gap = GetHeartBeatGap();
         net_sta = GetNetStatus();
-
+        ftp_sta = GetFtpStatus();
+        
         // -- TODO: cannot waste long time which will affect NFC-Read
         // -------------------- Re-Connect ------------------ //
         // --
@@ -146,12 +153,16 @@ int main(void)
         // if net-register failed or lost connection
         if (0 == (task_cnt++%200)) {
             if (0 == net_sta) {
-                Configure_BG96();
+                // Configure_BG96();
             }
 
             net_sta = GetNetStatus();
             if ((0x80==net_sta) || (0x40==net_sta)) {// lost connection
-                ConnectToTcpServer();
+                // ConnectToTcpServer();
+            }
+            
+            if (0 == ftp_sta) {
+                ConnectToFtpServer();
             }
         }
 
@@ -166,7 +177,7 @@ int main(void)
             if (start_time_hbeat != 0) {
                 if (isDelayTimeout(start_time_hbeat,hbeat_gap*1000UL)) {
                     start_time_hbeat = GetTimeStamp();
-                    TcpHeartBeat();
+//                    TcpHeartBeat();
                 }
             }
         } else {
@@ -183,8 +194,23 @@ int main(void)
         // ---------------------- TASK 2 -------------------- //
         // --
         if (0 == (task_cnt%11)) {  // every 0.5s
-            process_bg96();
-            ReadMobibNFCCard();
+//            process_bg96();
+//            ReadMobibNFCCard();
+            
+            if (0x81 == ftp_sta) {
+                printf("before +++++++++++\n");
+                if (BG96FtpGetData(ftp_offset, ftp_len_per)) {
+                    ftp_offset += ftp_len_per;
+                    
+                    printf("ftp_offset = %ld\n", ftp_offset);
+                }
+                printf("after ------------\n");
+            }
+            
+            if (ftp_offset >= ftp_goal) {
+                ftp_sta = 0x80;
+                // TODO: SoftReset
+            }
         }
 
         // --
@@ -204,7 +230,7 @@ int main(void)
         // ---------------------- TASK 5 -------------------- //
         // --
         if (0 == (task_cnt%41)) {  // every 2.0s
-            ReadMobibNFCCard();
+//            ReadMobibNFCCard();
         }
 
         // --
@@ -217,6 +243,7 @@ int main(void)
         // ---------------------- TASK 7 -------------------- //
         // --
         if (0 == (task_cnt%199)) { // every 10.0s
+            printf("task active\n");
 #if 0
             if (0x81 == net_sta) {
                 // Auto Dev Send Test
