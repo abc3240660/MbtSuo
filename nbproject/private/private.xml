@@ -3,11 +3,15 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/D:/working/gitsrc/Mbtsuo_old_NonAutoReboot/Mbtsuo/013_Protocol.c</file>
-            <file>file:/D:/working/gitsrc/Mbtsuo_old_NonAutoReboot/Mbtsuo/001_Tick_10ms.c</file>
-            <file>file:/D:/working/gitsrc/Mbtsuo_old_NonAutoReboot/Mbtsuo/000_Main.c</file>
-            <file>file:/D:/working/gitsrc/Mbtsuo_old_NonAutoReboot/Mbtsuo/003_BG96.h</file>
-            <file>file:/D:/working/gitsrc/Mbtsuo_old_NonAutoReboot/Mbtsuo/003_BG96.c</file>
+            <file>file:/C:/litoku/MbtSuo-master/017_InnerFlash.c</file>
+            <file>file:/C:/litoku/MbtSuo-master/018_dsPICflash.s</file>
+            <file>file:/C:/litoku/MbtSuo-master/016_FlashOta.h</file>
+            <file>file:/C:/litoku/MbtSuo-master/000_Main.h</file>
+            <file>file:/C:/litoku/MbtSuo-master/007_Uart.c</file>
+            <file>file:/C:/litoku/MbtSuo-master/017_InnerFlash.h</file>
+            <file>file:/C:/litoku/MbtSuo-master/006_Gpio.c</file>
+            <file>file:/C:/litoku/MbtSuo-master/016_FlashOta.c</file>
+            <file>file:/C:/litoku/MbtSuo-master/015_Common.h</file>
         </group>
     </open-files>
 </project-private>

@@ -4,10 +4,6 @@
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
                    projectFiles="true">
-      <logicalFolder name="MCC Generated Files"
-                     displayName="MCC Generated Files"
-                     projectFiles="true">
-      </logicalFolder>
       <itemPath>000_Main.h</itemPath>
       <itemPath>001_Tick_10ms.h</itemPath>
       <itemPath>002_CLRC663.h</itemPath>
@@ -23,6 +19,9 @@
       <itemPath>011_Spi.h</itemPath>
       <itemPath>013_Protocol.h</itemPath>
       <itemPath>014_md5.h</itemPath>
+      <itemPath>016_FlashOta.h</itemPath>
+      <itemPath>017_InnerFlash.h</itemPath>
+      <itemPath>015_Common.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -45,6 +44,9 @@
       <itemPath>011_Spi.c</itemPath>
       <itemPath>013_Protocol.c</itemPath>
       <itemPath>014_md5.c</itemPath>
+      <itemPath>016_FlashOta.c</itemPath>
+      <itemPath>017_InnerFlash.c</itemPath>
+      <itemPath>018_dsPICflash.s</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -70,7 +72,7 @@
         <platform>3</platform>
       </toolsSet>
       <packs>
-        <pack name="PIC24F-GA-GB_DFP" vendor="Microchip" version="1.0.58"/>
+        <pack name="PIC24F-GA-GB_DFP" vendor="Microchip" version="1.0.28"/>
       </packs>
       <compileType>
         <linkerTool>

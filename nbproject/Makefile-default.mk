@@ -30,12 +30,12 @@ ifeq ($(TYPE_IMAGE), DEBUG_RUN)
 IMAGE_TYPE=debug
 OUTPUT_SUFFIX=elf
 DEBUGGABLE_SUFFIX=elf
-FINAL_IMAGE=dist/${CND_CONF}/${IMAGE_TYPE}/Mbtsuo.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+FINAL_IMAGE=dist/${CND_CONF}/${IMAGE_TYPE}/MbtSuo-master.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
 else
 IMAGE_TYPE=production
 OUTPUT_SUFFIX=hex
 DEBUGGABLE_SUFFIX=elf
-FINAL_IMAGE=dist/${CND_CONF}/${IMAGE_TYPE}/Mbtsuo.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+FINAL_IMAGE=dist/${CND_CONF}/${IMAGE_TYPE}/MbtSuo-master.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
 endif
 
 ifeq ($(COMPARE_BUILD), true)
@@ -57,17 +57,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=000_Main.c 001_Tick_10ms.c 002_CLRC663.c 003_BG96.c 004_LB1938.c 005_BNO055.c 006_Gpio.c 007_Uart.c 008_RingBuffer.c 009_System.c 012_CLRC663_NFC.c 011_Spi.c 013_Protocol.c 014_md5.c
+SOURCEFILES_QUOTED_IF_SPACED=000_Main.c 001_Tick_10ms.c 002_CLRC663.c 003_BG96.c 004_LB1938.c 005_BNO055.c 006_Gpio.c 007_Uart.c 008_RingBuffer.c 009_System.c 012_CLRC663_NFC.c 011_Spi.c 013_Protocol.c 014_md5.c 016_FlashOta.c 017_InnerFlash.c 018_dsPICflash.s
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/000_Main.o ${OBJECTDIR}/001_Tick_10ms.o ${OBJECTDIR}/002_CLRC663.o ${OBJECTDIR}/003_BG96.o ${OBJECTDIR}/004_LB1938.o ${OBJECTDIR}/005_BNO055.o ${OBJECTDIR}/006_Gpio.o ${OBJECTDIR}/007_Uart.o ${OBJECTDIR}/008_RingBuffer.o ${OBJECTDIR}/009_System.o ${OBJECTDIR}/012_CLRC663_NFC.o ${OBJECTDIR}/011_Spi.o ${OBJECTDIR}/013_Protocol.o ${OBJECTDIR}/014_md5.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/000_Main.o.d ${OBJECTDIR}/001_Tick_10ms.o.d ${OBJECTDIR}/002_CLRC663.o.d ${OBJECTDIR}/003_BG96.o.d ${OBJECTDIR}/004_LB1938.o.d ${OBJECTDIR}/005_BNO055.o.d ${OBJECTDIR}/006_Gpio.o.d ${OBJECTDIR}/007_Uart.o.d ${OBJECTDIR}/008_RingBuffer.o.d ${OBJECTDIR}/009_System.o.d ${OBJECTDIR}/012_CLRC663_NFC.o.d ${OBJECTDIR}/011_Spi.o.d ${OBJECTDIR}/013_Protocol.o.d ${OBJECTDIR}/014_md5.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/000_Main.o ${OBJECTDIR}/001_Tick_10ms.o ${OBJECTDIR}/002_CLRC663.o ${OBJECTDIR}/003_BG96.o ${OBJECTDIR}/004_LB1938.o ${OBJECTDIR}/005_BNO055.o ${OBJECTDIR}/006_Gpio.o ${OBJECTDIR}/007_Uart.o ${OBJECTDIR}/008_RingBuffer.o ${OBJECTDIR}/009_System.o ${OBJECTDIR}/012_CLRC663_NFC.o ${OBJECTDIR}/011_Spi.o ${OBJECTDIR}/013_Protocol.o ${OBJECTDIR}/014_md5.o ${OBJECTDIR}/016_FlashOta.o ${OBJECTDIR}/017_InnerFlash.o ${OBJECTDIR}/018_dsPICflash.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/000_Main.o.d ${OBJECTDIR}/001_Tick_10ms.o.d ${OBJECTDIR}/002_CLRC663.o.d ${OBJECTDIR}/003_BG96.o.d ${OBJECTDIR}/004_LB1938.o.d ${OBJECTDIR}/005_BNO055.o.d ${OBJECTDIR}/006_Gpio.o.d ${OBJECTDIR}/007_Uart.o.d ${OBJECTDIR}/008_RingBuffer.o.d ${OBJECTDIR}/009_System.o.d ${OBJECTDIR}/012_CLRC663_NFC.o.d ${OBJECTDIR}/011_Spi.o.d ${OBJECTDIR}/013_Protocol.o.d ${OBJECTDIR}/014_md5.o.d ${OBJECTDIR}/016_FlashOta.o.d ${OBJECTDIR}/017_InnerFlash.o.d ${OBJECTDIR}/018_dsPICflash.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/000_Main.o ${OBJECTDIR}/001_Tick_10ms.o ${OBJECTDIR}/002_CLRC663.o ${OBJECTDIR}/003_BG96.o ${OBJECTDIR}/004_LB1938.o ${OBJECTDIR}/005_BNO055.o ${OBJECTDIR}/006_Gpio.o ${OBJECTDIR}/007_Uart.o ${OBJECTDIR}/008_RingBuffer.o ${OBJECTDIR}/009_System.o ${OBJECTDIR}/012_CLRC663_NFC.o ${OBJECTDIR}/011_Spi.o ${OBJECTDIR}/013_Protocol.o ${OBJECTDIR}/014_md5.o
+OBJECTFILES=${OBJECTDIR}/000_Main.o ${OBJECTDIR}/001_Tick_10ms.o ${OBJECTDIR}/002_CLRC663.o ${OBJECTDIR}/003_BG96.o ${OBJECTDIR}/004_LB1938.o ${OBJECTDIR}/005_BNO055.o ${OBJECTDIR}/006_Gpio.o ${OBJECTDIR}/007_Uart.o ${OBJECTDIR}/008_RingBuffer.o ${OBJECTDIR}/009_System.o ${OBJECTDIR}/012_CLRC663_NFC.o ${OBJECTDIR}/011_Spi.o ${OBJECTDIR}/013_Protocol.o ${OBJECTDIR}/014_md5.o ${OBJECTDIR}/016_FlashOta.o ${OBJECTDIR}/017_InnerFlash.o ${OBJECTDIR}/018_dsPICflash.o
 
 # Source Files
-SOURCEFILES=000_Main.c 001_Tick_10ms.c 002_CLRC663.c 003_BG96.c 004_LB1938.c 005_BNO055.c 006_Gpio.c 007_Uart.c 008_RingBuffer.c 009_System.c 012_CLRC663_NFC.c 011_Spi.c 013_Protocol.c 014_md5.c
+SOURCEFILES=000_Main.c 001_Tick_10ms.c 002_CLRC663.c 003_BG96.c 004_LB1938.c 005_BNO055.c 006_Gpio.c 007_Uart.c 008_RingBuffer.c 009_System.c 012_CLRC663_NFC.c 011_Spi.c 013_Protocol.c 014_md5.c 016_FlashOta.c 017_InnerFlash.c 018_dsPICflash.s
 
 
 CFLAGS=
@@ -87,7 +87,7 @@ FIXDEPS=fixDeps
 ifneq ($(INFORMATION_MESSAGE), )
 	@echo $(INFORMATION_MESSAGE)
 endif
-	${MAKE}  -f nbproject/Makefile-default.mk dist/${CND_CONF}/${IMAGE_TYPE}/Mbtsuo.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+	${MAKE}  -f nbproject/Makefile-default.mk dist/${CND_CONF}/${IMAGE_TYPE}/MbtSuo-master.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
 
 MP_PROCESSOR_OPTION=24FJ1024GA606
 MP_LINKER_FILE_OPTION=,--script=p24FJ1024GA606.gld
@@ -192,6 +192,20 @@ ${OBJECTDIR}/014_md5.o: 014_md5.c  nbproject/Makefile-${CND_CONF}.mk
 	${MP_CC} $(MP_EXTRA_CC_PRE)  014_md5.c  -o ${OBJECTDIR}/014_md5.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/014_md5.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_PK3=1  -mno-eds-warn  -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off  
 	@${FIXDEPS} "${OBJECTDIR}/014_md5.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
+${OBJECTDIR}/016_FlashOta.o: 016_FlashOta.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/016_FlashOta.o.d 
+	@${RM} ${OBJECTDIR}/016_FlashOta.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  016_FlashOta.c  -o ${OBJECTDIR}/016_FlashOta.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/016_FlashOta.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_PK3=1  -mno-eds-warn  -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off  
+	@${FIXDEPS} "${OBJECTDIR}/016_FlashOta.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
+	
+${OBJECTDIR}/017_InnerFlash.o: 017_InnerFlash.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/017_InnerFlash.o.d 
+	@${RM} ${OBJECTDIR}/017_InnerFlash.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  017_InnerFlash.c  -o ${OBJECTDIR}/017_InnerFlash.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/017_InnerFlash.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_PK3=1  -mno-eds-warn  -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off  
+	@${FIXDEPS} "${OBJECTDIR}/017_InnerFlash.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
+	
 else
 ${OBJECTDIR}/000_Main.o: 000_Main.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} "${OBJECTDIR}" 
@@ -291,12 +305,40 @@ ${OBJECTDIR}/014_md5.o: 014_md5.c  nbproject/Makefile-${CND_CONF}.mk
 	${MP_CC} $(MP_EXTRA_CC_PRE)  014_md5.c  -o ${OBJECTDIR}/014_md5.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/014_md5.o.d"      -mno-eds-warn  -g -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off  
 	@${FIXDEPS} "${OBJECTDIR}/014_md5.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
+${OBJECTDIR}/016_FlashOta.o: 016_FlashOta.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/016_FlashOta.o.d 
+	@${RM} ${OBJECTDIR}/016_FlashOta.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  016_FlashOta.c  -o ${OBJECTDIR}/016_FlashOta.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/016_FlashOta.o.d"      -mno-eds-warn  -g -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off  
+	@${FIXDEPS} "${OBJECTDIR}/016_FlashOta.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
+	
+${OBJECTDIR}/017_InnerFlash.o: 017_InnerFlash.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/017_InnerFlash.o.d 
+	@${RM} ${OBJECTDIR}/017_InnerFlash.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  017_InnerFlash.c  -o ${OBJECTDIR}/017_InnerFlash.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/017_InnerFlash.o.d"      -mno-eds-warn  -g -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off  
+	@${FIXDEPS} "${OBJECTDIR}/017_InnerFlash.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
+	
 endif
 
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: assemble
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
+${OBJECTDIR}/018_dsPICflash.o: 018_dsPICflash.s  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/018_dsPICflash.o.d 
+	@${RM} ${OBJECTDIR}/018_dsPICflash.o 
+	${MP_CC} $(MP_EXTRA_AS_PRE)  018_dsPICflash.s  -o ${OBJECTDIR}/018_dsPICflash.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -D__DEBUG -D__MPLAB_DEBUGGER_PK3=1  -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  -Wa,-MD,"${OBJECTDIR}/018_dsPICflash.o.d",--defsym=__MPLAB_BUILD=1,--defsym=__ICD2RAM=1,--defsym=__MPLAB_DEBUG=1,--defsym=__DEBUG=1,--defsym=__MPLAB_DEBUGGER_PK3=1,-g,--no-relax$(MP_EXTRA_AS_POST)
+	@${FIXDEPS} "${OBJECTDIR}/018_dsPICflash.o.d"  $(SILENT)  -rsi ${MP_CC_DIR}../  
+	
 else
+${OBJECTDIR}/018_dsPICflash.o: 018_dsPICflash.s  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/018_dsPICflash.o.d 
+	@${RM} ${OBJECTDIR}/018_dsPICflash.o 
+	${MP_CC} $(MP_EXTRA_AS_PRE)  018_dsPICflash.s  -o ${OBJECTDIR}/018_dsPICflash.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  -Wa,-MD,"${OBJECTDIR}/018_dsPICflash.o.d",--defsym=__MPLAB_BUILD=1,-g,--no-relax$(MP_EXTRA_AS_POST)
+	@${FIXDEPS} "${OBJECTDIR}/018_dsPICflash.o.d"  $(SILENT)  -rsi ${MP_CC_DIR}../  
+	
 endif
 
 # ------------------------------------------------------------------------------------
@@ -308,18 +350,18 @@ endif
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: link
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-dist/${CND_CONF}/${IMAGE_TYPE}/Mbtsuo.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk    
+dist/${CND_CONF}/${IMAGE_TYPE}/MbtSuo-master.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk    
 	@${MKDIR} dist/${CND_CONF}/${IMAGE_TYPE} 
-	${MP_CC} $(MP_EXTRA_LD_PRE)  -o dist/${CND_CONF}/${IMAGE_TYPE}/Mbtsuo.${IMAGE_TYPE}.${OUTPUT_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}      -mcpu=$(MP_PROCESSOR_OPTION)        -D__DEBUG=__DEBUG -D__MPLAB_DEBUGGER_PK3=1  -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)   -mreserve=data@0x800:0x81B -mreserve=data@0x81C:0x81D -mreserve=data@0x81E:0x81F -mreserve=data@0x820:0x821 -mreserve=data@0x822:0x823 -mreserve=data@0x824:0x827 -mreserve=data@0x82A:0x84F   -Wl,--local-stack,,--defsym=__MPLAB_BUILD=1,--defsym=__MPLAB_DEBUG=1,--defsym=__DEBUG=1,-D__DEBUG=__DEBUG,--defsym=__MPLAB_DEBUGGER_PK3=1,$(MP_LINKER_FILE_OPTION),--stack=16,--check-sections,--data-init,--pack-data,--handles,--isr,--no-gc-sections,--fill-upper=0,--stackguard=16,--no-force-link,--smart-io,-Map="${DISTDIR}/${PROJECTNAME}.${IMAGE_TYPE}.map",--report-mem,--memorysummary,dist/${CND_CONF}/${IMAGE_TYPE}/memoryfile.xml$(MP_EXTRA_LD_POST) 
+	${MP_CC} $(MP_EXTRA_LD_PRE)  -o dist/${CND_CONF}/${IMAGE_TYPE}/MbtSuo-master.${IMAGE_TYPE}.${OUTPUT_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}      -mcpu=$(MP_PROCESSOR_OPTION)        -D__DEBUG=__DEBUG -D__MPLAB_DEBUGGER_PK3=1  -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)   -mreserve=data@0x800:0x81B -mreserve=data@0x81C:0x81D -mreserve=data@0x81E:0x81F -mreserve=data@0x820:0x821 -mreserve=data@0x822:0x823 -mreserve=data@0x824:0x827 -mreserve=data@0x82A:0x84F   -Wl,--local-stack,,--defsym=__MPLAB_BUILD=1,--defsym=__MPLAB_DEBUG=1,--defsym=__DEBUG=1,-D__DEBUG=__DEBUG,--defsym=__MPLAB_DEBUGGER_PK3=1,$(MP_LINKER_FILE_OPTION),--stack=16,--check-sections,--data-init,--pack-data,--handles,--isr,--no-gc-sections,--fill-upper=0,--stackguard=16,--no-force-link,--smart-io,-Map="${DISTDIR}/${PROJECTNAME}.${IMAGE_TYPE}.map",--report-mem,--memorysummary,dist/${CND_CONF}/${IMAGE_TYPE}/memoryfile.xml$(MP_EXTRA_LD_POST) 
 	
 else
-dist/${CND_CONF}/${IMAGE_TYPE}/Mbtsuo.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk   
+dist/${CND_CONF}/${IMAGE_TYPE}/MbtSuo-master.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk   
 	@${MKDIR} dist/${CND_CONF}/${IMAGE_TYPE} 
-	${MP_CC} $(MP_EXTRA_LD_PRE)  -o dist/${CND_CONF}/${IMAGE_TYPE}/Mbtsuo.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}      -mcpu=$(MP_PROCESSOR_OPTION)        -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -Wl,--local-stack,,--defsym=__MPLAB_BUILD=1,$(MP_LINKER_FILE_OPTION),--stack=16,--check-sections,--data-init,--pack-data,--handles,--isr,--no-gc-sections,--fill-upper=0,--stackguard=16,--no-force-link,--smart-io,-Map="${DISTDIR}/${PROJECTNAME}.${IMAGE_TYPE}.map",--report-mem,--memorysummary,dist/${CND_CONF}/${IMAGE_TYPE}/memoryfile.xml$(MP_EXTRA_LD_POST) 
-	${MP_CC_DIR}\\xc16-bin2hex dist/${CND_CONF}/${IMAGE_TYPE}/Mbtsuo.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX} -a  -omf=elf  
+	${MP_CC} $(MP_EXTRA_LD_PRE)  -o dist/${CND_CONF}/${IMAGE_TYPE}/MbtSuo-master.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}      -mcpu=$(MP_PROCESSOR_OPTION)        -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -Wl,--local-stack,,--defsym=__MPLAB_BUILD=1,$(MP_LINKER_FILE_OPTION),--stack=16,--check-sections,--data-init,--pack-data,--handles,--isr,--no-gc-sections,--fill-upper=0,--stackguard=16,--no-force-link,--smart-io,-Map="${DISTDIR}/${PROJECTNAME}.${IMAGE_TYPE}.map",--report-mem,--memorysummary,dist/${CND_CONF}/${IMAGE_TYPE}/memoryfile.xml$(MP_EXTRA_LD_POST) 
+	${MP_CC_DIR}\\xc16-bin2hex dist/${CND_CONF}/${IMAGE_TYPE}/MbtSuo-master.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX} -a  -omf=elf  
 	
 	@echo Normalizing hex file
-	@"C:/Program Files (x86)/Microchip/MPLABX/v5.20/mplab_platform/platform/../mplab_ide/modules/../../bin/hexmate" --edf="C:/Program Files (x86)/Microchip/MPLABX/v5.20/mplab_platform/platform/../mplab_ide/modules/../../dat/en_msgs.txt" dist/${CND_CONF}/${IMAGE_TYPE}/Mbtsuo.${IMAGE_TYPE}.hex -odist/${CND_CONF}/${IMAGE_TYPE}/Mbtsuo.${IMAGE_TYPE}.hex
+	@"C:/Program Files (x86)/Microchip/MPLABX/v5.10/mplab_platform/platform/../mplab_ide/modules/../../bin/hexmate" --edf="C:/Program Files (x86)/Microchip/MPLABX/v5.10/mplab_platform/platform/../mplab_ide/modules/../../dat/en_msgs.txt" dist/${CND_CONF}/${IMAGE_TYPE}/MbtSuo-master.${IMAGE_TYPE}.hex -odist/${CND_CONF}/${IMAGE_TYPE}/MbtSuo-master.${IMAGE_TYPE}.hex
 
 endif
 
