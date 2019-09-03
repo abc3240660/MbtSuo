@@ -25,7 +25,7 @@ extern "C" {
 
 #define UART2_RX_BUFFER_MAX_LEN 1024
 
-#define RX_RINGBUF_MAX_LEN 2048
+#define RX_RINGBUF_MAX_LEN 512
 
 uint8_t Uart3_Read(uint16_t postion);
 uint16_t Uart3_GetSize(void);

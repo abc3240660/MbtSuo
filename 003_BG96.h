@@ -495,7 +495,7 @@ bool BG96ATInitialize(void);
 bool ConnectToTcpServer(void);
 bool ConnectToFtpServer(void);
 bool BG96TcpSend(char* send_buf);
-u16 BG96FtpGetData(u32 offset, u32 length);
+bool BG96FtpGetData(u32 offset, u32 length);
 
 u8 GetNetStatus(void);
 void SetNetStatus(u8 sta);

@@ -184,16 +184,12 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
 
         if (tmp_len >= 2) {
             if (('>'==tmpuse_buf[tmp_len-2]) && (' '==tmpuse_buf[tmp_len-1])) {
-                if (tmp_len < 100) {
-                    printf("Receive XACKs(%dB): %s<<<\n", tmp_len, tmpuse_buf);
-                }
+                printf("Receive XACKs: %s<<<\n", tmpuse_buf);
 
                 for (i=0; i<tmp_len; i++) {
                     ringbuffer_write_byte(&g_at_rbuf,tmpuse_buf[i]);
                 }
 
-                //printf("Total XACKs = %s\n", g_at_rbuf.head);
-                
                 msg_done = 0;
                 cnt_tail = 0;
                 cnt_tail_exp = 0;
@@ -264,15 +260,13 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                             // invalid MSGs
                         }
                     } else {
-                        if (tmp_len < 100) {
-                            printf("Receive XACKs(%dB): %s<<<\n", tmp_len, tmpuse_buf);
-                        }
+                        printf("Receive XACKs: %s<<<\n", tmpuse_buf);
 
                         for (i=0; i<tmp_len; i++) {
                             ringbuffer_write_byte(&g_at_rbuf,tmpuse_buf[i]);
                         }
 
-                        //printf("Total XACKs = %s\n", g_at_rbuf.head);
+                        // printf("Total XACKs = %s\n", g_at_rbuf.head);
                     }
 
                     msg_done = 0;
