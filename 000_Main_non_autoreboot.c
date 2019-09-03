@@ -26,13 +26,15 @@
 #include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
 #include "013_Protocol.h"
-#include "014_md5.h"
 
-// static u8 is_mode_nb = 0;
-static unsigned long start_time_hbeat = 0;
-static char one_svr_cmds[RX_RINGBUF_MAX_LEN] = {0};
+u8 is_mode_nb = 0;
 
-static u8 gs_ftp_wait = 1;
+// BIT7: have ever connected at least once
+// BIT6: CMCC registered
+// BIT0: current connect status
+u8 g_net_sta = 0;
+
+char one_svr_cmds[RX_RINGBUF_MAX_LEN] = {0};
 
 void process_bg96(void)
 {
@@ -106,37 +108,16 @@ void process_bg96(void)
     }
 }
 
-static u8 gs_ftp_res_md5[LEN_COMMON_USE] = "";
-static MD5_CTX g_ftp_md5_ctx;
-
-void MD5Update(u8* buf, u16 len)
-{
-    GAgent_MD5Update(&g_ftp_md5_ctx, buf, len);
-}
-
 int main(void)
 {
-    u8 net_sta = 0;
-    u8 ftp_sta = 0;
-    
-    u32 ftp_offset = 0;
-    u32 ftp_len_per = 500;
-    u32 ftp_goal = 69895;
-
-    u16 hbeat_gap = DEFAULT_HBEAT_GAP;
-
-    u16 got_size = 0;
-
+    u8 test_cnt = 0;
     // unsigned long xxx = 0x1345678;
     unsigned long task_cnt = 0;
 
-    GAgent_MD5Init(&g_ftp_md5_ctx);
-
     System_Config();
-
-    GPIOB_Init();
     Configure_Tick_10ms();
     Configure_Tick2_10ms();
+    GPIOB_Init();
     Uart1_Init();
     Uart2_Init();
     Uart3_Init();
@@ -151,138 +132,40 @@ int main(void)
     // printf("Hello PIC24F Uart1... 0x%.8lX\r\n", xxx);
     printf("Hello PIC24F Uart1...\r\n");
 
-    CalcFirstMd5();
+    // calc_first_md5();
 
     InitRingBuffers();
 
     while(1)
     {
-        printf("test0X0=========\n");
+        printf("test000==========\n");
 
-        hbeat_gap = GetHeartBeatGap();
-        net_sta = GetNetStatus();
-        ftp_sta = GetFtpStatus();
-        
-        // -- TODO: cannot waste long time which will affect NFC-Read
-        // -------------------- Re-Connect ------------------ //
-        // --
+        task_cnt++;
+
         // retry initial or connection every 10s
         // if net-register failed or lost connection
-        if (0 == (task_cnt++%200)) {
-            if (0 == net_sta) {
+        if (0 == (task_cnt%200)) {
+            if (0 == g_net_sta) {
                 Configure_BG96();
             }
 
-            net_sta = GetNetStatus();
-            if ((0x80==net_sta) || (0x40==net_sta)) {// lost connection
-                // ConnectToTcpServer();
-            }
-            
-            if ((1==gs_ftp_wait) && (0==ftp_sta)) {
-                ConnectToFtpServer();
+            if ((0x80==g_net_sta) || (0x40==g_net_sta)) {// lost connection
+//                ConnectToTcpServer();
             }
         }
 
-        // -- use accuate time gap to hbeat
-        // ---------------------- H Beat -------------------- //
-        // --
-        if (0x81 == net_sta) {
-            if (0 == start_time_hbeat) {
-                start_time_hbeat = GetTimeStamp();
-            }
-
-            if (start_time_hbeat != 0) {
-                if (isDelayTimeout(start_time_hbeat,hbeat_gap*1000UL)) {
-                    start_time_hbeat = GetTimeStamp();
-//                    TcpHeartBeat();
-                }
-            }
-        } else {
-            start_time_hbeat = 0;
-        }
-
-        // --
-        // ---------------------- TASK 1 -------------------- //
-        // --
+        // if task_cnt = N*4*11, will lost one time for 11
         if (0 == (task_cnt%4)) {// every 0.2s
-        }
-
-        // --
-        // ---------------------- TASK 2 -------------------- //
-        // --
-        if (0 == (task_cnt%11)) {  // every 0.5s
-//            process_bg96();
-//            ReadMobibNFCCard();
-            
-            if ((1==gs_ftp_wait) && (0x81 == ftp_sta)) {
-                printf("before +++++++++++\n");
-                got_size = BG96FtpGetData(ftp_offset, ftp_len_per);
-                if (got_size > 0) {
-                    ftp_offset += got_size;                    
-                    printf("ftp_offset = %ld\n", ftp_offset);
-                }
-                printf("after ------------\n");
-
-                if (ftp_offset >= ftp_goal) {
-                    u8 i = 0;
-
-                    gs_ftp_wait = 0;
-                    GAgent_MD5Final(&g_ftp_md5_ctx, gs_ftp_res_md5);
-                    
-                    printf("FTP MD5 = ");
-                    for (i=0; i<16; i++) {
-                        printf("%.2X", gs_ftp_res_md5[i]);
-                    }
-                    printf("\r\n");
-
-                    printf("FTP DW Finished...\n");
-                    // TODO: SoftReset
-                }
-            }
-        }
-
-        printf("test002=========\n");
-
-        // --
-        // ---------------------- TASK 3 -------------------- //
-        if (0 == (task_cnt%21)) {  // every 1.0s
-        // --
-        }
-
-        // --
-        // ---------------------- TASK 4 -------------------- //
-        // --
-        if (0 == (task_cnt%31)) {  // every 1.5s
-//            ProcessTcpServerCommand();
-        }
-
-        // --
-        // ---------------------- TASK 5 -------------------- //
-        // --
-        if (0 == (task_cnt%41)) {  // every 2.0s
-//            ReadMobibNFCCard();
-        }
-
-        // --
-        // ---------------------- TASK 6 -------------------- //
-        // --
-        if (0 == (task_cnt%99)) {  // every 5.0s
-        }
-
-        // -- just for engineer testing
-        // ---------------------- TASK 7 -------------------- //
-        // --
-        if (0 == (task_cnt%199)) { // every 10.0s
-            printf("task active\n");
-#if 0
-            if (0x81 == net_sta) {
+        } else if (0 == (task_cnt%11)) {  // every 0.5s
+            process_bg96();
+        } else if (0 == (task_cnt%21)) {  // every 1.0s
+            if (0x81 == g_net_sta) {
                 // Auto Dev Send Test
                 if (0 ==  test_cnt) {
                     TcpHeartBeat();
                 } else if (1 ==  test_cnt) {
                     TcpExitCarriageSleep();
                 } else if (2 ==  test_cnt) {
-                    DoQueryGPSFast();
                     TcpReportGPS();
                 } else if (3 ==  test_cnt) {
                     TcpInvalidMovingAlarm();
@@ -293,7 +176,7 @@ int main(void)
                 } else if (6 ==  test_cnt) {
                     TcpFinishAddNFCCard();
                 } else if (7 ==  test_cnt) {
-                    TcpReadedOneCard(NULL, NULL);
+//                    TcpReadedOneCard();
                 } else if (8 ==  test_cnt) {
                     TcpLockerLocked();
                 } else if (9 ==  test_cnt) {
@@ -303,36 +186,31 @@ int main(void)
                 } else if (11 ==  test_cnt) {
                     TcpFinishFactoryReset();
                 }
-            }
 
-            test_cnt++;
-            if (test_cnt > 12) {
-                test_cnt = 0;
+                test_cnt++;
+                if (test_cnt > 12) {
+                    test_cnt = 0;
+                }
             }
-#endif
+        } else if (0 == (task_cnt%31)) {  // every 1.5s
+            ProcessTcpServerCommand();
+        } else if (0 == (task_cnt%41)) {  // every 2.0s
+            // read_iso14443B_nfc_card();
+        } else if (0 == (task_cnt%99)) {  // every 5.0s
+        } else if (0 == (task_cnt%199)) { // every 10.0s
         }
 
         if (10000 == task_cnt) {
             task_cnt = 0;
         }
 
-        printf("test003=========\n");
-
-        if (0x81 == net_sta) {
-            if ((task_cnt%16) < 8) {
-                GPIOB_SetPin(task_cnt%4, 1);
-            } else {
-                GPIOB_SetPin(task_cnt%4, 0);
-            }
+        printf("test001==========\n");
+        if ((task_cnt%16) < 8) {
+            GPIOB_SetPin(task_cnt%8, 1);
         } else {
-            if ((task_cnt%16) < 8) {
-                GPIOB_SetPin(task_cnt%2+1, 1);
-            } else {
-                GPIOB_SetPin(task_cnt%2+1, 0);
-            }
+            GPIOB_SetPin(task_cnt%8, 0);
         }
 
-        printf("test004=========\n");
         delay_ms(50);
     }
 }

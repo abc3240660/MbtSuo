@@ -26,13 +26,10 @@
 #include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
 #include "013_Protocol.h"
-#include "014_md5.h"
 
 // static u8 is_mode_nb = 0;
 static unsigned long start_time_hbeat = 0;
 static char one_svr_cmds[RX_RINGBUF_MAX_LEN] = {0};
-
-static u8 gs_ftp_wait = 1;
 
 void process_bg96(void)
 {
@@ -106,31 +103,19 @@ void process_bg96(void)
     }
 }
 
-static u8 gs_ftp_res_md5[LEN_COMMON_USE] = "";
-static MD5_CTX g_ftp_md5_ctx;
-
-void MD5Update(u8* buf, u16 len)
-{
-    GAgent_MD5Update(&g_ftp_md5_ctx, buf, len);
-}
-
 int main(void)
 {
     u8 net_sta = 0;
     u8 ftp_sta = 0;
     
     u32 ftp_offset = 0;
-    u32 ftp_len_per = 500;
+    u32 ftp_len_per = 900;
     u32 ftp_goal = 69895;
 
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
 
-    u16 got_size = 0;
-
     // unsigned long xxx = 0x1345678;
     unsigned long task_cnt = 0;
-
-    GAgent_MD5Init(&g_ftp_md5_ctx);
 
     System_Config();
 
@@ -140,8 +125,8 @@ int main(void)
     Uart1_Init();
     Uart2_Init();
     Uart3_Init();
-//    LB1938_Init();
-//    SPI2_Init();
+    LB1938_Init();
+    SPI2_Init();
 
     // BNO055 Testing
     // Configure_BNO055();
@@ -170,7 +155,7 @@ int main(void)
         // if net-register failed or lost connection
         if (0 == (task_cnt++%200)) {
             if (0 == net_sta) {
-                Configure_BG96();
+                // Configure_BG96();
             }
 
             net_sta = GetNetStatus();
@@ -178,8 +163,8 @@ int main(void)
                 // ConnectToTcpServer();
             }
             
-            if ((1==gs_ftp_wait) && (0==ftp_sta)) {
-                ConnectToFtpServer();
+            if (0 == ftp_sta) {
+//                ConnectToFtpServer();
             }
         }
 
@@ -214,30 +199,19 @@ int main(void)
 //            process_bg96();
 //            ReadMobibNFCCard();
             
-            if ((1==gs_ftp_wait) && (0x81 == ftp_sta)) {
+            if (0x81 == ftp_sta) {
                 printf("before +++++++++++\n");
-                got_size = BG96FtpGetData(ftp_offset, ftp_len_per);
-                if (got_size > 0) {
-                    ftp_offset += got_size;                    
+                if (BG96FtpGetData(ftp_offset, ftp_len_per)) {
+                    ftp_offset += ftp_len_per;
+                    
                     printf("ftp_offset = %ld\n", ftp_offset);
                 }
                 printf("after ------------\n");
-
-                if (ftp_offset >= ftp_goal) {
-                    u8 i = 0;
-
-                    gs_ftp_wait = 0;
-                    GAgent_MD5Final(&g_ftp_md5_ctx, gs_ftp_res_md5);
-                    
-                    printf("FTP MD5 = ");
-                    for (i=0; i<16; i++) {
-                        printf("%.2X", gs_ftp_res_md5[i]);
-                    }
-                    printf("\r\n");
-
-                    printf("FTP DW Finished...\n");
-                    // TODO: SoftReset
-                }
+            }
+            
+            if (ftp_offset >= ftp_goal) {
+                ftp_sta = 0x80;
+                // TODO: SoftReset
             }
         }
 
