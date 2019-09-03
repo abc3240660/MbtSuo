@@ -264,7 +264,7 @@ bool SetDevCommandEcho(bool echo)
     } else {
         cmd = "E0";
     }
-    if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
+    if (SUCCESS_RESPONSE == SendAndSearch(cmd, RESPONSE_OK, 2)) {
         return true;
     }
     return false;
@@ -272,7 +272,7 @@ bool SetDevCommandEcho(bool echo)
 
 bool GetDevInformation(char *inf)
 {
-    if (SendAndSearch(DEV_INFORMATION, RESPONSE_OK, 2)) {
+    if (SUCCESS_RESPONSE == SendAndSearch(DEV_INFORMATION, RESPONSE_OK, 2)) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
         strcpy(inf, rxBuffer);
@@ -283,7 +283,7 @@ bool GetDevInformation(char *inf)
 
 bool GetDevVersion(char *ver)
 {
-    if (SendAndSearch(DEV_VERSION, RESPONSE_OK, 2)) {
+    if (SUCCESS_RESPONSE == SendAndSearch(DEV_VERSION, RESPONSE_OK, 2)) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
         strcpy(ver, rxBuffer);
@@ -294,7 +294,7 @@ bool GetDevVersion(char *ver)
 
 bool GetDevIMEI(char *imei)
 {
-    if (SendAndSearch(DEV_IMEI, RESPONSE_OK, 2)) {
+    if (SUCCESS_RESPONSE == SendAndSearch(DEV_IMEI, RESPONSE_OK, 2)) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
         memset(imei, 0, LEN_COMMON_USE);
@@ -362,7 +362,7 @@ bool DevLocalRate(unsigned long *rate, Cmd_Status_t status)
 
 bool GetDevSimIMSI(char *imsi)
 {
-    if (SendAndSearch(DEV_SIM_IMSI, RESPONSE_OK, 2)) {
+    if (SUCCESS_RESPONSE == SendAndSearch(DEV_SIM_IMSI, RESPONSE_OK, 2)) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
         strcpy(imsi, rxBuffer);
@@ -395,7 +395,7 @@ bool DevSimPIN(char *pin, Cmd_Status_t status)
 
 bool GetDevSimICCID(char *iccid)
 {
-    if (SendAndSearch(DEV_SIM_ICCID, RESPONSE_OK, 2)) {
+    if (SUCCESS_RESPONSE == SendAndSearch(DEV_SIM_ICCID, RESPONSE_OK, 2)) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
         char *sta_buf = SearchStrBuffer(": ");
@@ -463,7 +463,7 @@ bool GetCurrentTimeZone(char *timezone)
     strcpy(cmd, DEV_TIME_ZONE);
     strcat(cmd, "?");
 
-    if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
+    if (SUCCESS_RESPONSE == SendAndSearch(cmd, RESPONSE_OK, 2)) {
         u8 i = 0;
         u8 j = 0;
         u8 k = 0;
@@ -1276,12 +1276,16 @@ Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const char *e_t
 {
     unsigned long start_time = GetTimeStamp();
     unsigned int recv_len = 0;
+    unsigned int temp_len = 0;
 
     errorCode = -1;
     CleanBuffer();
     while (!isDelayTimeout(start_time,timeout*1000UL)) {
         if (IsRingBufferAvailable()) {
-            recv_len += ReadResponseByteToBuffer();
+            temp_len = ReadResponseByteToBuffer();
+//            printf("temp_len = %d\n", temp_len);
+            recv_len += temp_len;
+//            printf("recv_len = %d\n", recv_len);
             if (SearchStrBuffer(test_str)) {
                 printf("\nSuccess Response\n");
                 return SUCCESS_RESPONSE;
@@ -1332,6 +1336,8 @@ Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const char *e_t
             }
         }
     }
+    
+    printf("recv_len = %d\n", recv_len);
     if (recv_len > 0){
         printf("\nFail Response P2\n");
         return FAIL_RESPONSE;
@@ -2402,7 +2408,7 @@ bool QueryNetStatus(void)
 {
     const char *cmd = "+CGATT?";
 
-    if (SendAndSearch(cmd, "+CGATT: 1", 2)) {
+    if (SUCCESS_RESPONSE == SendAndSearch(cmd, "+CGATT: 1", 2)) {
 //        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
 
         return true;
@@ -2429,6 +2435,7 @@ bool BG96ATInitialize(void)
 
     SwithToGSM();
 
+    trycnt = 10;
     while(trycnt--) {
         if (true == QueryNetStatus()) {
             break;
@@ -2440,10 +2447,40 @@ bool BG96ATInitialize(void)
     }
 
     gs_net_sta = 0x40;
-    GetDevIMEI((char *)g_imei_str);
-    GetDevSimICCID((char *)g_iccid_str);
-    GetCurrentTimeZone((char *)g_devtime_str);
-    
+
+    trycnt = 10;
+    while(trycnt--) {
+        if (true == GetDevIMEI((char *)g_imei_str)) {
+            break;
+        }
+    }
+
+    if (trycnt < 1) {
+        return false;
+    }
+
+    trycnt = 10;
+    while(trycnt--) {
+        if (true == GetDevSimICCID((char *)g_iccid_str)) {
+            break;
+        }
+    }
+
+    if (trycnt < 1) {
+        return false;
+    }
+
+    trycnt = 10;
+    while(trycnt--) {
+        if (true == GetCurrentTimeZone((char *)g_devtime_str)) {
+            break;
+        }
+    }
+
+    if (trycnt < 1) {
+        return false;
+    }
+
     TurnOffGNSS();
     TurnOnGNSS(STAND_ALONE, WRITE_MODE);
 
@@ -2564,7 +2601,8 @@ bool OpenFtpSession(unsigned int pdp_index)
     strcpy(cmd, FTP_OPEN_SESSION);
     sprintf(buf, "=\"%s\",%s", gs_ftp_ip, gs_ftp_port);    
     strcat(cmd, buf);
-    if(!SendAndSearch_multi(cmd, "+QFTPOPEN: 0,0", RESPONSE_ERROR, 150)){
+    if(SendAndSearch_multi(cmd, "+QFTPOPEN: 0,0", RESPONSE_ERROR, 30) != SUCCESS_RESPONSE){
+        printf("FTPOPEN failed...\n");
         return false;
     }
 
@@ -2576,7 +2614,6 @@ bool ConnectToFtpServer(void)
     u8 trycnt = 10;
     unsigned int comm_pdp_index = 1;  // The range is 1 ~ 16
 
-    SetDevCommandEcho(false);
     CloseFtpService();
 
     while(trycnt--) {
@@ -2604,10 +2641,16 @@ bool ConnectToFtpServer(void)
     return true;
 }
 
-bool BG96FtpGetData(u32 offset, u32 length)
+extern void MD5Update(u8* buf, u16 len);
+u16 BG96FtpGetData(u32 offset, u32 length)
 {
+    u16 i = 0;
     char cmd[64];
     char buf[32];
+    char size_str[8]= "";
+
+    u16 size_pos = 0;
+    u16 size_got = 0;
     unsigned int recv_len = 0;
 
     gs_ftp_test = 1;
@@ -2616,23 +2659,44 @@ bool BG96FtpGetData(u32 offset, u32 length)
     sprintf(buf, "=\"test.mp3\",\"COM:\",%ld,%ld", offset, length);
     strcat(cmd, buf);
     
-    if(!SendAndSearch_multi(cmd, "+QFTPGET: 0", RESPONSE_ERROR, 15)){
-        return false;
+    if(!SendAndSearch_multi(cmd, "CONNECT\r\n", RESPONSE_ERROR, 30)){
+
+        printf("---------errorCode = %d\n", errorCode);
+        if (625 == errorCode) {
+            gs_ftp_sta = 0;
+        }
+
+        return 0;
+    }
+
+    ReadResponseToBuffer(2);
+
+    printf("FTPGET Recv %d Bytes: %.2X%.2X%.2X\n", bufferHead, rxBuffer[0], rxBuffer[1], rxBuffer[2]);
+    
+    for (i=0; i<bufferHead; i++) {
+        if (('F'==rxBuffer[i+0]) && ('T'==rxBuffer[i+1]) && ('P'==rxBuffer[i+2]) &&
+            ('G'==rxBuffer[i+3]) && (':'==rxBuffer[i+6]) && ('0'==rxBuffer[i+8])) {
+            size_pos = i+10;
+            printf("FTP DW size=%s\n", rxBuffer+size_pos);
+        }
+        
+        if (size_pos != 0) {
+            if (('\r'==rxBuffer[i+0]) && ('\n'==rxBuffer[i+1])) {
+                break;
+            }
+            size_str[i-size_pos] = rxBuffer[i];
+        }
     }
     
-    while (IsRingBufferAvailable()) {
-        recv_len += ReadResponseByteToBuffer();
+    if (size_pos != 0) {
+        size_got = atoi(size_str);
+        
+        MD5Update(rxBuffer, size_got);
     }
+    
+    printf("FTP Got Firm size: %d Bytes\n", size_got);
 
-    char *sta_buf = SearchStrBuffer("CONNECT\r\n");
-    char *end_buf = SearchStrBuffer("\r\nOK\r\n\r\n+QFTPGET: 0");
-
-    if ((sta_buf!=NULL) && (end_buf!=NULL)) {
-        printf("FTPGET size = %s\n", strchr(end_buf,',')+1);
-//        printf("FTP DW size = %d\n", (end_buf-sta_buf-strlen("CONNECT\r\n")));
-    }
-
-    return true;
+    return size_got;
 }
 
 int HttpClientDemo(void)
