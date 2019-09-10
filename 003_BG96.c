@@ -19,6 +19,8 @@
 #include "007_Uart.h"
 #include "008_RingBuffer.h"
 #include "013_Protocol.h"
+#include "016_FlashOta.h"
+#include "017_InnerFlash.h"
 
 static int errorCode = -1;
 static unsigned int bufferHead = 0;
@@ -60,8 +62,11 @@ u8 g_svr_ip[LEN_NET_TCP]  = "122.4.233.119";
 u8 g_svr_port[LEN_NET_TCP] = "10211";
 u8 g_svr_apn[LEN_NET_TCP] = "CMNET";
 
-static u8 gs_ftp_ip[LEN_NET_TCP]  = "122.4.233.119";
-static u8 gs_ftp_port[LEN_NET_TCP] = "10218";
+//static u8 gs_ftp_ip[LEN_NET_TCP]  = "122.4.233.119";
+//static u8 gs_ftp_port[LEN_NET_TCP] = "10218";
+
+static u8 gs_ftp_ip[LEN_NET_TCP]  = "101.132.150.94";
+static u8 gs_ftp_port[LEN_NET_TCP] = "21";
 
 //******************************************************************************
 // Configure BG96
@@ -2570,7 +2575,8 @@ bool OpenFtpSession(unsigned int pdp_index)
 
     memset(cmd, '\0', 64);
     strcpy(cmd, FTP_CONFIG_PARAMETER);
-    strcat(cmd, "=\"account\",\"lide\",\"Lide2019!@#\"");    
+    // strcat(cmd, "=\"account\",\"lide\",\"Lide2019!@#\"");    
+    strcat(cmd, "=\"account\",\"Administrator\",\"AInijia88443628._\"");
     if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
         return false;
     }
@@ -2584,7 +2590,8 @@ bool OpenFtpSession(unsigned int pdp_index)
 
     memset(cmd, '\0', 64);
     strcpy(cmd, FTP_CONFIG_PARAMETER);
-    strcat(cmd, "=\"transmode\",1");
+    // strcat(cmd, "=\"transmode\",1");
+    strcat(cmd, "=\"transmode\",0");
     if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
         return false;
     }
@@ -2651,12 +2658,15 @@ u16 BG96FtpGetData(u32 offset, u32 length)
 
     u16 size_pos = 0;
     u16 size_got = 0;
-    unsigned int recv_len = 0;
+//    unsigned int recv_len = 0;
+
+    static u32 sum_got = 0;
 
     gs_ftp_test = 1;
 
     strcpy(cmd, FTP_DOWNLOAD_DAT);
-    sprintf(buf, "=\"test.mp3\",\"COM:\",%ld,%ld", offset, length);
+    // sprintf(buf, "=\"test.mp3\",\"COM:\",%ld,%ld", offset, length);
+    sprintf(buf, "=\"Mbtsuo_0908.bin\",\"COM:\",%ld,%ld", offset, length);
     strcat(cmd, buf);
     
     if(!SendAndSearch_multi(cmd, "CONNECT\r\n", RESPONSE_ERROR, 30)){
@@ -2673,6 +2683,7 @@ u16 BG96FtpGetData(u32 offset, u32 length)
 
     printf("FTPGET Recv %d Bytes: %.2X%.2X%.2X\n", bufferHead, rxBuffer[0], rxBuffer[1], rxBuffer[2]);
     
+    memset(size_str, 0, 8);
     for (i=0; i<bufferHead; i++) {
         if (('F'==rxBuffer[i+0]) && ('T'==rxBuffer[i+1]) && ('P'==rxBuffer[i+2]) &&
             ('G'==rxBuffer[i+3]) && (':'==rxBuffer[i+6]) && ('0'==rxBuffer[i+8])) {
@@ -2680,7 +2691,7 @@ u16 BG96FtpGetData(u32 offset, u32 length)
             printf("FTP DW size=%s\n", rxBuffer+size_pos);
         }
         
-        if (size_pos != 0) {
+        if ((size_pos!=0) && (i>=size_pos)) {
             if (('\r'==rxBuffer[i+0]) && ('\n'==rxBuffer[i+1])) {
                 break;
             }
@@ -2689,9 +2700,34 @@ u16 BG96FtpGetData(u32 offset, u32 length)
     }
     
     if (size_pos != 0) {
+        OneInstruction_t dat[1024];
+
         size_got = atoi(size_str);
+        sum_got += size_got;
         
-        MD5Update(rxBuffer, size_got);
+        MD5Update((u8*)rxBuffer, size_got);
+        
+        //for (i=0; i<size_got/4; i++) {
+        //    printf("=%.2X-%.2X-%.2X-%.2X\n", (u8)rxBuffer[4*i], (u8)rxBuffer[4*i+1], (u8)rxBuffer[4*i+2], (u8)rxBuffer[4*i+3]);
+        //}
+        
+        for(i=0;i<(size_got/4);i++)
+        {
+            if ((i*4+2) >= size_got) {
+                break;
+            }
+            dat[i].HighLowUINT16s.HighWord = (u8)rxBuffer[i*4+2];
+            if ((i*4+1) >= size_got) {
+                break;
+            }
+            dat[i].HighLowUINT16s.LowWord = (u8)rxBuffer[i*4+1] << 8;
+            if ((i*4+0) >= size_got) {
+                break;
+            }
+            dat[i].HighLowUINT16s.LowWord += (u8)rxBuffer[i*4+0];
+        }
+        
+        DataRecord_WriteDataArray(1,0x100*((sum_got+511)/512-1),0,dat,128);
     }
     
     printf("FTP Got Firm size: %d Bytes\n", size_got);

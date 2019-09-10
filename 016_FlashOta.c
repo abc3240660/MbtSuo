@@ -1,13 +1,12 @@
 #include <string.h>
 #include <p24fxxxx.h>
+#include "001_Tick_10ms.h"
 #include "016_FlashOta.h"
 
 // NOTE: all address in this file = Actual Flash Address in datasheet
 //                                = InstructionWords Address Gap
 //                                = InstructionWords's Number * 2
 //                                = Every 2B Adress Gap can store 3B data
-
-static OneInstruction_t pageData[1024];// One Page = 1024 InstructionWord
 
 // len = number of InstructionWord to be read
 u16 DataRecord_ReadData(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR, u16 len, u8 *pdata)
@@ -38,24 +37,17 @@ void DataRecord_ErasePage(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR
     InnerFlash_EraseFlashPage(flashAddr);
 }
 
+// Each Line = 128 * InstructionWords
+// Line Base Address: DATA_RECORD_START_PAGE = LargePage's HighAddr, DATA_RECORD_START_ADDR = SmallPage's LowAddr
 // Firstly read out the whole page, then modify one InstructionWord in the pointed offset
 u16 DataRecord_WriteData(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR, u16 index, volatile OneInstruction_t data)
 {  
     u16 i = 0;
     FlashAddr_t flashAddr;
-
-    flashAddr.Uint16Addr.HighAddr = DATA_RECORD_START_PAGE;
-    // flashAddr.Uint16Addr.LowAddr = DATA_RECORD_START_ADDR+index*2;
-
-#if 0
-    OneInstruction_t dataTmp = InnerFlash_ReadOneInstruction(flashAddr);
-    if(dataTmp.UINT32==data.UINT32)
-        return 0xffff;
-#endif
-
-    // OneInstruction_t pageData[1024];
+    OneInstruction_t pageData[1024];
     
     memset(pageData, 0, sizeof(OneInstruction_t)*1024);
+    flashAddr.Uint16Addr.HighAddr = DATA_RECORD_START_PAGE;    
 
     for(i=0;i<1024;i++)
     {
@@ -65,6 +57,8 @@ u16 DataRecord_WriteData(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR,
 
     flashAddr.Uint16Addr.LowAddr = DATA_RECORD_START_ADDR;
     InnerFlash_EraseFlashPage(flashAddr);
+    
+    delay_ms(200);
 
     pageData[index] = data;
 
@@ -73,37 +67,65 @@ u16 DataRecord_WriteData(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR,
     return 0;
 }
 
-// Firstly read out the whole page, then modify from the pointed offset
-// DATA_RECORD_START_PAGE = Page's HighAddr, DATA_RECORD_START_ADDR = Page's LowAddr
-// index = InstructionWord's offset during One Page
-u16 DataRecord_WriteDataArray(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR, u16 index, volatile OneInstruction_t *data, u16 length)
+// length = Byte's count
+// DATA_RECORD_START_PAGE = LargePage's HighAddr, DATA_RECORD_START_ADDR = SmallPage's LowAddr
+u16 DataRecord_WriteBytesArray(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR, u16 index, u8 *data, u16 length)
 {
     u16 i = 0;
-    // u16 cmpNZ = 0;
     FlashAddr_t flashAddr;
-    // OneInstruction_t pageData[1024];// One Page = 1024 InstructionWord
+    OneInstruction_t pageData[1024];// One Page = 1024 InstructionWord
+    
+    if (DATA_RECORD_START_ADDR%0x100 != 0) {
+        DATA_RECORD_START_ADDR = (DATA_RECORD_START_ADDR/0x100)*0x100;
+    }
 
     memset(pageData, 0, sizeof(OneInstruction_t)*1024);
-
     flashAddr.Uint16Addr.HighAddr = DATA_RECORD_START_PAGE;
-    // flashAddr.Uint16Addr.LowAddr = DATA_RECORD_START_ADDR+index*2;
 
-    // To judge if the Flash data == to be written data
-#if 0
-    for(i=index;i<length;i++)
+    // Read out the whole One Page
+    for(i=0;i<1024;i++)// One Page = 1024 InstructionWord
     {
         flashAddr.Uint16Addr.LowAddr = DATA_RECORD_START_ADDR+i*2;
         pageData[i] = InnerFlash_ReadOneInstruction(flashAddr);
-        if(pageData[i].UINT32!=data[i-index].UINT32)
-        {
-            cmpNZ = 1;
+    }
+ 
+    flashAddr.Uint16Addr.LowAddr = DATA_RECORD_START_ADDR;
+    InnerFlash_EraseFlashPage(flashAddr);
+    
+    delay_ms(200);
+    
+    // Modify from the pointed offset
+    // index maybe >= 1024, so need to ensure that not overflow pageData's size
+    for(i=index;i<(length+2)/3;i++)
+    {
+        pageData[i].HighLowUINT16s.HighWord = data[i*3];
+        if ((i*3+1) >= length) {
             break;
         }
+        pageData[i].HighLowUINT16s.LowWord = data[i*3+1] << 8;
+        if ((i*3+2) >= length) {
+            break;
+        }
+        pageData[i].HighLowUINT16s.LowWord += data[i*3+2];
     }
 
-    if(cmpNZ==0)
-        return 0xffff;
-#endif
+    InnerFlash_WriteInstructionsToFlash(flashAddr,pageData,1024);
+
+    return 0;
+}
+
+// Firstly read out the whole page, then modify from the pointed offset
+// DATA_RECORD_START_PAGE = LargePage's HighAddr, DATA_RECORD_START_ADDR = SmallPage's LowAddr
+// index = InstructionWord's offset during One Page
+// length = InstructionWord's count
+u16 DataRecord_WriteDataArray(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR, u16 index, volatile OneInstruction_t *data, u16 length)
+{
+    u16 i = 0;
+    FlashAddr_t flashAddr;
+    OneInstruction_t pageData[1024];// One Page = 1024 InstructionWord
+
+    memset(pageData, 0, sizeof(OneInstruction_t)*1024);
+    flashAddr.Uint16Addr.HighAddr = DATA_RECORD_START_PAGE;
 
     // Read out the whole One Page
     for(i=0;i<1024;i++)// One Page = 1024 InstructionWord
@@ -118,6 +140,7 @@ u16 DataRecord_WriteDataArray(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_
     // index maybe >= 1024, so need to ensure that not overflow pageData's size
     for(i=index;i<length;i++)
     {
+        //printf("XDAT = %.4X,%.4X\n", data[i].HighLowUINT16s.HighWord, data[i].HighLowUINT16s.LowWord);
         pageData[index-(index/1024)*1024+i].UINT32 = data[i].UINT32;
     }
 
@@ -139,6 +162,34 @@ void EraseLargePage(u16 pageIndex, u32 offsetaddr)
         InnerFlash_EraseFlashPage(flashAddr);
         if(offset>=0xF800)
             break;
+    }
+}
+
+void EraseSomePage(u16 highAddr, u16 lowAddr, u16 pageNum)
+{
+    u16 i = 0;
+    FlashAddr_t flashAddr;
+
+    if (lowAddr%0x800 != 0) {
+        lowAddr = (lowAddr/0x800)*0x800;
+    }
+    
+    if (lowAddr >= 0xF800) {
+        lowAddr = 0xF800;
+    }
+    
+    flashAddr.Uint16Addr.HighAddr = highAddr;
+
+    for (i=0; i<pageNum; i++) {
+        flashAddr.Uint16Addr.LowAddr = lowAddr;
+        InnerFlash_EraseFlashPage(flashAddr);
+        
+        if (lowAddr >= 0xF800) {
+            lowAddr = 0;
+            flashAddr.Uint16Addr.HighAddr++;
+        } else {
+            lowAddr += 0x800;
+        }
     }
 }
 

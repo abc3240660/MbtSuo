@@ -153,6 +153,20 @@ int Uart1_Putc(char ch)
     return ch;
 }
 
+u8 SCISendDataOnISR(u8 *sendbuf,u16 size)
+{
+//    uint8_t timerCount = 0;    
+  	
+		while(size--)
+		{     
+            Uart1_Putc(*sendbuf);
+ 
+			sendbuf++;
+		} 	
+ 	
+    return (1) ;  
+}
+
 int Uart2_Putc(char ch)
 {
     U2TXREG = ch;

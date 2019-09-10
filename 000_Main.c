@@ -27,12 +27,16 @@
 #include "012_CLRC663_NFC.h"
 #include "013_Protocol.h"
 #include "014_md5.h"
+#include "016_FlashOta.h"
+#include "017_InnerFlash.h"
 
 // static u8 is_mode_nb = 0;
 static unsigned long start_time_hbeat = 0;
 static char one_svr_cmds[RX_RINGBUF_MAX_LEN] = {0};
 
 static u8 gs_ftp_wait = 1;
+static u8 gs_ftp_res_md5[LEN_COMMON_USE] = "";
+static MD5_CTX g_ftp_md5_ctx;
 
 void process_bg96(void)
 {
@@ -106,34 +110,34 @@ void process_bg96(void)
     }
 }
 
-static u8 gs_ftp_res_md5[LEN_COMMON_USE] = "";
-static MD5_CTX g_ftp_md5_ctx;
-
 void MD5Update(u8* buf, u16 len)
 {
     GAgent_MD5Update(&g_ftp_md5_ctx, buf, len);
 }
 
-int main(void)
+int main()
 {
+    u16 i = 0;
     u8 net_sta = 0;
     u8 ftp_sta = 0;
+    u32 test_cnt = 0;
     
     u32 ftp_offset = 0;
-    u32 ftp_len_per = 500;
-    u32 ftp_goal = 69895;
+    u32 ftp_len_per = 512;
+    u32 ftp_goal = 121348;
 
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
 
     u16 got_size = 0;
 
-    // unsigned long xxx = 0x1345678;
     unsigned long task_cnt = 0;
 
-    GAgent_MD5Init(&g_ftp_md5_ctx);
+    unsigned char sTestBuf20000[1024]={0};
+    OneInstruction_t dat[1024];
+
+	GAgent_MD5Init(&g_ftp_md5_ctx);
 
     System_Config();
-
     GPIOB_Init();
     Configure_Tick_10ms();
     Configure_Tick2_10ms();
@@ -155,9 +159,48 @@ int main(void)
 
     InitRingBuffers();
 
+    printf("9876543--\n");
+
+//    EraseLargePage(2);
+    EraseLargePage(3, 0);
+    EraseLargePage(4, 0);
+    EraseLargePage(5, 0);
+
+    printf("8765432--\n");
+
+    delay_ms(3000);
+
+    while(0)
+    {
+        if (100 == test_cnt++) {
+            // DataRecord_WriteBytesArray(1, 0x100, u16 index, u8 *data, u16 length)
+        }
+
+        if (100 == test_cnt++) {
+            DataRecord_ReadData(2,0,1024/4,sTestBuf20000);
+
+            for(i=0;i<256;i++)
+            {
+                //dat[i].HighLowUINT16s.HighWord=i+i*256;
+                //dat[i].HighLowUINT16s.LowWord=i+i*256;
+                dat[i].HighLowUINT16s.HighWord=sTestBuf20000[4*i+2]+(sTestBuf20000[4*i+3])*256;
+                dat[i].HighLowUINT16s.LowWord=sTestBuf20000[4*i+0]+(sTestBuf20000[4*i+1])*256;
+            }            
+            DataRecord_WriteDataArray(3,0,0,dat,1024/4);
+            printf("8880888--\n");
+            DataRecord_WriteDataArray(1,0x7800,0,dat,1024/4);
+        }
+        
+        if (0 == test_cnt%10) {
+            printf("7654321--\n");
+        }
+        
+        delay_ms(100);
+    }
+
     while(1)
     {
-        printf("test0X0=========\n");
+        //printf("test0X0=========\n");
 
         hbeat_gap = GetHeartBeatGap();
         net_sta = GetNetStatus();
@@ -241,7 +284,7 @@ int main(void)
             }
         }
 
-        printf("test002=========\n");
+        //printf("test002=========\n");
 
         // --
         // ---------------------- TASK 3 -------------------- //
@@ -316,7 +359,7 @@ int main(void)
             task_cnt = 0;
         }
 
-        printf("test003=========\n");
+        //printf("test003=========\n");
 
         if (0x81 == net_sta) {
             if ((task_cnt%16) < 8) {
@@ -335,4 +378,6 @@ int main(void)
         printf("test004=========\n");
         delay_ms(50);
     }
+
+    return 0;
 }

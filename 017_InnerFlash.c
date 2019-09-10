@@ -72,14 +72,14 @@ void InnerFlash_WriteInstructionsToFlash(volatile FlashAddr_t flashAddr, volatil
     volatile OneInstruction_t dataTmp[2];
     volatile uint16_t i;
 
-    _GIE = 0;// Disable all Interrupt
-
     for(i=0;i<dataLength/2*2;i+=2)
     {
         dataTmp[0]= data[i];
         dataTmp[1] = data[i+1];
 
+        _GIE = 0;// Disable all Interrupt
         MemWriteDoubleInstructionWords(flashAddr.Uint16Addr.HighAddr, flashAddr.Uint16Addr.LowAddr+i*2, dataTmp);
+        _GIE = 1;// Re-Enable all Interrupt
     }
 
     if(dataLength%2==1)
@@ -87,8 +87,8 @@ void InnerFlash_WriteInstructionsToFlash(volatile FlashAddr_t flashAddr, volatil
         dataTmp[0]= data[i];
         dataTmp[1].UINT32 = 0xFFFFFF;
 
+        _GIE = 0;// Disable all Interrupt
         MemWriteDoubleInstructionWords(flashAddr.Uint16Addr.HighAddr, flashAddr.Uint16Addr.LowAddr+i*2, dataTmp);
+        _GIE = 1;// Re-Enable all Interrupt
     }
-    
-    _GIE = 1;// Re-Enable all Interrupt
 }

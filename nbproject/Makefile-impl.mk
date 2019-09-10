@@ -24,7 +24,7 @@ CLEAN_SUBPROJECTS=${CLEAN_SUBPROJECTS_${SUBPROJECTS}}
 
 
 # Project Name
-PROJECTNAME=MbtSuo-master
+PROJECTNAME=Mbtsuo
 
 # Active Configuration
 DEFAULTCONF=default

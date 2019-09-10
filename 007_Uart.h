@@ -23,9 +23,7 @@ extern "C" {
 
 #define UART2_BUFFER_MAX_LEN 512
 
-#define UART2_RX_BUFFER_MAX_LEN 1024
-
-#define RX_RINGBUF_MAX_LEN 2048
+#define RX_RINGBUF_MAX_LEN 1280
 
 uint8_t Uart3_Read(uint16_t postion);
 uint16_t Uart3_GetSize(void);
@@ -33,6 +31,8 @@ uint16_t Uart3_GetSize(void);
 // for debug
 void Uart1_Init(void);
 void Uart2_Init(void);
+
+u8 SCISendDataOnISR(u8 *sendbuf,u16 size);
 
 // for BG96
 int Uart2_Putc(char ch);
