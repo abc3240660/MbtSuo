@@ -28,14 +28,14 @@ u16 DataRecord_ReadData(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR, 
     return 0;
 }
 
-#define FLASH_BASE_CARD_ID  0x800
+#define FLASH_BASE_CARD_ID  0x1000
 #define FLASH_SIZE_CARD_ID  0x800
 
 #define CNTR_MAX_CARD_ID    64
-#define NUM_INWORD_PER_CARD 8
+#define NUM_INWORD_PER_CARD 4
 
 // Each CardID = 19B Data = give 8 * InstructionWords = 24B Data
-// Most 64*8 = 512 * InstructionWords = 1024B Address GAP = store MAX 1536B(actual 64*19=1216B)
+// Most 64*4 = 256 * InstructionWords = 512B Address GAP = store MAX 768B(actual 64*(19+1)/2=640B)
 u16 DataRecord_ReadCards(u8 *pdata)
 {
     int i = 0;
@@ -47,19 +47,26 @@ u16 DataRecord_ReadCards(u8 *pdata)
 
     for (i=0; i<CNTR_MAX_CARD_ID; i++) {
         for (j=0; j<NUM_INWORD_PER_CARD; j++) {
-            flashAddr.Uint16Addr.HighAddr = 0;
-            flashAddr.Uint16Addr.LowAddr = FLASH_BASE_CARD_ID+i*2;
-
-            tmpdata = InnerFlash_ReadInstructionLow(flashAddr);
-            data[3*j+0] = tmpdata;
-            data[3*j+1] = tmpdata >> 8;
+            flashAddr.Uint16Addr.HighAddr = 1;
+            flashAddr.Uint16Addr.LowAddr = FLASH_BASE_CARD_ID+i*NUM_INWORD_PER_CARD*2+j*2;
 
             tmpdata = InnerFlash_ReadInstructionHigh(flashAddr);
+            data[3*j+0] = tmpdata;
+
+            tmpdata = InnerFlash_ReadInstructionLow(flashAddr);
+            data[3*j+1] = tmpdata >> 8;
             data[3*j+2] = tmpdata;
         }
-
+        
         if ((data[0]!=0x00) && (data[0]!=0xFF)) {
-            memcpy(pdata+k*NUM_INWORD_PER_CARD*3, data, NUM_INWORD_PER_CARD*3);
+            printf("Found CARD ID:");
+            for (j=0; j<NUM_INWORD_PER_CARD; j++) {
+                printf("%.2X%.2X%.2X-", data[3*j+0], data[3*j+1], data[3*j+2]);
+            }
+            printf("\n");
+            if (pdata != NULL) {
+                memcpy(pdata+k*NUM_INWORD_PER_CARD*3, data, NUM_INWORD_PER_CARD*3);
+            }
             k++;
         }
     }
@@ -151,6 +158,95 @@ u16 DataRecord_WriteBytesArray(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START
     InnerFlash_WriteInstructionsToFlash(flashAddr,pageData,1024);
 
     return 0;
+}
+
+u16 DataRecord_WriteCards(u8 *data, u16 length)
+{
+    u16 i = 0;
+    u16 j = 0;
+    u16 k = 0;
+    FlashAddr_t flashAddr;
+    OneInstruction_t pageData[1024];// One Page = 1024 InstructionWord
+    u8 tmpdata[NUM_INWORD_PER_CARD*3] = "";
+
+    memset(pageData, 0, sizeof(OneInstruction_t)*1024);
+    flashAddr.Uint16Addr.HighAddr = 1;
+
+    // Read out the whole One Page
+    for(i=0;i<1024;i++)// One Page = 1024 InstructionWord
+    {
+        flashAddr.Uint16Addr.LowAddr = FLASH_BASE_CARD_ID+i*2;
+        pageData[i] = InnerFlash_ReadOneInstruction(flashAddr);
+    }
+ 
+    flashAddr.Uint16Addr.LowAddr = FLASH_BASE_CARD_ID;
+    InnerFlash_EraseFlashPage(flashAddr);
+
+    delay_ms(200);
+    
+    // Modify from the pointed offset
+    // index maybe >= 1024, so need to ensure that not overflow pageData's size
+    for (i=0; i<CNTR_MAX_CARD_ID; i++) {
+        k = 0;
+        printf("Ready to Write:");
+        for (j=0; j<NUM_INWORD_PER_CARD; j++) {
+            if (j >= length) {
+                break;
+            }
+
+            tmpdata[3*j+0] = pageData[i*NUM_INWORD_PER_CARD+j].HighLowUINT16s.HighWord;
+
+            tmpdata[3*j+1] = pageData[i*NUM_INWORD_PER_CARD+j].HighLowUINT16s.LowWord >> 8;
+            tmpdata[3*j+2] = (u8)pageData[i*NUM_INWORD_PER_CARD+j].HighLowUINT16s.LowWord;
+            
+            printf("%.2X%.2X%.2X-", data[3*j+0], data[3*j+1], data[3*j+2]);
+
+            if ((0==j) && (tmpdata[0]!=0x00) && (tmpdata[0]!=0xFF)) {
+                k = 1;
+                break;
+            }
+
+            pageData[i*NUM_INWORD_PER_CARD+j].HighLowUINT16s.HighWord = data[j*3];
+            if ((j*3+1) >= ((length+1)/2)) {
+                break;
+            }
+            pageData[i*NUM_INWORD_PER_CARD+j].HighLowUINT16s.LowWord = data[j*3+1] << 8;
+            if ((j*3+2) >= ((length+1)/2)) {
+                break;
+            }
+            pageData[i*NUM_INWORD_PER_CARD+j].HighLowUINT16s.LowWord += data[j*3+2];
+        }
+        printf("\n");
+        
+        if (0 == k) {
+            break;
+        }
+    }
+
+    InnerFlash_WriteInstructionsToFlash(flashAddr,pageData,1024);
+
+    return 0;
+}
+
+void DataRecord_WriteReadTest(void)
+{
+    u8 data[] = {0x30,0x86,0x02,0x10,0x00,0x00,0x02,0x55,0x61,0x33};
+
+    DataRecord_WriteCards(data, 19);
+    
+    data[4]  = 0x01;
+    data[9] = 0x44;
+    DataRecord_WriteCards(data, 19);
+
+    data[4]  = 0x02;
+    data[9] = 0x55;
+    DataRecord_WriteCards(data, 19);
+
+    data[4]  = 0x03;
+    data[9] = 0x66;
+    DataRecord_WriteCards(data, 19);
+    
+    DataRecord_ReadCards(NULL);
 }
 
 // Firstly read out the whole page, then modify from the pointed offset

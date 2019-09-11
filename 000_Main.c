@@ -142,8 +142,8 @@ int main()
     Configure_Tick_10ms();
     Configure_Tick2_10ms();
     Uart1_Init();
-    Uart2_Init();
-    Uart3_Init();
+//    Uart2_Init();
+//    Uart3_Init();
 //    LB1938_Init();
 //    SPI2_Init();
 
@@ -169,6 +169,14 @@ int main()
     printf("8765432--\n");
 
     delay_ms(3000);
+
+    DataRecord_WriteReadTest();
+    
+    while(1)
+    {
+        printf("test123\n");
+        delay_ms(3000);
+    }
 
     while(0)
     {
@@ -213,7 +221,7 @@ int main()
         // if net-register failed or lost connection
         if (0 == (task_cnt++%200)) {
             if (0 == net_sta) {
-                Configure_BG96();
+                //Configure_BG96();
             }
 
             net_sta = GetNetStatus();
@@ -222,7 +230,7 @@ int main()
             }
             
             if ((1==gs_ftp_wait) && (0==ftp_sta)) {
-                ConnectToFtpServer();
+                //ConnectToFtpServer();
             }
         }
 
