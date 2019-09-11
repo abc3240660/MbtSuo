@@ -27,7 +27,46 @@ u16 DataRecord_ReadData(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR, 
    
     return 0;
 }
- 
+
+#define FLASH_BASE_CARD_ID  0x800
+#define FLASH_SIZE_CARD_ID  0x800
+
+#define CNTR_MAX_CARD_ID    64
+#define NUM_INWORD_PER_CARD 8
+
+// Each CardID = 19B Data = give 8 * InstructionWords = 24B Data
+// Most 64*8 = 512 * InstructionWords = 1024B Address GAP = store MAX 1536B(actual 64*19=1216B)
+u16 DataRecord_ReadCards(u8 *pdata)
+{
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    u16 tmpdata = 0;
+    FlashAddr_t flashAddr;
+    u8 data[NUM_INWORD_PER_CARD*3] = "";
+
+    for (i=0; i<CNTR_MAX_CARD_ID; i++) {
+        for (j=0; j<NUM_INWORD_PER_CARD; j++) {
+            flashAddr.Uint16Addr.HighAddr = 0;
+            flashAddr.Uint16Addr.LowAddr = FLASH_BASE_CARD_ID+i*2;
+
+            tmpdata = InnerFlash_ReadInstructionLow(flashAddr);
+            data[3*j+0] = tmpdata;
+            data[3*j+1] = tmpdata >> 8;
+
+            tmpdata = InnerFlash_ReadInstructionHigh(flashAddr);
+            data[3*j+2] = tmpdata;
+        }
+
+        if ((data[0]!=0x00) && (data[0]!=0xFF)) {
+            memcpy(pdata+k*NUM_INWORD_PER_CARD*3, data, NUM_INWORD_PER_CARD*3);
+            k++;
+        }
+    }
+
+    return k;
+}
+
 void DataRecord_ErasePage(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR )
 {
     FlashAddr_t flashAddr;
