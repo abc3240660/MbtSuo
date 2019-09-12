@@ -4,14 +4,14 @@
 #include "015_Common.h" 
 #include "017_InnerFlash.h"
  
-void FillLagrePage(u16 pageIndex);
-void EraseLargePage(u16 pageIndex, u32 offsetaddr);
-void EraseSomePage(u16 highAddr, u16 lowAddr, u16 pageNum);
-void DataRecord_ErasePage(u16 DATA_RECORD_START_PAGE,u16 DATA_RECORD_START_ADDR );
-u16 DataRecord_ReadData(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR, u16 len, u8 *pdata); 
-u16 DataRecord_WriteData(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR, u16 index, volatile OneInstruction_t data); 
-u16 DataRecord_WriteDataArray(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR, u16 index, volatile OneInstruction_t *data, u16 length);
-u16 DataRecord_WriteBytesArray(u16 DATA_RECORD_START_PAGE, u16 DATA_RECORD_START_ADDR, u16 index, u8 *data, u16 length);
-void DataRecord_WriteReadTest(void);
+void FlashErase_LargePage(u16 pageIndex, u32 offsetaddr);
+void FlashErase_SomePage(u16 highAddr, u16 lowAddr, u16 pageNum);
+void FlashErase_OnePage(u16 flash_page, u16 flash_offset);
+u16 FlashRead_SomeInstructionWords(u16 flash_page, u16 flash_offset, u16 len, u8 *pdata);
+
+void FlashWriteRead_Test(void);
+u16 FlashRead_AllNFCCards(u8 *card_dat);
+u16 FlashWrite_OneNFCCard(u8 *card_dat);
+u16 FlashWrite_DeleteOneCard(u8 *card_dat);
 
 #endif
