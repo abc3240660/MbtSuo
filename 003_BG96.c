@@ -2727,7 +2727,7 @@ u16 BG96FtpGetData(u32 offset, u32 length)
             dat[i].HighLowUINT16s.LowWord += (u8)rxBuffer[i*4+0];
         }
         
-        DataRecord_WriteDataArray(1,0x100*((sum_got+511)/512-1),0,dat,128);
+        FlashWrite_InstructionWords(1,0x100*((sum_got+511)/512-1),0,dat,128);
     }
     
     printf("FTP Got Firm size: %d Bytes\n", size_got);

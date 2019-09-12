@@ -161,16 +161,16 @@ int main()
 
     printf("9876543--\n");
 
-//    EraseLargePage(2);
-    EraseLargePage(3, 0);
-    EraseLargePage(4, 0);
-    EraseLargePage(5, 0);
+//    FlashErase_LargePage(2);
+    FlashErase_LargePage(3);
+    FlashErase_LargePage(4);
+    FlashErase_LargePage(5);
 
     printf("8765432--\n");
 
     delay_ms(3000);
 
-    DataRecord_WriteReadTest();
+    FlashWriteRead_Test();
     
     while(1)
     {
@@ -185,7 +185,7 @@ int main()
         }
 
         if (100 == test_cnt++) {
-            DataRecord_ReadData(2,0,1024/4,sTestBuf20000);
+            FlashRead_InstructionWordsToByteArray(2,0,1024/4,sTestBuf20000);
 
             for(i=0;i<256;i++)
             {
@@ -194,9 +194,9 @@ int main()
                 dat[i].HighLowUINT16s.HighWord=sTestBuf20000[4*i+2]+(sTestBuf20000[4*i+3])*256;
                 dat[i].HighLowUINT16s.LowWord=sTestBuf20000[4*i+0]+(sTestBuf20000[4*i+1])*256;
             }            
-            DataRecord_WriteDataArray(3,0,0,dat,1024/4);
+            FlashWrite_InstructionWords(3,0,0,dat,1024/4);
             printf("8880888--\n");
-            DataRecord_WriteDataArray(1,0x7800,0,dat,1024/4);
+            FlashWrite_InstructionWords(1,0x7800,0,dat,1024/4);
         }
         
         if (0 == test_cnt%10) {

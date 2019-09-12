@@ -21,7 +21,7 @@
 
 static u8 g_tmp_card_id[LEN_BYTE_SZ32] = {0};
 static u8 g_tmp_serial_nr[LEN_BYTE_SZ32] = {0};
-static u8 g_bind_cards[LEN_MAX_CARD][LEN_BYTE_SZ64] = {{0}};
+static u8 g_bind_cards[CNTR_MAX_CARD][LEN_BYTE_SZ64] = {{0}};
 
 static unsigned long start_time_nfc = 0;
 
@@ -274,7 +274,7 @@ u8 ReadMobibNFCCard(void)
             start_time_nfc = GetTimeStamp();
             AddNewMobibCard(g_tmp_card_id, g_tmp_serial_nr);
         } else {
-            for (i=0; i<LEN_MAX_CARD; i++) {
+            for (i=0; i<CNTR_MAX_CARD; i++) {
                 if (0 == strncmp((const char*)g_bind_cards[i], (const char*)g_tmp_card_id, LEN_CARD_ID)) {
                     LB1938_MotorCtrl(MOTOR_LEFT, MOTOR_HOLD_TIME);
                     ReportLockerUnlocked();
@@ -318,13 +318,13 @@ void AddNewMobibCard(u8* card_id, u8* serial_nr)
         return;
     }
 
-    for (i=0; i<LEN_MAX_CARD; i++) {
+    for (i=0; i<CNTR_MAX_CARD; i++) {
         if (0 == strncmp((const char*)g_bind_cards[i], (const char*)card_id, strlen((const char*)card_id))) {
             return;
         }
     }
     
-    for (i=0; i<LEN_MAX_CARD; i++) {
+    for (i=0; i<CNTR_MAX_CARD; i++) {
         if (0 == strlen((const char*)g_bind_cards[i])) {
             memcpy(g_bind_cards[i], card_id, LEN_BYTE_SZ32);
             memcpy(g_bind_cards[i]+32, serial_nr, LEN_BYTE_SZ32);
@@ -332,7 +332,7 @@ void AddNewMobibCard(u8* card_id, u8* serial_nr)
         }
     }
 
-    for (i=0; i<LEN_MAX_CARD; i++) {
+    for (i=0; i<CNTR_MAX_CARD; i++) {
         if (strlen((const char*)g_bind_cards[i]) != 0) {
             printf("Binded CardId[%d]: %s\n", i, g_bind_cards[i]);
         }
@@ -347,7 +347,7 @@ void DeleteMobibCard(u8* card_id, u8* serial_nr)
         return;
     }
 
-    for (i=0; i<LEN_MAX_CARD; i++) {
+    for (i=0; i<CNTR_MAX_CARD; i++) {
         if (0 == strncmp((const char*)g_bind_cards[i], (const char*)card_id, LEN_CARD_ID)) {
             memset(g_bind_cards[i], 0, LEN_BYTE_SZ64);
         }
@@ -358,7 +358,7 @@ void DeleteAllMobibCard(void)
 {
     u8 i = 0;
 
-    for (i=0; i<LEN_MAX_CARD; i++) {
+    for (i=0; i<CNTR_MAX_CARD; i++) {
         memset(g_bind_cards[i], 0, LEN_BYTE_SZ64);
     }
 }
@@ -373,7 +373,7 @@ u8 QueryMobibCard(u8* card_dats)
         return 0;
     }
 
-    for (i=0; i<LEN_MAX_CARD; i++) {
+    for (i=0; i<CNTR_MAX_CARD; i++) {
         if (strlen((const char*)g_bind_cards[i]) > 0) {
             if (count != 0) {
                 card_dats[offset++] = '|';
