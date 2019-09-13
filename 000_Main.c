@@ -115,49 +115,12 @@ void MD5Update(u8* buf, u16 len)
     GAgent_MD5Update(&g_ftp_md5_ctx, buf, len);
 }
 
-int main()
+void FlashSectionMove_Test(void)
 {
     u16 i = 0;
-    u8 net_sta = 0;
-    u8 ftp_sta = 0;
     u32 test_cnt = 0;
-    
-    u32 ftp_offset = 0;
-    u32 ftp_len_per = 512;
-    u32 ftp_goal = 121348;
-
-    u16 hbeat_gap = DEFAULT_HBEAT_GAP;
-
-    u16 got_size = 0;
-
-    unsigned long task_cnt = 0;
-
-    unsigned char sTestBuf20000[1024]={0};
     OneInstruction_t dat[1024];
-
-	GAgent_MD5Init(&g_ftp_md5_ctx);
-
-    System_Config();
-    GPIOB_Init();
-    Configure_Tick_10ms();
-    Configure_Tick2_10ms();
-    Uart1_Init();
-//    Uart2_Init();
-//    Uart3_Init();
-//    LB1938_Init();
-//    SPI2_Init();
-
-    // BNO055 Testing
-    // Configure_BNO055();
-    // bno055_calibrate_demo();
-    // bno055_demo();
-
-    // printf("Hello PIC24F Uart1... 0x%.8lX\r\n", xxx);
-    printf("Hello PIC24F Uart1...\r\n");
-
-    CalcFirstMd5();
-
-    InitRingBuffers();
+    unsigned char sTestBuf20000[1024]={0};
 
     printf("9876543--\n");
 
@@ -170,15 +133,7 @@ int main()
 
     delay_ms(3000);
 
-    FlashWriteRead_Test();
-    
     while(1)
-    {
-        printf("test123\n");
-        delay_ms(3000);
-    }
-
-    while(0)
     {
         if (100 == test_cnt++) {
             // DataRecord_WriteBytesArray(1, 0x100, u16 index, u8 *data, u16 length)
@@ -204,6 +159,62 @@ int main()
         }
         
         delay_ms(100);
+    }
+}
+
+int main()
+{
+    u8 net_sta = 0;
+    u8 ftp_sta = 0;
+    
+    u32 ftp_offset = 0;
+    u32 ftp_len_per = 512;
+    u32 ftp_goal = 121348;
+
+    u16 hbeat_gap = DEFAULT_HBEAT_GAP;
+
+    u16 got_size = 0;
+
+    unsigned long task_cnt = 0;
+
+	GAgent_MD5Init(&g_ftp_md5_ctx);
+
+    System_Config();
+    GPIOB_Init();
+    Configure_Tick_10ms();
+    Configure_Tick2_10ms();
+    Uart1_Init();
+//    Uart2_Init();
+//    Uart3_Init();
+//    LB1938_Init();
+//    SPI2_Init();
+
+    // BNO055 Testing
+    // Configure_BNO055();
+    // bno055_calibrate_demo();
+    // bno055_demo();
+
+    // printf("Hello PIC24F Uart1... 0x%.8lX\r\n", xxx);
+    printf("Hello PIC24F Uart1...\r\n");
+
+    CalcFirstMd5();
+
+    InitRingBuffers();
+
+    printf("test600--\n");
+
+    delay_ms(3000);
+    
+    printf("test601--\n");
+//    FlashSectionMove_Test();
+
+//    FlashWriteRead_CardIDTest();
+    FlashWriteRead_ParamsTest();
+    
+    while(1)
+    {
+        printf("test123\n");
+        delay_ms(3000);
     }
 
     while(1)
