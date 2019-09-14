@@ -195,6 +195,7 @@ int main()
     // bno055_demo();
 
     // printf("Hello PIC24F Uart1... 0x%.8lX\r\n", xxx);
+    delay_ms(3000);
     printf("Hello PIC24F Uart1...\r\n");
 
     CalcFirstMd5();
