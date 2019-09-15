@@ -37,6 +37,8 @@
 #define LEN_CARD_ID      19
 #define LEN_SERIAL_NR    16
 
+#define LEN_COMMON_USE  LEN_BYTE_SZ32
+
 // if store too more, TCP send buffer will be
 // not enough, currently LEN_MAX_SEND = 512
 // 20*19 = 380, will be suitable
@@ -53,11 +55,20 @@
 // 0x0800 ~ 0x0FFF(2K): Params
 // 0x1000 ~ 0x1FFF(4K): CardIDs
 
+#define FLASH_PAGE_CARD_ID  0x0000
 #define FLASH_BASE_CARD_ID  0x1000
-#define FLASH_PAGE_CARD_ID  0x0001
-#define FLASH_PAGE_PARAMS   0x0001
 
+#define FLASH_PAGE_PARAMS   0x0000
 #define FLASH_BASE_PARAMS   0x0800
+
+#define FLASH_PAGE_BOT  0x0005
+#define FLASH_BASE_BOT  0x0000
+
+#define FLASH_PAGE_APP  0x0000
+#define FLASH_BASE_APP  0x2000
+
+#define FLASH_PAGE_BAK   0x0002
+#define FLASH_BASE_BAK   0x2000
 
 #define FLASH_BASE_IP       FLASH_BASE_PARAMS
 #define FLASH_SIZE_IP       CNTR_INWORD_PER_COMM
@@ -174,7 +185,7 @@ typedef struct {
     // (APP CLR)0 - jump to app ok
     u32 iap_try_cnt;
 
-    u32 reserved_use1;
+    u32 reserved_use1;// IAP BIN SIZE in Bytes
     u32 reserved_use2;
     u32 reserved_use3;
     u32 reserved_use4;
@@ -183,6 +194,13 @@ typedef struct {
     u32 reserved_use7;
     u32 reserved_use8;
 } SYS_ENV;
+
+#define IAP_REQ_ON  "1A2B"// APP Set: Apply Request
+#define IAP_REQ_OK  "3C4D"// BOOT Set: IAP Success
+#define IAP_REQ_NG  "5E6F"// BOOT Set: MD5 Check Error or other Errors
+#define IAP_REQ_OFF "8888"// APP Set: IAP Finished or IDLE
+
+#define FOR_DEBUG_USE 0
 
 #endif
 

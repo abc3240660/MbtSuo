@@ -4,7 +4,7 @@
 #include "015_Common.h" 
 #include "017_InnerFlash.h"
  
-void FlashErase_LargePage(u16 pageIndex);
+void FlashErase_LargePage(u16 pageIndex, u16 start_addr);
 void FlashErase_SomePage(u16 highAddr, u16 lowAddr, u16 pageNum);
 void FlashErase_OnePage(u16 flash_page, u16 flash_offset);
 u16 FlashRead_InstructionWordsToByteArray(u16 flash_page, u16 flash_offset, u16 len, u8 *pdata);

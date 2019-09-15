@@ -38,6 +38,8 @@ static u8 gs_ftp_wait = 1;
 static u8 gs_ftp_res_md5[LEN_COMMON_USE] = "";
 static MD5_CTX g_ftp_md5_ctx;
 
+u8 g_ftp_enable = 0;
+
 void process_bg96(void)
 {
     int i = 0;
@@ -124,10 +126,10 @@ void FlashSectionMove_Test(void)
 
     printf("9876543--\n");
 
-//    FlashErase_LargePage(2);
-    FlashErase_LargePage(3);
-    FlashErase_LargePage(4);
-    FlashErase_LargePage(5);
+//    FlashErase_LargePage(2, 0);
+    FlashErase_LargePage(3, 0);
+    FlashErase_LargePage(4, 0);
+    FlashErase_LargePage(5, 0);
 
     printf("8765432--\n");
 
@@ -168,19 +170,13 @@ int main()
     
     u32 ftp_offset = 0;
     u32 ftp_len_per = 512;
-    u32 ftp_goal = 121348;
+    u32 ftp_goal = 132444;
 
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
 
     u16 got_size = 0;
 
     unsigned long task_cnt = 0;
-
-    u16 i = 0;
-    static u16 wraddr=0;
-    static u8 sTestBuf20000[1024]={0};
-    static u8 gFlashBuf[1500]={0};
-    static  OneInstruction_t dat[1024];
 
 	GAgent_MD5Init(&g_ftp_md5_ctx);
 
@@ -189,7 +185,7 @@ int main()
     Configure_Tick_10ms();
     Configure_Tick2_10ms();
     Uart1_Init();
-//    Uart2_Init();
+    Uart2_Init();
 //    Uart3_Init();
 //    LB1938_Init();
 //    SPI2_Init();
@@ -199,88 +195,16 @@ int main()
     // bno055_calibrate_demo();
     // bno055_demo();
 
-    // printf("Hello PIC24F Uart1... 0x%.8lX\r\n", xxx);
-    delay_ms(3000);
-    printf("Hello PIC24F Uart1...\r\n");
-
-#if 1
     delay_ms(3000);
 
-    wraddr=1*0x200;  
-    FlashRead_InstructionWordsToByteArray(0,0x5000,1024/4,gFlashBuf);                        
-    for(i=0;i<256;i++)
-    {
-        dat[i].HighLowUINT16s.HighWord=gFlashBuf[3*i+2];
-        dat[i].HighLowUINT16s.LowWord=gFlashBuf[3*i+0]+(gFlashBuf[3*i+1])*256;
-    }            
-#if 0
-    FlashWrite_InstructionWords(1,0x0000+wraddr,dat,1024/4); 
-    delay_ms(1000);
-    FlashWrite_InstructionWords(1,0x1000+wraddr,dat,1024/4); 
-    delay_ms(1000);
-    FlashWrite_InstructionWords(1,0x4000+wraddr,dat,1024/4); 
-    delay_ms(1000);
-    FlashWrite_InstructionWords(1,0x8000+wraddr,dat,1024/4); 
-    delay_ms(1000);
-    FlashWrite_InstructionWords(1,0xA000+wraddr,dat,1024/4); 
-    delay_ms(1000);
-    FlashWrite_InstructionWords(1,0xF000+wraddr,dat,1024/4); 
-    delay_ms(1000);
-    FlashWrite_InstructionWords(2,0x0000+wraddr,dat,1024/4); 
-    delay_ms(1000);
-#endif
-    FlashWrite_InstructionWords(2,0xF000+wraddr,dat,1024/4); 
-    delay_ms(1000);
-    FlashWrite_InstructionWords(3,0xF000+wraddr,dat,1024/4); 
-    delay_ms(1000);
-    FlashWrite_InstructionWords(4,0xF000+wraddr,dat,1024/4); 
-    delay_ms(1000);
-    SCISendDataOnISR("987654350",9);
-    FlashWrite_InstructionWords(4,0x0000+wraddr,dat,1024/4); 
-    delay_ms(1000);
-    SCISendDataOnISR("987654354",9);
-    FlashWrite_InstructionWords(4,0x4000+wraddr,dat,1024/4); 
-    delay_ms(1000);
-    SCISendDataOnISR("987654355",9);
-    FlashWrite_InstructionWords(4,0x5000+wraddr,dat,1024/4); 
-    delay_ms(1000);
-    SCISendDataOnISR("987654554",9);
-    FlashWrite_InstructionWords(4,0x5400+wraddr,dat,1024/4); 
-    delay_ms(1000);
-    SCISendDataOnISR("987654556",9);
-    FlashWrite_InstructionWords(4,0x5600+wraddr,dat,1024/4); 
-    delay_ms(1000);
-//    SCISendDataOnISR("987654558",9);
-//    DataRecord_WriteDataArray(5,0x5800+wraddr,dat,1024/4); 
+    printf("Application running...\r\n");
 
-    SCISendDataOnISR("876APP210",9);
-#endif
-#if 0
     CalcFirstMd5();
 
     InitRingBuffers();
 
-    printf("test600--\n");
-
-    delay_ms(3000);
-    
-    printf("test601--\n");
-//    FlashSectionMove_Test();
-
-//    FlashWriteRead_CardIDTest();
-    FlashWriteRead_ParamsTest();
-#endif
-
     while(1)
     {
-        printf("test123\n");
-        delay_ms(3000);
-    }
-
-    while(1)
-    {
-        //printf("test0X0=========\n");
-
         hbeat_gap = GetHeartBeatGap();
         net_sta = GetNetStatus();
         ftp_sta = GetFtpStatus();
@@ -292,7 +216,7 @@ int main()
         // if net-register failed or lost connection
         if (0 == (task_cnt++%200)) {
             if (0 == net_sta) {
-                //Configure_BG96();
+                Configure_BG96();
             }
 
             net_sta = GetNetStatus();
@@ -301,7 +225,16 @@ int main()
             }
             
             if ((1==gs_ftp_wait) && (0==ftp_sta)) {
-                //ConnectToFtpServer();
+                if (1 == g_ftp_enable) {
+
+                    // Erase BAK
+                    FlashErase_LargePage(FLASH_PAGE_BAK, FLASH_BASE_BAK);// SIZE: 0xE000
+                    FlashErase_LargePage(FLASH_PAGE_BAK+1, 0);// SIZE: 0x10000
+
+                    g_ftp_enable = 0;
+
+                    ConnectToFtpServer();
+                }
             }
         }
 

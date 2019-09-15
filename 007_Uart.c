@@ -239,12 +239,15 @@ void __attribute__((__interrupt__,no_auto_psv)) _U2RXInterrupt(void)
     } while (U2STAbits.URXDA);
 }
 
+extern u8 g_ftp_enable;
+
 void __attribute__((__interrupt__,no_auto_psv)) _U1RXInterrupt(void)
 {
     char temp = 0;
 
     do {
         temp = U1RXREG;
+        g_ftp_enable = 1;
         // Uart1_Putc(temp);
         _U1RXIF = 0;
         if (U1STAbits.OERR) {

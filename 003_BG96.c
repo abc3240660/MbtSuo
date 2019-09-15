@@ -2666,7 +2666,7 @@ u16 BG96FtpGetData(u32 offset, u32 length)
 
     strcpy(cmd, FTP_DOWNLOAD_DAT);
     // sprintf(buf, "=\"test.mp3\",\"COM:\",%ld,%ld", offset, length);
-    sprintf(buf, "=\"Mbtsuo_0908.bin\",\"COM:\",%ld,%ld", offset, length);
+    sprintf(buf, "=\"Mbtsuo_0915.bin\",\"COM:\",%ld,%ld", offset, length);
     strcat(cmd, buf);
     
     if(!SendAndSearch_multi(cmd, "CONNECT\r\n", RESPONSE_ERROR, 30)){
@@ -2703,14 +2703,16 @@ u16 BG96FtpGetData(u32 offset, u32 length)
         OneInstruction_t dat[1024];
 
         size_got = atoi(size_str);
-        sum_got += size_got;
         
         MD5Update((u8*)rxBuffer, size_got);
         
         //for (i=0; i<size_got/4; i++) {
         //    printf("=%.2X-%.2X-%.2X-%.2X\n", (u8)rxBuffer[4*i], (u8)rxBuffer[4*i+1], (u8)rxBuffer[4*i+2], (u8)rxBuffer[4*i+3]);
         //}
-        
+
+        u16 flash_page = FLASH_PAGE_BAK;// 0x2,2000
+        u32 flash_offset = FLASH_BASE_BAK;
+
         for(i=0;i<(size_got/4);i++)
         {
             if ((i*4+2) >= size_got) {
@@ -2726,8 +2728,17 @@ u16 BG96FtpGetData(u32 offset, u32 length)
             }
             dat[i].HighLowUINT16s.LowWord += (u8)rxBuffer[i*4+0];
         }
-        
-        FlashWrite_InstructionWords(1,0x100*((sum_got+511)/512-1),dat,128);
+
+        flash_offset = FLASH_BASE_BAK + sum_got / 2;
+
+        if (0 == (flash_offset%0x10000)) {
+            flash_page = FLASH_PAGE_BAK + (flash_offset / 0x10000);
+        }
+
+        printf("WR flash_address = 0x%X-%.8lX\n", flash_page, flash_offset);
+        FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 128);
+
+        sum_got += size_got;
     }
     
     printf("FTP Got Firm size: %d Bytes\n", size_got);

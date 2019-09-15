@@ -44,8 +44,6 @@
 
 #define LEN_NET_TCP    32
 
-#define LEN_COMMON_USE    32
-
 #define LEN_SYS_TIME    32
 #define LEN_IMEI_NO     32
 #define LEN_BAT_VOL     32

@@ -538,14 +538,14 @@ u16 FlashWrite_InstructionWords(u16 flash_base, u16 flash_offset, OneInstruction
 
 // One LargePage = 32 * SmallPage
 // One LargePage = 64K InstructionWords Address Gap = 32K InstructionWords
-void FlashErase_LargePage(u16 pageIndex)
+void FlashErase_LargePage(u16 pageIndex, u16 start_addr)
 {
     u16 offset = 0;
     FlashAddr_t flashAddr;
 
     flashAddr.Uint16Addr.HighAddr = pageIndex;
 
-    for (offset=0; offset<=0xF800; offset+=0x800) {
+    for (offset=start_addr; offset<=0xF800; offset+=0x800) {
         flashAddr.Uint16Addr.LowAddr = offset;
         InnerFlash_EraseFlashPage(flashAddr);
 
