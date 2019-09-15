@@ -22,10 +22,9 @@ u16 FlashRead_InstructionWordsToByteArray(u16 flash_page, u16 flash_offset, u16 
         flashAddr.Uint16Addr.HighAddr = flash_page;
         flashAddr.Uint16Addr.LowAddr = flash_offset+i*2;
 
-        pdata[4*i]=InnerFlash_ReadInstructionLow(flashAddr);
-        pdata[4*i+1]=InnerFlash_ReadInstructionLow(flashAddr)>>8;
-        pdata[4*i+2]=InnerFlash_ReadInstructionHigh(flashAddr);
-        pdata[4*i+3]=InnerFlash_ReadInstructionHigh(flashAddr)>>8;
+        pdata[3*i+0]=InnerFlash_ReadInstructionLow(flashAddr);
+        pdata[3*i+1]=InnerFlash_ReadInstructionLow(flashAddr)>>8;
+        pdata[3*i+2]=InnerFlash_ReadInstructionHigh(flashAddr);
     }
 
     return 0;
@@ -501,11 +500,12 @@ u16 FlashRead_SysParams(PARAM_ID params_id, u8 *data, u8 length)
     return dat_len;
 }
 
+// Will not erase page
 // Firstly read out the whole page, then modify from the pointed offset
 // flash_base = LargePage's HighAddr, flash_offset = SmallPage's LowAddr
 // index = InstructionWord's offset during One Page
 // length = InstructionWord's count
-u16 FlashWrite_InstructionWords(u16 flash_base, u16 flash_offset, u16 index, volatile OneInstruction_t *data, u16 length)
+u16 FlashWrite_InstructionWords(u16 flash_base, u16 flash_offset, OneInstruction_t *data, u16 length)
 {
     u16 i = 0;
     FlashAddr_t flashAddr;
@@ -525,10 +525,10 @@ u16 FlashWrite_InstructionWords(u16 flash_base, u16 flash_offset, u16 index, vol
     
     // Modify from the pointed offset
     // index maybe >= 1024, so need to ensure that not overflow pageData's size
-    for(i=index;i<length;i++)
+    for(i=0;i<length;i++)
     {
         //printf("XDAT = %.4X,%.4X\n", data[i].HighLowUINT16s.HighWord, data[i].HighLowUINT16s.LowWord);
-        pageData[index-(index/1024)*1024+i].UINT32 = data[i].UINT32;
+        pageData[i].UINT32 = data[i].UINT32;
     }
 
     InnerFlash_WriteInstructionsToFlash(flashAddr,pageData,1024);

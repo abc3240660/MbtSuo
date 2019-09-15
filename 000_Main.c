@@ -149,9 +149,9 @@ void FlashSectionMove_Test(void)
                 dat[i].HighLowUINT16s.HighWord=sTestBuf20000[4*i+2]+(sTestBuf20000[4*i+3])*256;
                 dat[i].HighLowUINT16s.LowWord=sTestBuf20000[4*i+0]+(sTestBuf20000[4*i+1])*256;
             }            
-            FlashWrite_InstructionWords(3,0,0,dat,1024/4);
+            FlashWrite_InstructionWords(3,0,dat,1024/4);
             printf("8880888--\n");
-            FlashWrite_InstructionWords(1,0x7800,0,dat,1024/4);
+            FlashWrite_InstructionWords(1,0x7800,dat,1024/4);
         }
         
         if (0 == test_cnt%10) {
@@ -177,6 +177,12 @@ int main()
 
     unsigned long task_cnt = 0;
 
+    u16 i = 0;
+    static u16 wraddr=0;
+    static u8 sTestBuf20000[1024]={0};
+    static u8 gFlashBuf[1500]={0};
+    static  OneInstruction_t dat[1024];
+
 	GAgent_MD5Init(&g_ftp_md5_ctx);
 
     System_Config();
@@ -198,6 +204,59 @@ int main()
     delay_ms(3000);
     printf("Hello PIC24F Uart1...\r\n");
 
+#if 1
+    delay_ms(3000);
+
+    wraddr=1*0x200;  
+    FlashRead_InstructionWordsToByteArray(0,0x5000,1024/4,gFlashBuf);                        
+    for(i=0;i<256;i++)
+    {
+        dat[i].HighLowUINT16s.HighWord=gFlashBuf[3*i+2];
+        dat[i].HighLowUINT16s.LowWord=gFlashBuf[3*i+0]+(gFlashBuf[3*i+1])*256;
+    }            
+#if 0
+    FlashWrite_InstructionWords(1,0x0000+wraddr,dat,1024/4); 
+    delay_ms(1000);
+    FlashWrite_InstructionWords(1,0x1000+wraddr,dat,1024/4); 
+    delay_ms(1000);
+    FlashWrite_InstructionWords(1,0x4000+wraddr,dat,1024/4); 
+    delay_ms(1000);
+    FlashWrite_InstructionWords(1,0x8000+wraddr,dat,1024/4); 
+    delay_ms(1000);
+    FlashWrite_InstructionWords(1,0xA000+wraddr,dat,1024/4); 
+    delay_ms(1000);
+    FlashWrite_InstructionWords(1,0xF000+wraddr,dat,1024/4); 
+    delay_ms(1000);
+    FlashWrite_InstructionWords(2,0x0000+wraddr,dat,1024/4); 
+    delay_ms(1000);
+#endif
+    FlashWrite_InstructionWords(2,0xF000+wraddr,dat,1024/4); 
+    delay_ms(1000);
+    FlashWrite_InstructionWords(3,0xF000+wraddr,dat,1024/4); 
+    delay_ms(1000);
+    FlashWrite_InstructionWords(4,0xF000+wraddr,dat,1024/4); 
+    delay_ms(1000);
+    SCISendDataOnISR("987654350",9);
+    FlashWrite_InstructionWords(5,0x0000+wraddr,dat,1024/4); 
+    delay_ms(1000);
+    SCISendDataOnISR("987654354",9);
+    FlashWrite_InstructionWords(5,0x4000+wraddr,dat,1024/4); 
+    delay_ms(1000);
+    SCISendDataOnISR("987654355",9);
+    FlashWrite_InstructionWords(5,0x5000+wraddr,dat,1024/4); 
+    delay_ms(1000);
+    SCISendDataOnISR("987654554",9);
+    FlashWrite_InstructionWords(5,0x5400+wraddr,dat,1024/4); 
+    delay_ms(1000);
+    SCISendDataOnISR("987654556",9);
+    FlashWrite_InstructionWords(5,0x5600+wraddr,dat,1024/4); 
+    delay_ms(1000);
+//    SCISendDataOnISR("987654558",9);
+//    DataRecord_WriteDataArray(5,0x5800+wraddr,dat,1024/4); 
+
+    SCISendDataOnISR("876APP210",9);
+#endif
+#if 0
     CalcFirstMd5();
 
     InitRingBuffers();
@@ -211,7 +270,8 @@ int main()
 
 //    FlashWriteRead_CardIDTest();
     FlashWriteRead_ParamsTest();
-    
+#endif
+
     while(1)
     {
         printf("test123\n");
