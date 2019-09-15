@@ -76,7 +76,7 @@ MEMORY
 #ifndef __DUAL_PARTITION
  /* reset          : ORIGIN = 0x0,           LENGTH = 0x4*/
   ivt            : ORIGIN = 0x4,           LENGTH = 0xFC
-  program (xr)   : ORIGIN = 0x5000,        LENGTH = 0x1B000
+  program (xr)   : ORIGIN = 0x2000,        LENGTH = 0x1E000
   FSEC           : ORIGIN = 0xABF00,       LENGTH = 0x2
   FBSLIM         : ORIGIN = 0xABF10,       LENGTH = 0x2
   FSIGN          : ORIGIN = 0xABF14,       LENGTH = 0x2
@@ -132,8 +132,8 @@ __FWDT = 0xABF20;
 __FPOR = 0xABF24;
 __FICD = 0xABF28;
 __FDEVOPT1 = 0xABF2C;
-__CODE_BASE = 0x5000;
-__CODE_LENGTH = 0x1B000;
+__CODE_BASE = 0x2000;
+__CODE_LENGTH = 0x1E000;
 __IVT_BASE  = 0x4;
 #endif
 

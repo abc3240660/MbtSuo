@@ -145,9 +145,8 @@ void FlashSectionMove_Test(void)
             for(i=0;i<256;i++)
             {
                 //dat[i].HighLowUINT16s.HighWord=i+i*256;
-                //dat[i].HighLowUINT16s.LowWord=i+i*256;
-                dat[i].HighLowUINT16s.HighWord=sTestBuf20000[4*i+2]+(sTestBuf20000[4*i+3])*256;
-                dat[i].HighLowUINT16s.LowWord=sTestBuf20000[4*i+0]+(sTestBuf20000[4*i+1])*256;
+                dat[i].HighLowUINT16s.HighWord=sTestBuf20000[3*i+2];
+                dat[i].HighLowUINT16s.LowWord=sTestBuf20000[3*i+0]+(sTestBuf20000[3*i+1])*256;
             }            
             FlashWrite_InstructionWords(3,0,dat,1024/4);
             printf("8880888--\n");
@@ -237,19 +236,19 @@ int main()
     FlashWrite_InstructionWords(4,0xF000+wraddr,dat,1024/4); 
     delay_ms(1000);
     SCISendDataOnISR("987654350",9);
-    FlashWrite_InstructionWords(5,0x0000+wraddr,dat,1024/4); 
+    FlashWrite_InstructionWords(4,0x0000+wraddr,dat,1024/4); 
     delay_ms(1000);
     SCISendDataOnISR("987654354",9);
-    FlashWrite_InstructionWords(5,0x4000+wraddr,dat,1024/4); 
+    FlashWrite_InstructionWords(4,0x4000+wraddr,dat,1024/4); 
     delay_ms(1000);
     SCISendDataOnISR("987654355",9);
-    FlashWrite_InstructionWords(5,0x5000+wraddr,dat,1024/4); 
+    FlashWrite_InstructionWords(4,0x5000+wraddr,dat,1024/4); 
     delay_ms(1000);
     SCISendDataOnISR("987654554",9);
-    FlashWrite_InstructionWords(5,0x5400+wraddr,dat,1024/4); 
+    FlashWrite_InstructionWords(4,0x5400+wraddr,dat,1024/4); 
     delay_ms(1000);
     SCISendDataOnISR("987654556",9);
-    FlashWrite_InstructionWords(5,0x5600+wraddr,dat,1024/4); 
+    FlashWrite_InstructionWords(4,0x5600+wraddr,dat,1024/4); 
     delay_ms(1000);
 //    SCISendDataOnISR("987654558",9);
 //    DataRecord_WriteDataArray(5,0x5800+wraddr,dat,1024/4); 
