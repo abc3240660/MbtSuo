@@ -76,7 +76,7 @@ u16 FlashRead_AllNFCCards(u8 *card_dat)
     return card_cnt;
 }
 
-void FlashErase_OnePage(u16 flash_page, u16 flash_offset )
+void FlashErase_OnePage(u16 flash_page, u16 flash_offset)
 {
     FlashAddr_t flashAddr;
 

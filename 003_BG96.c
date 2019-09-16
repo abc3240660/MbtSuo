@@ -2672,7 +2672,8 @@ u16 BG96FtpGetData(u32 offset, u32 length)
     if(!SendAndSearch_multi(cmd, "CONNECT\r\n", RESPONSE_ERROR, 30)){
 
         printf("---------errorCode = %d\n", errorCode);
-        if (625 == errorCode) {
+        // if (625 == errorCode) {
+        if (errorCode > 600) {
             gs_ftp_sta = 0;
         }
 
@@ -2729,12 +2730,17 @@ u16 BG96FtpGetData(u32 offset, u32 length)
             dat[i].HighLowUINT16s.LowWord += (u8)rxBuffer[i*4+0];
         }
 
-        flash_offset = FLASH_BASE_BAK + sum_got / 2;
-
-        if (0 == (flash_offset%0x10000)) {
+        if ((0==offset) && (0x200==length)) {
+            flash_offset = 0;
+            flash_page = FLASH_PAGE_BAK;
+        } else {
+            flash_offset = FLASH_BASE_BAK;
+            flash_offset += sum_got / 2;
+            flash_offset -= 0x100;
             flash_page = FLASH_PAGE_BAK + (flash_offset / 0x10000);
         }
-
+        
+        // printf("flash_offset = %.8lX, %ld\n", flash_offset, flash_offset);
         printf("WR flash_address = 0x%X-%.8lX\n", flash_page, flash_offset);
         FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 128);
 

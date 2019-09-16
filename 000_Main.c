@@ -165,12 +165,13 @@ void FlashSectionMove_Test(void)
 
 int main()
 {
+    u8 is_erased = 0;
     u8 net_sta = 0;
     u8 ftp_sta = 0;
     
     u32 ftp_offset = 0;
     u32 ftp_len_per = 512;
-    u32 ftp_goal = 132444;
+    u32 ftp_goal = BIN_SIZE_INT;
 
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
 
@@ -227,11 +228,14 @@ int main()
             if ((1==gs_ftp_wait) && (0==ftp_sta)) {
                 if (1 == g_ftp_enable) {
 
-                    // Erase BAK
-                    FlashErase_LargePage(FLASH_PAGE_BAK, FLASH_BASE_BAK);// SIZE: 0xE000
-                    FlashErase_LargePage(FLASH_PAGE_BAK+1, 0);// SIZE: 0x10000
+                    if (0 == is_erased) {
+                        is_erased = 1;
+                        // Erase BAK
+                        FlashErase_LargePage(FLASH_PAGE_BAK, FLASH_BASE_BAK);// SIZE: 0xE000
+                        FlashErase_LargePage(FLASH_PAGE_BAK+1, 0);// SIZE: 0x10000
+                    }
 
-                    g_ftp_enable = 0;
+                    // g_ftp_enable = 0;
 
                     ConnectToFtpServer();
                 }
@@ -291,7 +295,12 @@ int main()
                     printf("\r\n");
 
                     printf("FTP DW Finished...\n");
-                    // TODO: SoftReset
+
+                    FlashWrite_SysParams(PARAM_ID_IAP_FLAG, (u8*)IAP_REQ_ON, 4);
+                    FlashWrite_SysParams(PARAM_ID_RSVD_U1, (u8*)BIN_SIZE_STR, 6);
+                    
+                    printf("Before APP Reset...\n");
+                    asm("reset");
                 }
             }
         }
@@ -387,7 +396,7 @@ int main()
             }
         }
 
-        printf("test004=========\n");
+        printf("gs_ftp_wait=%d, ftp_sta=%d, \n");
         delay_ms(50);
     }
 
