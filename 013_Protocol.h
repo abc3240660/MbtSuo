@@ -105,7 +105,10 @@ bool TcpLockerLocked(void);
 bool TcpLockerUnlocked(void);
 bool TcpChargeStarted(void);
 bool TcpChargeStoped(void);
+void ProcessIapRequest(void);
 void ProcessTcpServerCommand(void);
+
+bool IsIapRequested(void);
 
 bool TcpReNormalAck(u8* cmd_str, u8* sta);
 bool TcpReQueryParams(void);

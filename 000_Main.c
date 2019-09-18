@@ -26,7 +26,6 @@
 #include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
 #include "013_Protocol.h"
-#include "014_md5.h"
 #include "016_FlashOta.h"
 #include "017_InnerFlash.h"
 
@@ -34,13 +33,7 @@
 static unsigned long start_time_hbeat = 0;
 static char one_svr_cmds[RX_RINGBUF_MAX_LEN] = {0};
 
-static u8 gs_ftp_wait = 1;
-static u8 gs_ftp_res_md5[LEN_COMMON_USE] = "";
-static MD5_CTX g_ftp_md5_ctx;
-
-u8 g_ftp_enable = 0;
-
-void process_bg96(void)
+static void process_bg96(void)
 {
     int i = 0;
     int skip_flag = 0;
@@ -112,74 +105,13 @@ void process_bg96(void)
     }
 }
 
-void MD5Update(u8* buf, u16 len)
-{
-    GAgent_MD5Update(&g_ftp_md5_ctx, buf, len);
-}
-
-void FlashSectionMove_Test(void)
-{
-    u16 i = 0;
-    u32 test_cnt = 0;
-    OneInstruction_t dat[1024];
-    unsigned char sTestBuf20000[1024]={0};
-
-    printf("9876543--\n");
-
-//    FlashErase_LargePage(2, 0);
-    FlashErase_LargePage(3, 0);
-    FlashErase_LargePage(4, 0);
-    FlashErase_LargePage(5, 0);
-
-    printf("8765432--\n");
-
-    delay_ms(3000);
-
-    while(1)
-    {
-        if (100 == test_cnt++) {
-            // DataRecord_WriteBytesArray(1, 0x100, u16 index, u8 *data, u16 length)
-        }
-
-        if (100 == test_cnt++) {
-            FlashRead_InstructionWordsToByteArray(2,0,1024/4,sTestBuf20000);
-
-            for(i=0;i<256;i++)
-            {
-                //dat[i].HighLowUINT16s.HighWord=i+i*256;
-                dat[i].HighLowUINT16s.HighWord=sTestBuf20000[3*i+2];
-                dat[i].HighLowUINT16s.LowWord=sTestBuf20000[3*i+0]+(sTestBuf20000[3*i+1])*256;
-            }            
-            FlashWrite_InstructionWords(3,0,dat,1024/4);
-            printf("8880888--\n");
-            FlashWrite_InstructionWords(1,0x7800,dat,1024/4);
-        }
-        
-        if (0 == test_cnt%10) {
-            printf("7654321--\n");
-        }
-        
-        delay_ms(100);
-    }
-}
-
 int main()
 {
-    u8 is_erased = 0;
     u8 net_sta = 0;
-    u8 ftp_sta = 0;
-    
-    u32 ftp_offset = 0;
-    u32 ftp_len_per = 512;
-    u32 ftp_goal = BIN_SIZE_INT;
 
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
 
-    u16 got_size = 0;
-
     unsigned long task_cnt = 0;
-
-	GAgent_MD5Init(&g_ftp_md5_ctx);
 
     System_Config();
     GPIOB_Init();
@@ -200,16 +132,13 @@ int main()
 
     printf("Application running...\r\n");
 
-    CalcFirstMd5();
-
     InitRingBuffers();
 
     while(1)
     {
         hbeat_gap = GetHeartBeatGap();
         net_sta = GetNetStatus();
-        ftp_sta = GetFtpStatus();
-        
+
         // -- TODO: cannot waste long time which will affect NFC-Read
         // -------------------- Re-Connect ------------------ //
         // --
@@ -223,22 +152,6 @@ int main()
             net_sta = GetNetStatus();
             if ((0x80==net_sta) || (0x40==net_sta)) {// lost connection
                 // ConnectToTcpServer();
-            }
-            
-            if ((1==gs_ftp_wait) && (0==ftp_sta)) {
-                if (1 == g_ftp_enable) {
-
-                    if (0 == is_erased) {
-                        is_erased = 1;
-                        // Erase BAK
-                        FlashErase_LargePage(FLASH_PAGE_BAK, FLASH_BASE_BAK);// SIZE: 0xE000
-                        FlashErase_LargePage(FLASH_PAGE_BAK+1, 0);// SIZE: 0x10000
-                    }
-
-                    // g_ftp_enable = 0;
-
-                    ConnectToFtpServer();
-                }
             }
         }
 
@@ -263,7 +176,8 @@ int main()
         // --
         // ---------------------- TASK 1 -------------------- //
         // --
-        if (0 == (task_cnt%4)) {// every 0.2s
+        if (0 == (task_cnt%2)) {// every 0.1s
+            ProcessIapRequest();// If IAP requested, will cost 1s every time
         }
 
         // --
@@ -272,40 +186,7 @@ int main()
         if (0 == (task_cnt%11)) {  // every 0.5s
 //            process_bg96();
 //            ReadMobibNFCCard();
-            
-            if ((1==gs_ftp_wait) && (0x81 == ftp_sta)) {
-                printf("before +++++++++++\n");
-                got_size = BG96FtpGetData(ftp_offset, ftp_len_per);
-                if (got_size > 0) {
-                    ftp_offset += got_size;                    
-                    printf("ftp_offset = %ld\n", ftp_offset);
-                }
-                printf("after ------------\n");
-
-                if (ftp_offset >= ftp_goal) {
-                    u8 i = 0;
-
-                    gs_ftp_wait = 0;
-                    GAgent_MD5Final(&g_ftp_md5_ctx, gs_ftp_res_md5);
-                    
-                    printf("FTP MD5 = ");
-                    for (i=0; i<16; i++) {
-                        printf("%.2X", gs_ftp_res_md5[i]);
-                    }
-                    printf("\r\n");
-
-                    printf("FTP DW Finished...\n");
-
-                    FlashWrite_SysParams(PARAM_ID_IAP_FLAG, (u8*)IAP_REQ_ON, 4);
-                    FlashWrite_SysParams(PARAM_ID_RSVD_U1, (u8*)BIN_SIZE_STR, 6);
-                    
-                    printf("Before APP Reset...\n");
-                    asm("reset");
-                }
-            }
         }
-
-        //printf("test002=========\n");
 
         // --
         // ---------------------- TASK 3 -------------------- //
@@ -380,8 +261,6 @@ int main()
             task_cnt = 0;
         }
 
-        //printf("test003=========\n");
-
         if (0x81 == net_sta) {
             if ((task_cnt%16) < 8) {
                 GPIOB_SetPin(task_cnt%4, 1);
@@ -396,7 +275,9 @@ int main()
             }
         }
 
-        printf("gs_ftp_wait=%d, ftp_sta=%d, \n");
+        if (0 == (task_cnt%20)) {// every 1.0s
+        }
+
         delay_ms(50);
     }
 

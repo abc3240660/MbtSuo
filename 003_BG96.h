@@ -106,6 +106,7 @@ static const char HTTP_FILE_READ_RESPONSE[] = "+QHTTPREADFILE";
 static const char FTP_CONFIG_PARAMETER[] = "+QFTPCFG";
 static const char FTP_OPEN_SESSION[] = "+QFTPOPEN";
 static const char FTP_DOWNLOAD_DAT[] = "+QFTPGET";
+static const char FTP_GET_FIL_SIZE[] = "+QFTPSIZE";
 
 // MQTT AT Commands
 static const char MQTT_CONFIG_PARAMETER[] = "+QMTCFG";
@@ -493,9 +494,9 @@ void InitRingBuffers(void);
 
 bool BG96ATInitialize(void);
 bool ConnectToTcpServer(void);
-bool ConnectToFtpServer(void);
+bool ConnectToFtpServer(u8* iap_file, u8* ftp_ip, u8* ftp_port);
 bool BG96TcpSend(char* send_buf);
-u16 BG96FtpGetData(u32 offset, u32 length);
+u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf);
 
 u8 GetNetStatus(void);
 void SetNetStatus(u8 sta);

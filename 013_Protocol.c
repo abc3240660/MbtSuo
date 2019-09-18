@@ -18,6 +18,7 @@
 #include "012_CLRC663_NFC.h"
 #include "013_Protocol.h"
 #include "014_Md5.h"
+#include "016_FlashOta.h"
 
 static const char* cmd_list[] = {
     // DEV Auto CMDs
@@ -65,9 +66,9 @@ static u8 gs_alarm_on[LEN_COMMON_USE+1] = "1";
 static u8 gs_beep_on[LEN_COMMON_USE+1] = "1";
 static u8 gs_alarm_level[LEN_COMMON_USE+1] = "80";
 
-static u8 gs_iap_update = 0;
-static u8 gs_iap_update_md5[LEN_DW_MD5+1] = "";
-static u8 gs_iap_update_url[LEN_DW_URL+1] = "";
+static u8 gs_iap_waiting = 0;
+static u8 gs_iap_md5[LEN_DW_MD5+1] = "";
+static u8 gs_iap_file[LEN_DW_URL+1] = "";
 
 static u16 gs_hbeat_gap = DEFAULT_HBEAT_GAP;
 
@@ -89,6 +90,22 @@ static char tcp_send_buf[LEN_MAX_SEND] = "";
 static u8 tmp_buf_big[LEN_BYTE_SZ512] = "";
 
 static char gs_gnss_part[LEN_BYTE_SZ128] = "";
+
+static u32 gs_ftp_offset = 0;
+
+//static u8 gs_ftp_ip[LEN_NET_TCP]  = "122.4.233.119";
+//static u8 gs_ftp_port[LEN_NET_TCP] = "10218";
+
+static u8 gs_ftp_ip[LEN_NET_TCP]  = "101.132.150.94";
+static u8 gs_ftp_port[LEN_NET_TCP] = "21";
+
+
+// TODO: Need to reset into 0 if IAP failed for ReIAP Request
+static u32 sum_got = 0;
+static u8 gs_is_erased = 0;
+
+static MD5_CTX g_ftp_md5_ctx;
+static u8 gs_ftp_res_md5[LEN_COMMON_USE] = "";
 
 // --
 // ---------------------- global variables -------------------- //
@@ -274,14 +291,14 @@ void ParseMobitMsg(char* msg)
             // below is all SVR CMDs with params
             } else if (IAP_UPGRADE == cmd_type) {
                 if (3 == index) {
-                    gs_iap_update = 1;
-                    memset(gs_iap_update_url, 0, LEN_DW_URL);
-                    strncpy((char*)gs_iap_update_url, split_str, LEN_DW_URL);
-                    printf("gs_iap_update_url = %s\n", gs_iap_update_url);
+                    gs_iap_waiting = 1;
+                    memset(gs_iap_file, 0, LEN_DW_URL);
+                    strncpy((char*)gs_iap_file, split_str, LEN_DW_URL);
+                    printf("gs_iap_file = %s\n", gs_iap_file);
                 } else if (4 == index) {
-                    memset(gs_iap_update_md5, 0, LEN_DW_URL);
-                    strncpy((char*)gs_iap_update_md5, split_str, LEN_DW_URL);
-                    printf("gs_iap_update_md5 = %s\n", gs_iap_update_md5);
+                    memset(gs_iap_md5, 0, LEN_DW_URL);
+                    strncpy((char*)gs_iap_md5, split_str, LEN_DW_URL);
+                    printf("gs_iap_md5 = %s\n", gs_iap_md5);
                 }
             } else if (CHANGE_APN == cmd_type) {
                 if (3 == index) {
@@ -342,19 +359,131 @@ void ParseMobitMsg(char* msg)
     }
 }
 
+void ProcessIapRequest(void)
+{
+    if (gs_iap_waiting != 1) {
+        return;
+    }
+
+    u16 i = 0;
+    u8 ftp_sta = 0;
+    u16 got_size = 0;
+    u32 ftp_len_per = 512;
+    u32 iap_total_size = 0;
+
+    u8 iap_buf[LEN_BYTE_SZ1024] = "";
+
+    ftp_sta = GetFtpStatus();
+
+    // ----------------
+    // --------
+    // Erase BAK partition & Initialize MD5
+    if (0 == gs_is_erased) {
+        gs_is_erased = 1;
+        GAgent_MD5Init(&g_ftp_md5_ctx);
+
+        FlashErase_LargePage(FLASH_PAGE_BAK, FLASH_BASE_BAK);// SIZE: 0xE000
+        FlashErase_LargePage(FLASH_PAGE_BAK+1, 0);// SIZE: 0x10000
+    }
+
+    // ----------------
+    // --------
+    // Start first Connect or Re-Connect
+    if (0 == ftp_sta) {
+        ConnectToFtpServer(gs_iap_file, gs_ftp_ip, gs_ftp_port);
+    }
+
+    iap_total_size = GetFTPFileSize(gs_iap_file);
+
+    memset(iap_buf, 0, LEN_BYTE_SZ1024);
+    if (0x81 == ftp_sta) {
+        got_size = BG96FtpGetData(gs_ftp_offset, ftp_len_per, iap_buf);
+
+        if (got_size > 0) {
+            u16 flash_page = FLASH_PAGE_BAK;// 0x2,2000
+            u32 flash_offset = FLASH_BASE_BAK;
+
+            OneInstruction_t dat[1024];
+
+            gs_ftp_offset += got_size;
+            printf("gs_ftp_offset = %ld\n", ftp_offset);
+
+            got_size = atoi(size_str);
+
+            MD5Update((u8*)iap_buf, got_size);
+            GAgent_MD5Update(&g_ftp_md5_ctx, buf, len);
+
+            //for (i=0; i<got_size/4; i++) {
+            //    printf("=%.2X-%.2X-%.2X-%.2X\n", (u8)iap_buf[4*i], (u8)iap_buf[4*i+1], (u8)iap_buf[4*i+2], (u8)iap_buf[4*i+3]);
+            //}
+
+            for(i=0;i<(got_size/4);i++)
+            {
+                if ((i*4+2) >= got_size) {
+                    break;
+                }
+                dat[i].HighLowUINT16s.HighWord = (u8)iap_buf[i*4+2];
+                if ((i*4+1) >= got_size) {
+                    break;
+                }
+                dat[i].HighLowUINT16s.LowWord = (u8)iap_buf[i*4+1] << 8;
+                if ((i*4+0) >= got_size) {
+                    break;
+                }
+                dat[i].HighLowUINT16s.LowWord += (u8)iap_buf[i*4+0];
+            }
+
+            if ((0==offset) && (0x200==length)) {
+                flash_offset = 0;
+                flash_page = FLASH_PAGE_BAK;
+            } else {
+                flash_offset = FLASH_BASE_BAK;
+                flash_offset += sum_got / 2;
+                flash_offset -= 0x100;
+                flash_page = FLASH_PAGE_BAK + (flash_offset / 0x10000);
+            }
+
+            // printf("flash_offset = %.8lX, %ld\n", flash_offset, flash_offset);
+            printf("WR flash_address = 0x%X-%.8lX\n", flash_page, flash_offset);
+            FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 128);
+
+            sum_got += got_size;
+        }
+
+        if (gs_ftp_offset >= iap_total_size) {
+            gs_iap_waiting = 0;
+            GAgent_MD5Final(&g_ftp_md5_ctx, gs_ftp_res_md5);
+
+            printf("FTP MD5 = ");
+            for (i=0; i<16; i++) {
+                printf("%.2X", gs_ftp_res_md5[i]);
+            }
+            printf("\r\n");
+
+            printf("FTP DW Finished...\n");
+
+            FlashWrite_SysParams(PARAM_ID_IAP_FLAG, (u8*)IAP_REQ_ON, 4);
+            FlashWrite_SysParams(PARAM_ID_RSVD_U1, (u8*)BIN_SIZE_STR, 6);
+
+            printf("Before APP Reset...\n");
+            asm("reset");
+        }
+    }
+}
+
 void ProcessTcpServerCommand(void)
 {
     // during download mode, skip other operations
     // till download success or failed
-    if (gs_iap_update != 0) {
-        DoHttpIAP();
+    if (gs_iap_waiting != 0) {
+        DoFtpIAP();
 
         // try twice NG, skip this request
-        if (gs_iap_update != 0) {
-            gs_iap_update = 0;
+        if (gs_iap_waiting != 0) {
+            gs_iap_waiting = 0;
 
-            memset(gs_iap_update_md5, 0, LEN_DW_MD5);
-            memset(gs_iap_update_url, 0, LEN_DW_URL);
+            memset(gs_iap_md5, 0, LEN_DW_MD5);
+            memset(gs_iap_file, 0, LEN_DW_URL);
 
             gs_dw_size_total = 0;
             gs_dw_recved_sum = 0;
@@ -799,9 +928,9 @@ bool DoAddNFCFast(void)
     return true;
 }
 
-bool DoHttpIAP(void)
+bool DoFtpIAP(void)
 {
-    printf("DoHttpIAP...\n");
+    printf("DoFtpIAP...\n");
 
     return true;
 }
@@ -814,6 +943,15 @@ u8 IsDuringBind(void)
 u16 GetHeartBeatGap(void)
 {
     return gs_hbeat_gap;
+}
+
+bool IsIapRequested(void)
+{
+    if (1 == gs_iap_waiting) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 void ReportFinishAddNFC(void)

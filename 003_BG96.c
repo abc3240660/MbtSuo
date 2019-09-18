@@ -19,8 +19,6 @@
 #include "007_Uart.h"
 #include "008_RingBuffer.h"
 #include "013_Protocol.h"
-#include "016_FlashOta.h"
-#include "017_InnerFlash.h"
 
 static int errorCode = -1;
 static unsigned int bufferHead = 0;
@@ -44,6 +42,7 @@ static u8 gs_ftp_sta = 0;
 
 static char gs_gnss_posi[LEN_BYTE_SZ128] = "";
 
+// TODO: Delete Temp Use
 static u8 gs_ftp_test = 0;
 
 // --
@@ -61,12 +60,6 @@ u8 g_iccid_str[LEN_COMMON_USE] = "898602B4151830031698";
 u8 g_svr_ip[LEN_NET_TCP]  = "122.4.233.119";
 u8 g_svr_port[LEN_NET_TCP] = "10211";
 u8 g_svr_apn[LEN_NET_TCP] = "CMNET";
-
-//static u8 gs_ftp_ip[LEN_NET_TCP]  = "122.4.233.119";
-//static u8 gs_ftp_port[LEN_NET_TCP] = "10218";
-
-static u8 gs_ftp_ip[LEN_NET_TCP]  = "101.132.150.94";
-static u8 gs_ftp_port[LEN_NET_TCP] = "21";
 
 //******************************************************************************
 // Configure BG96
@@ -1341,7 +1334,7 @@ Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const char *e_t
             }
         }
     }
-    
+
     printf("recv_len = %d\n", recv_len);
     if (recv_len > 0){
         printf("\nFail Response P2\n");
@@ -2501,7 +2494,7 @@ bool BG96TcpSend(char* send_buf)
     if (gs_net_sta != 0x81) {
         return false;
     }
-    
+
     unsigned int comm_socket_index = 0;  // The range is 0 ~ 11
     Socket_Type_t socket = TCP_CLIENT;
 
@@ -2561,10 +2554,14 @@ bool ConnectToTcpServer(void)
 }
 
 /////////////////////////////////// BG96 FTP ///////////////////////////////////
-bool OpenFtpSession(unsigned int pdp_index)
+bool OpenFtpSession(unsigned int pdp_index, u8* ftp_ip, u8* ftp_port)
 {
-    char cmd[64];
-    char buf[32];
+    char cmd[64] = "";
+    char buf[32] = "";
+
+    if ((NULL==ftp_ip) || (NULL==ftp_port)) {
+        return false;
+    }
 
     strcpy(cmd, FTP_CONFIG_PARAMETER);
     sprintf(buf, "=\"contextid\",%d", pdp_index);
@@ -2606,7 +2603,7 @@ bool OpenFtpSession(unsigned int pdp_index)
     memset(buf, '\0', 32);
     memset(cmd, '\0', 64);
     strcpy(cmd, FTP_OPEN_SESSION);
-    sprintf(buf, "=\"%s\",%s", gs_ftp_ip, gs_ftp_port);    
+    sprintf(buf, "=\"%s\",%s", ftp_ip, ftp_port);
     strcat(cmd, buf);
     if(SendAndSearch_multi(cmd, "+QFTPOPEN: 0,0", RESPONSE_ERROR, 30) != SUCCESS_RESPONSE){
         printf("FTPOPEN failed...\n");
@@ -2616,15 +2613,74 @@ bool OpenFtpSession(unsigned int pdp_index)
     return true;
 }
 
-bool ConnectToFtpServer(void)
+u32 GetFTPFileSize(u8* iap_file)
+{
+    u32 i = 0;
+    u32 size_pos = 0;
+    u16 size_got = 0;
+
+    char cmd[64] = "";
+    char buf[32] = "";
+    char size_str[8]= "";
+
+    if (NULL == iap_file)
+        return 0;
+    }
+
+    memset(cmd, '\0', 64);
+    memset(buf, '\0', 32);
+    strcpy(cmd, FTP_GET_FIL_SIZE);
+    sprintf(buf, "=\"%s\"", iap_file);
+    strcat(cmd, buf);
+    if(!SendAndSearch_multi(cmd, "+QFTPSIZE: 0,", RESPONSE_ERROR, 30)){
+        return 0;
+    }
+
+    ReadResponseToBuffer(1);
+
+    memset(size_str, 0, 8);
+    for (i=0; i<bufferHead; i++) {
+        if (('F'==rxBuffer[i+0]) && ('T'==rxBuffer[i+1]) && ('P'==rxBuffer[i+2]) &&
+            ('S'==rxBuffer[i+3]) && (':'==rxBuffer[i+7]) && ('0'==rxBuffer[i+9])) {
+            size_pos = i+11;
+            printf("FTP DW size=%s\n", rxBuffer+size_pos);
+        }
+
+        if ((size_pos!=0) && (i>=size_pos)) {
+            if (('\r'==rxBuffer[i+0]) && ('\n'==rxBuffer[i+1])) {
+                break;
+            }
+            size_str[i-size_pos] = rxBuffer[i];
+        }
+    }
+
+    printf("iap_size1 = %s\n", size_str);
+    if (size_pos != 0) {
+        size_got = atoi(size_str);
+    }
+
+    printf("iap_size2 = %ld\n", size_got);
+
+    return size_got;
+}
+
+bool ConnectToFtpServer(u8* iap_file, u8* ftp_ip, u8* ftp_port)
 {
     u8 trycnt = 10;
-    unsigned int comm_pdp_index = 1;  // The range is 1 ~ 16
+    unsigned int pdp_id = 1;  // The range is 1 ~ 16
+
+    if (NULL == iap_file) {
+        return false;
+    }
+
+    if ((NULL==ftp_ip) || (NULL==ftp_port)) {
+        return false;
+    }
 
     CloseFtpService();
 
     while(trycnt--) {
-        if (OpenFtpSession(comm_pdp_index)){
+        if (OpenFtpSession(pdp_id, ftp_ip, ftp_port)){
             break;
         }
 
@@ -2648,8 +2704,7 @@ bool ConnectToFtpServer(void)
     return true;
 }
 
-extern void MD5Update(u8* buf, u16 len);
-u16 BG96FtpGetData(u32 offset, u32 length)
+u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf)
 {
     u16 i = 0;
     char cmd[64];
@@ -2658,9 +2713,12 @@ u16 BG96FtpGetData(u32 offset, u32 length)
 
     u16 size_pos = 0;
     u16 size_got = 0;
-//    unsigned int recv_len = 0;
 
-    static u32 sum_got = 0;
+    static u8 trycnt = 0;
+
+    if (NULL == iap_buf) {
+        return 0;
+    }
 
     gs_ftp_test = 1;
 
@@ -2668,22 +2726,28 @@ u16 BG96FtpGetData(u32 offset, u32 length)
     // sprintf(buf, "=\"test.mp3\",\"COM:\",%ld,%ld", offset, length);
     sprintf(buf, "=\"Mbtsuo_0915.bin\",\"COM:\",%ld,%ld", offset, length);
     strcat(cmd, buf);
-    
-    if(!SendAndSearch_multi(cmd, "CONNECT\r\n", RESPONSE_ERROR, 30)){
 
-        printf("---------errorCode = %d\n", errorCode);
-        // if (625 == errorCode) {
+    if(!SendAndSearch_multi(cmd, "CONNECT\r\n", RESPONSE_ERROR, 30)){
+        // ftp error
         if (errorCode > 600) {
+            printf("---------errorCode = %d\n", errorCode);
+            gs_ftp_sta = 0;
+        }
+
+        // other error
+        if (++trycnt >= 2) {
+            trycnt = 0;
             gs_ftp_sta = 0;
         }
 
         return 0;
     }
 
+    trycnt = 0;
     ReadResponseToBuffer(2);
 
     printf("FTPGET Recv %d Bytes: %.2X%.2X%.2X\n", bufferHead, rxBuffer[0], rxBuffer[1], rxBuffer[2]);
-    
+
     memset(size_str, 0, 8);
     for (i=0; i<bufferHead; i++) {
         if (('F'==rxBuffer[i+0]) && ('T'==rxBuffer[i+1]) && ('P'==rxBuffer[i+2]) &&
@@ -2691,7 +2755,7 @@ u16 BG96FtpGetData(u32 offset, u32 length)
             size_pos = i+10;
             printf("FTP DW size=%s\n", rxBuffer+size_pos);
         }
-        
+
         if ((size_pos!=0) && (i>=size_pos)) {
             if (('\r'==rxBuffer[i+0]) && ('\n'==rxBuffer[i+1])) {
                 break;
@@ -2699,54 +2763,11 @@ u16 BG96FtpGetData(u32 offset, u32 length)
             size_str[i-size_pos] = rxBuffer[i];
         }
     }
-    
+
     if (size_pos != 0) {
-        OneInstruction_t dat[1024];
-
         size_got = atoi(size_str);
-        
-        MD5Update((u8*)rxBuffer, size_got);
-        
-        //for (i=0; i<size_got/4; i++) {
-        //    printf("=%.2X-%.2X-%.2X-%.2X\n", (u8)rxBuffer[4*i], (u8)rxBuffer[4*i+1], (u8)rxBuffer[4*i+2], (u8)rxBuffer[4*i+3]);
-        //}
-
-        u16 flash_page = FLASH_PAGE_BAK;// 0x2,2000
-        u32 flash_offset = FLASH_BASE_BAK;
-
-        for(i=0;i<(size_got/4);i++)
-        {
-            if ((i*4+2) >= size_got) {
-                break;
-            }
-            dat[i].HighLowUINT16s.HighWord = (u8)rxBuffer[i*4+2];
-            if ((i*4+1) >= size_got) {
-                break;
-            }
-            dat[i].HighLowUINT16s.LowWord = (u8)rxBuffer[i*4+1] << 8;
-            if ((i*4+0) >= size_got) {
-                break;
-            }
-            dat[i].HighLowUINT16s.LowWord += (u8)rxBuffer[i*4+0];
-        }
-
-        if ((0==offset) && (0x200==length)) {
-            flash_offset = 0;
-            flash_page = FLASH_PAGE_BAK;
-        } else {
-            flash_offset = FLASH_BASE_BAK;
-            flash_offset += sum_got / 2;
-            flash_offset -= 0x100;
-            flash_page = FLASH_PAGE_BAK + (flash_offset / 0x10000);
-        }
-        
-        // printf("flash_offset = %.8lX, %ld\n", flash_offset, flash_offset);
-        printf("WR flash_address = 0x%X-%.8lX\n", flash_page, flash_offset);
-        FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 128);
-
-        sum_got += size_got;
     }
-    
+
     printf("FTP Got Firm size: %d Bytes\n", size_got);
 
     return size_got;
@@ -2877,7 +2898,7 @@ void SetNetStatus(u8 sta)
 {
     gs_net_sta = sta;
 }
-    
+
 void GetGPSInfo(char* gnss_part)
 {
     u8 i = 0;
@@ -2896,7 +2917,7 @@ void GetGPSInfo(char* gnss_part)
             printf("ERROR CODE: %d\n", e_code);
             printf("Please check the documentation for error details.\n");
         }
-        
+
         return;
     }
 
@@ -2906,14 +2927,14 @@ void GetGPSInfo(char* gnss_part)
     for (i=0; i<strlen(gs_gnss_posi); i++) {
         if (',' == gs_gnss_posi[i]) {
             k++;
-            
+
             if ((2==k) || (3==k) || (7==k)) {
                 gnss_part[m++] = '|';
             }
-            
+
             continue;
         }
-            
+
         if ((1==k) || (2==k) || (6==k) || (7==k)) {
             gnss_part[m++] = gs_gnss_posi[i];
         }
