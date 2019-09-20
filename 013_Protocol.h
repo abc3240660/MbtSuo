@@ -90,6 +90,7 @@ enum CMD_TYPE {
 
 void CalcFirstMd5(void);
 void ParseMobitMsg(char* msg);
+void ProcessTcpSvrCmds(void);
 
 bool TcpHeartBeat(void);
 bool TcpDeviceRegister(void);
@@ -132,5 +133,9 @@ void ReportFinishAddNFC(void);
 void ReportLockerUnlocked(void);
 u16 GetHeartBeatGap(void);
 u8 IsDuringBind(void);
+
+u8 IsApnChangeWait(void);
+void ResetApnChange(void);
+void ProtocolParamsInit(void);
 
 #endif

@@ -20,6 +20,9 @@
 #include "008_RingBuffer.h"
 #include "013_Protocol.h"
 
+// --
+// ---------------------- local variables -------------------- //
+// --
 static int errorCode = -1;
 static unsigned int bufferHead = 0;
 
@@ -40,7 +43,7 @@ static u8 gs_net_sta = 0;
 
 static u8 gs_ftp_sta = 0;
 
-static char gs_gnss_posi[LEN_BYTE_SZ128] = "";
+static u8 gs_gnss_pos[LEN_BYTE_SZ128] = "";
 
 // TODO: Delete Temp Use
 static u8 gs_ftp_test = 0;
@@ -56,10 +59,6 @@ u8 g_devzone_str[LEN_COMMON_USE] = "";
 
 u8 g_imei_str[LEN_COMMON_USE] = "868446032285351";
 u8 g_iccid_str[LEN_COMMON_USE] = "898602B4151830031698";
-
-u8 g_svr_ip[LEN_NET_TCP]  = "122.4.233.119";
-u8 g_svr_port[LEN_NET_TCP] = "10211";
-u8 g_svr_apn[LEN_NET_TCP] = "CMNET";
 
 //******************************************************************************
 // Configure BG96
@@ -121,7 +120,7 @@ void SetPinVal(u8 pin_num, u8 val)
 //           (IN) data_buf: the data to be send to BG96
 // Return:   the number of bytes written
 //******************************************************************************************
-int WriteToBG96(const char *data_buf)
+static int WriteToBG96(const char *data_buf)
 {
     printf("%s", data_buf);
 
@@ -133,7 +132,7 @@ int WriteToBG96(const char *data_buf)
 // Descriptions: PIC24F read one byte from RingBuffer
 // Return:   the first byte of incoming data available(or -1 if no data is available)
 //******************************************************************************************
-char ReadByteFromRingBuffer()
+static char ReadByteFromRingBuffer()
 {
     char dat = 0;
     int len = 1;
@@ -160,7 +159,7 @@ char ReadByteFromNetRingBuffer()
 // Descriptions: get the number of bytes available to read
 // Return:   the number of bytes available in RingBuffer
 //******************************************************************************************
-int IsRingBufferAvailable()
+static int IsRingBufferAvailable()
 {
     int ret;
 
@@ -176,27 +175,6 @@ int IsNetRingBufferAvailable()
     ret = ringbuffer_buf_use_size(&g_net_rbuf);
 
     return ret;
-}
-
-bool WaitUartRxIdle()
-{
-    int size1 = 0;
-    int size2 = 0;
-
-    size1 = ringbuffer_buf_use_size(&g_at_rbuf);
-
-    while (1) {
-        delay_ms(50);
-        size2 = ringbuffer_buf_use_size(&g_at_rbuf);
-
-        if ((size1 == size2)) {// RX stopped for 50MS
-            break;
-        }
-
-        size1 = size2;
-    }
-
-    return true;
 }
 
 bool WaitUartNetRxIdle()
@@ -220,13 +198,8 @@ bool WaitUartNetRxIdle()
     return true;
 }
 
-// from ringbuffer to net_cmd_buf
-void GetOneCompleteNetCmd(void)
-{
-}
-
 /////////////////////////////////// BG96 Common ///////////////////////////////////
-bool InitModule()
+static bool InitModule()
 {
     SetPinDir(RESET_PIN, OUTPUT);
     SetPinVal(RESET_PIN, LOW);
@@ -253,7 +226,7 @@ bool InitModule()
     return false;
 }
 
-bool SetDevCommandEcho(bool echo)
+static bool SetDevCommandEcho(bool echo)
 {
     const char *cmd;
 
@@ -268,7 +241,7 @@ bool SetDevCommandEcho(bool echo)
     return false;
 }
 
-bool GetDevInformation(char *inf)
+static bool GetDevInformation(char *inf)
 {
     if (SUCCESS_RESPONSE == SendAndSearch(DEV_INFORMATION, RESPONSE_OK, 2)) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
@@ -290,20 +263,22 @@ bool GetDevVersion(char *ver)
     return false;
 }
 
-bool GetDevIMEI(char *imei)
+static bool GetDevIMEI(void)
 {
     if (SUCCESS_RESPONSE == SendAndSearch(DEV_IMEI, RESPONSE_OK, 2)) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
-        memset(imei, 0, LEN_COMMON_USE);
-        strcpy(imei, rxBuffer);
-        printf("imei = %s\n", imei);
+        memset(g_imei_str, 0, LEN_COMMON_USE);
+        strcpy(g_imei_str, rxBuffer);
+        printf("g_imei_str = %s\n", g_imei_str);
+
         return true;
     }
+
     return false;
 }
 
-Cmd_Response_t SetDevFunctionality(Functionality_t mode)
+static Cmd_Response_t SetDevFunctionality(Functionality_t mode)
 {
     char cmd[16] = "";
     Cmd_Response_t fun_status;
@@ -327,7 +302,7 @@ Cmd_Response_t SetDevFunctionality(Functionality_t mode)
     return fun_status;
 }
 
-bool DevLocalRate(unsigned long *rate, Cmd_Status_t status)
+static bool DevLocalRate(unsigned long *rate, Cmd_Status_t status)
 {
     int i = 0;
     char cmd[16] = "";
@@ -358,7 +333,7 @@ bool DevLocalRate(unsigned long *rate, Cmd_Status_t status)
     return false;
 }
 
-bool GetDevSimIMSI(char *imsi)
+static bool GetDevSimIMSI(char *imsi)
 {
     if (SUCCESS_RESPONSE == SendAndSearch(DEV_SIM_IMSI, RESPONSE_OK, 2)) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
@@ -369,7 +344,7 @@ bool GetDevSimIMSI(char *imsi)
     return false;
 }
 
-bool DevSimPIN(char *pin, Cmd_Status_t status)
+static bool DevSimPIN(char *pin, Cmd_Status_t status)
 {
     char cmd[16] = "";
 
@@ -391,70 +366,23 @@ bool DevSimPIN(char *pin, Cmd_Status_t status)
     return false;
 }
 
-bool GetDevSimICCID(char *iccid)
+static bool GetDevSimICCID(void)
 {
     if (SUCCESS_RESPONSE == SendAndSearch(DEV_SIM_ICCID, RESPONSE_OK, 2)) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
         char *sta_buf = SearchStrBuffer(": ");
-        memset(iccid, 0, LEN_COMMON_USE);
-        strcpy(iccid, sta_buf + 2);
-        printf("iccid = %s\n", iccid);
+        memset(g_iccid_str, 0, LEN_COMMON_USE);
+        strcpy(g_iccid_str, sta_buf + 2);
+        printf("g_iccid_str = %s\n", g_iccid_str);
+
         return true;
     }
+
     return false;
 }
 
-bool GetCurrentTimeZoneX(char *timezone)
-{
-    char cmd[16] = "";
-
-    strcpy(cmd, DEV_TIME_ZONE);
-    strcat(cmd, "=2");
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
-        strcpy(cmd, DEV_TIME_ZONE);
-        strcat(cmd, "?");
-
-        if (SendAndSearch(cmd, "+CTZE", 2)) {
-            if (ReadResponseToBuffer(2)) {// loop read till timeout
-                u8 i = 0;
-                u8 j = 0;
-                u8 k = 0;
-                char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-                *end_buf = '\0';
-                char *sta_buf = SearchStrBuffer(": ");
-                memset(g_devzone_str, 0, LEN_COMMON_USE);
-                memset(g_devtime_str, 0, LEN_COMMON_USE);
-
-                for (i=0; i<strlen(sta_buf); i++) {
-                    if ('"' == sta_buf[i]) {
-                        j++;
-                        continue;
-                    } else {
-                        if (1 == j) {
-                            g_devzone_str[k++] = sta_buf[i];
-                        } else if (3 == j) {
-                            if ((sta_buf[i]>='0') && (sta_buf[i]<='9')) {
-                                g_devtime_str[k++] = sta_buf[i];
-                            }
-                        } else {
-                            k = 0;
-                        }
-                    }
-                }
-
-                printf("devzone = %s\n", g_devzone_str);
-                printf("devtime = %s\n", g_devtime_str);
-
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-bool GetCurrentTimeZone(char *timezone)
+static bool GetCurrentTimeZone(void)
 {
     char cmd[16] = "";
 
@@ -504,7 +432,7 @@ bool GetCurrentTimeZone(char *timezone)
     return false;
 }
 
-Net_Status_t DevNetRegistrationStatus()
+static Net_Status_t DevNetRegistrationStatus()
 {
     char cmd[16] = "";
     Net_Status_t n_status = NOT_REGISTERED;
@@ -706,7 +634,7 @@ bool DevClock(char *d_clock, Cmd_Status_t status)
 }
 
 /////////////////////////////////// BG96 TCPIP ///////////////////////////////////
-bool SetDevAPNParameters(unsigned int pdp_index, Protocol_Type_t type, char *apn, char *usr, char *pwd, Authentication_Methods_t met)
+static bool SetDevAPNParameters(unsigned int pdp_index, Protocol_Type_t type, char *apn, char *usr, char *pwd, Authentication_Methods_t met)
 {
     char cmd[64] = "";
     char buf[64] = "";
@@ -720,7 +648,7 @@ bool SetDevAPNParameters(unsigned int pdp_index, Protocol_Type_t type, char *apn
     return false;
 }
 
-Cmd_Response_t ActivateDevAPN(unsigned int pdp_index)
+static Cmd_Response_t ActivateDevAPN(unsigned int pdp_index)
 {
     char cmd[16] = "";
     char buf[8] = "";
@@ -745,7 +673,7 @@ bool DeactivateDevAPN(unsigned int pdp_index)
     return false;
 }
 
-bool GetDevAPNIPAddress(unsigned int pdp_index, char *ip)
+static bool GetDevAPNIPAddress(unsigned int pdp_index, char *ip)
 {
     char cmd[16] = "";
     char buf[8] = "";
@@ -766,7 +694,7 @@ bool GetDevAPNIPAddress(unsigned int pdp_index, char *ip)
     return false;
 }
 
-bool InitAPN(unsigned int pdp_index, char *apn, char *usr, char *pwd, char *err_code)
+static bool InitAPN(unsigned int pdp_index, char *apn, char *usr, char *pwd, char *err_code)
 {
     Net_Status_t i_status;
     Cmd_Response_t init_status;
@@ -812,7 +740,7 @@ bool InitAPN(unsigned int pdp_index, char *apn, char *usr, char *pwd, char *err_
     return false;
 }
 
-bool OpenSocketService(unsigned int pdp_index, unsigned int socket_index, Socket_Type_t socket, char *ip, unsigned int port, unsigned int local_port, Access_Mode_t mode)
+static bool OpenSocketService(unsigned int pdp_index, unsigned int socket_index, Socket_Type_t socket, char *ip, unsigned int port, unsigned int local_port, Access_Mode_t mode)
 {
     char cmd[128] = "";
     char buf[128] = "";
@@ -882,7 +810,7 @@ bool CloseSocketService(unsigned int socket_index)
     return false;
 }
 
-bool SocketSendData(unsigned int socket_index, Socket_Type_t socket, char *data_buf, char *ip, unsigned int port)
+static bool SocketSendData(unsigned int socket_index, Socket_Type_t socket, char *data_buf, char *ip, unsigned int port)
 {
     char cmd[64] = "";
     char buf[64] = "";
@@ -912,7 +840,7 @@ bool SocketSendData(unsigned int socket_index, Socket_Type_t socket, char *data_
     return false;
 }
 
-bool SocketRecvData(unsigned int socket_index, unsigned int recv_len, Socket_Type_t socket, char *recv_buf)
+static bool SocketRecvData(unsigned int socket_index, unsigned int recv_len, Socket_Type_t socket, char *recv_buf)
 {
     char cmd[16] = "";
     char buf[16] = "";
@@ -942,7 +870,7 @@ bool SocketRecvData(unsigned int socket_index, unsigned int recv_len, Socket_Typ
     return false;
 }
 
-bool SocketSendHEXData(unsigned int socket_index, char *hex_buf)
+static bool SocketSendHEXData(unsigned int socket_index, char *hex_buf)
 {
     char cmd[256] = "";
     char buf[256] = "";
@@ -976,104 +904,6 @@ bool SwitchAccessModes(unsigned int socket_index, Access_Mode_t mode)
     return false;
 }
 
-bool DevPingFunction(unsigned int socket_index, char *host)
-{
-    int j = 0;
-    char cmd[128] = "";
-    char buf[64] = "";
-
-    strcpy(cmd, PING_FUNCTION);
-    sprintf(buf, "=%d,\"%s\"", socket_index, host);
-    strcat(cmd, buf);
-    if (SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)) {
-        if (ReadResponseToBuffer(20)) {
-            char *sta_buf = SearchStrBuffer(PING_FUNCTION);
-            char ping_data[256] = "";
-            strcpy(ping_data, sta_buf);
-            char *p[6] = {NULL};
-            int i = 0;
-            p[0] = strtok(ping_data, "\r\n\r\n");
-            while (p[i] != NULL) {
-                i++;
-                p[i] = strtok(NULL, "\r\n\r\n");
-            }
-            p[i] = '\0';
-            for (j = 0; j <= 4; j++) {
-                char *cs_buf = strstr(p[j], ": ");
-                char *ce_buf = strchr(p[j], ',');
-                if (ce_buf == NULL) {
-                    errorCode = atoi(cs_buf + 2);
-                } else {
-                    *ce_buf = '\0';
-                    int code = atoi(cs_buf + 2);
-                    if (code == 0) {
-                        return true;
-                    }
-                }
-            }
-        }
-    }
-    return false;
-}
-
-bool DevNTPFunction(unsigned int socket_index, char *ntp_ip, unsigned int port, char *time)
-{
-    char cmd[64] = "";
-    char buf[64] = "";
-
-    strcpy(cmd, NTP_FUNCTION);
-    sprintf(buf, "=%d,\"%s\",%d", socket_index, ntp_ip, port);
-    strcat(cmd, buf);
-    if (SendAndSearch_multi(cmd, NTP_FUNCTION, RESPONSE_ERROR, 125)) {
-        unsigned long start_time = GetTimeStamp();
-        while (!isDelayTimeout(start_time,2000UL)) {
-            if (IsRingBufferAvailable()) {
-                ReadResponseByteToBuffer();
-            }
-        }
-        char *sta_buf = SearchStrBuffer(": ");
-        strcpy(time, sta_buf + 2);
-        return true;
-    }
-    return false;
-}
-
-bool ConfigDNSServer(unsigned int socket_index, char *primary_addr, char *secondary_addr)
-{
-    char cmd[128] = "";
-    char buf[128] = "";
-
-    strcpy(cmd, CONFIGURE_DNS_SERVER);
-    sprintf(buf, "=%d,\"%s\",\"%s\"", socket_index, primary_addr, secondary_addr);
-    strcat(cmd, buf);
-    if (SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)) {
-        return true;
-    }
-    return false;
-}
-
-bool DevDNSFunction(unsigned int socket_index, char *domain_name, char *ip)
-{
-    char cmd[128] = "";
-    char buf[128] = "";
-
-    strcpy(cmd, DNS_FUNCTION);
-    sprintf(buf, "=%d,\"%s\"", socket_index, domain_name);
-    strcat(cmd, buf);
-    if (SendAndSearch_multi(cmd, "+QIURC", RESPONSE_ERROR, 60)) {
-        unsigned long start_time = GetTimeStamp();
-        while (!isDelayTimeout(start_time ,2000UL)) {
-            if (IsRingBufferAvailable()) {
-                ReadResponseByteToBuffer();
-            }
-        }
-        char *sta_buf = SearchStrBuffer(": ");
-        strcpy(ip, sta_buf + 2);
-        return true;
-    }
-    return false;
-}
-
 bool QueryLastErrorCode(char *err_code)
 {
     char cmd[16] = "";
@@ -1085,35 +915,6 @@ bool QueryLastErrorCode(char *err_code)
         return true;
     }
     return false;
-}
-
-Socket_Event_t WaitCheckSocketEvent(char *event, unsigned int timeout)
-{
-    if (ReadResponseAndSearch(RECV_SOCKET_EVENT, timeout)) {
-        unsigned long start_time = GetTimeStamp();
-        while (!isDelayTimeout(start_time,2000UL)) {
-            if (IsRingBufferAvailable()) {
-                ReadResponseByteToBuffer();
-            }
-        }
-        char *sta_buf = SearchChrBuffer(',');
-        if(!sta_buf){
-            return 0;
-        }
-        strcpy(event, sta_buf + 1);
-        if (SearchStrBuffer("closed")) {
-            return SOCKET_CLOSE_EVENT;
-//        } else if (SearchStrBuffer("recv")) {
-//            return SOCKET_RECV_DATA_EVENT;
-        } else if (SearchStrBuffer("incoming full")) {
-            return SOCKET_CONNECTION_FULL_EVENT;
-        } else if (SearchStrBuffer("incoming")) {
-            return SOCKET_INCOMING_CONNECTION_EVENT;
-        } else if (SearchStrBuffer("pdpdeact")) {
-            return SOCKET_PDP_DEACTIVATION_EVENT;
-        }
-    }
-    return 0;
 }
 
 /////////////////////////////////// BG96 Serial ///////////////////////////////////
@@ -1225,7 +1026,7 @@ unsigned int ReadResponseToBuffer(unsigned int timeout)
 // AT Reply: XXXs + Keywords
 //         : Keywords must be the end of the whole reply
 // Return: Will return after got the Keywords or timeout
-Cmd_Response_t ReadResponseAndSearchChr(const char test_chr, unsigned int timeout)
+static Cmd_Response_t ReadResponseAndSearchChr(const char test_chr, unsigned int timeout)
 {
     unsigned long start_time = GetTimeStamp();
     unsigned int recv_len = 0;
@@ -1250,7 +1051,7 @@ Cmd_Response_t ReadResponseAndSearchChr(const char test_chr, unsigned int timeou
 // AT Reply: XXXs + Keywords
 //         : Keywords must be the end of the whole reply
 // Return: Will return after got the Keywords or timeout
-Cmd_Response_t ReadResponseAndSearch(const char *test_str, unsigned int timeout)
+static Cmd_Response_t ReadResponseAndSearch(const char *test_str, unsigned int timeout)
 {
     unsigned long start_time = GetTimeStamp();
     unsigned int recv_len = 0;
@@ -1270,7 +1071,7 @@ Cmd_Response_t ReadResponseAndSearch(const char *test_str, unsigned int timeout)
     }
 }
 
-Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const char *e_test_str, unsigned int timeout)
+static Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const char *e_test_str, unsigned int timeout)
 {
     unsigned long start_time = GetTimeStamp();
     unsigned int recv_len = 0;
@@ -1402,7 +1203,7 @@ Cmd_Response_t SendAndSearch_multi(const char *command, const char *test_str, co
 // SendAndSearch_multi
 //   -->ReadResponseAndSearch_multi
 //        -->ReadResponseByteToBuffer
-char *SearchStrBuffer(const char *test_str)
+static char *SearchStrBuffer(const char *test_str)
 {
 #if 1
     u16 i = 0;
@@ -1434,7 +1235,7 @@ char *SearchStrBuffer(const char *test_str)
 #endif
 }
 
-char *SearchChrBuffer(const char test_chr)
+static char *SearchChrBuffer(const char test_chr)
 {
     int buf_len = strlen((const char *)rxBuffer);
 
@@ -1457,219 +1258,10 @@ bool ReturnErrorCode(int *s_err_code)
     return false;
 }
 
-void CleanBuffer()
+static void CleanBuffer(void)
 {
     memset(rxBuffer, '\0', RX_BUFFER_LENGTH);
     bufferHead = 0;
-}
-
-/////////////////////////////////// BG96 HTTP ///////////////////////////////////
-bool SetHTTPConfigParameters(unsigned int pdp_index, bool request_header, bool response_header, HTTP_Body_Data_Type_t type)
-{
-    char cmd[64], buf[32];
-    strcpy(cmd, HTTP_CONFIG_PARAMETER);
-    sprintf(buf, "=\"contextid\",%d", pdp_index);
-    strcat(cmd, buf);
-    if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
-        return false;
-    }
-    memset(cmd, '\0', 64);
-    strcpy(cmd, HTTP_CONFIG_PARAMETER);
-    if (request_header){
-        strcat(cmd, "=\"requestheader\",1");
-    }else {
-        strcat(cmd, "=\"requestheader\",0");
-    }
-    if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
-        return false;
-    }
-    memset(cmd, '\0', 64);
-    strcpy(cmd, HTTP_CONFIG_PARAMETER);
-    if (response_header){
-        strcat(cmd, "=\"responseheader\",1");
-    }else {
-        strcat(cmd, "=\"responseheader\",0");
-    }
-    if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
-        return false;
-    }
-    memset(cmd, '\0', 64);
-    memset(buf, '\0', 32);
-    strcpy(cmd, HTTP_CONFIG_PARAMETER);
-    sprintf(buf, "=\"contenttype\",%d", type);
-    strcat(cmd, buf);
-    if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
-        return false;
-    }
-    return true;
-}
-
-bool SetHTTPEnableSSL(unsigned int ssl_index)
-{
-    char cmd[64], buf[32];
-    strcpy(cmd, HTTP_CONFIG_PARAMETER);
-    sprintf(buf, "=\"sslctxid\",%d", ssl_index);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
-        return true;
-    }
-    return false;
-}
-
-bool HTTPURL(char *url, Cmd_Status_t status)
-{
-    char cmd[32],buf[16];
-    strcpy(cmd, HTTP_SET_URL);
-    if(status == READ_MODE){
-        strcat(cmd, "?");
-        if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
-            char *sta_buf = SearchStrBuffer(": ");
-            if(sta_buf == NULL){
-                url = "";
-            }else {
-                char *end_buf = SearchStrBuffer("\r\nOK");
-                *end_buf = '\0';
-                strcpy(url, sta_buf + 2);
-            }
-            return true;
-        }
-    }else if (status == WRITE_MODE){
-        sprintf(buf, "=%d", strlen(url));
-        strcat(cmd, buf);
-        if(SendAndSearch_multi(cmd, RESPONSE_CONNECT, RESPONSE_ERROR, 10)){
-            if(SendDataAndCheck(url, RESPONSE_OK, RESPONSE_ERROR, 60)){
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-bool HTTPGET(unsigned int timeout)
-{
-    char cmd[32], buf[16];
-    strcpy(cmd, HTTP_GET_REQUEST);
-    sprintf(buf, "=%d", timeout);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, HTTP_GET_REQUEST, RESPONSE_ERROR, timeout)){
-        unsigned long start_time = GetTimeStamp();
-        errorCode = -1;
-        while(!isDelayTimeout(start_time,2000UL)){
-            if(IsRingBufferAvailable()){
-                ReadResponseByteToBuffer();
-            }
-        }
-        char *sta_buf = SearchStrBuffer(": ");
-        char *end_buf = SearchChrBuffer(',');
-        *end_buf = '\0';
-        if (atoi(sta_buf + 2) == 0) {
-            return true;
-        }else {
-            errorCode = atoi(sta_buf + 2);
-        }
-    }
-    return false;
-}
-
-bool HTTPPOST(char *post_data, unsigned int timeout)
-{
-    char cmd[32], buf[16];
-    strcpy(cmd, HTTP_POST_REQUEST);
-    sprintf(buf, "=%d,%d,%d", strlen(post_data), timeout, timeout);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_CONNECT, RESPONSE_ERROR, 10)){
-        if(SendDataAndCheck(post_data, HTTP_POST_REQUEST, RESPONSE_ERROR, timeout)){
-            unsigned long start_time = GetTimeStamp();
-            errorCode = -1;
-            while(!isDelayTimeout(start_time,2000UL)){
-                if(IsRingBufferAvailable()){
-                    ReadResponseByteToBuffer();
-                }
-            }
-            char *sta_buf = SearchStrBuffer(": ");
-            char *end_buf = SearchChrBuffer(',');
-            *end_buf = '\0';
-            if (atoi(sta_buf + 2) == 0) {
-                return true;
-            }else {
-                errorCode = atoi(sta_buf + 2);
-            }
-        }
-    }
-    return false;
-}
-
-bool HTTTPPOSTFile(char *filename, unsigned int timeout)
-{
-    char cmd[64], buf[32];
-    strcpy(cmd, HTTP_FILE_POST_REQUEST);
-    sprintf(buf, "=\"%s\",%d", filename, timeout);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, HTTP_FILE_POST_REQUEST, RESPONSE_ERROR, timeout)){
-        unsigned long start_time = GetTimeStamp();
-        errorCode = -1;
-        while(!isDelayTimeout(start_time,2000UL)){
-            if(IsRingBufferAvailable()){
-                ReadResponseByteToBuffer();
-            }
-        }
-        char *sta_buf = SearchStrBuffer(": ");
-        char *end_buf = SearchChrBuffer(',');
-        *end_buf = '\0';
-        if (atoi(sta_buf + 2) == 0) {
-            return true;
-        }else {
-            errorCode = atoi(sta_buf + 2);
-        }
-    }
-    return false;
-}
-
-bool HTTPRead(char *read_data, unsigned int timeout)
-{
-    char cmd[32], buf[16];
-    strcpy(cmd, HTTP_READ_RESPONSE);
-    sprintf(buf, "=%d", timeout);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, HTTP_READ_RESPONSE, RESPONSE_ERROR, timeout)){
-        unsigned long start_time = GetTimeStamp();
-        errorCode = -1;
-        while(!isDelayTimeout(start_time, 2000UL)){
-            if(IsRingBufferAvailable()){
-                ReadResponseByteToBuffer();
-            }
-        }
-        char *sta_buf = SearchStrBuffer(RESPONSE_CONNECT);
-        char *end_buf = SearchStrBuffer("OK\r\n\r\n");
-        *end_buf = '\0';
-        strcpy(read_data, sta_buf + strlen(RESPONSE_CONNECT) + 2);
-        return true;
-    }
-    return false;
-}
-
-bool HTTPReadToFile(char *filename, unsigned int timeout)
-{
-    char cmd[64], buf[32];
-    strcpy(cmd, HTTP_FILE_READ_RESPONSE);
-    sprintf(buf, "=\"%s\",%d", filename, timeout);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, HTTP_FILE_READ_RESPONSE, RESPONSE_ERROR, timeout)){
-        unsigned long start_time = GetTimeStamp();
-        errorCode = -1;
-        while(!isDelayTimeout( start_time,2000UL)){
-            if(IsRingBufferAvailable()){
-                ReadResponseByteToBuffer();
-            }
-        }
-        char *sta_buf = SearchStrBuffer(": ");
-        if(atoi(sta_buf + 2) == 0){
-            return true;
-        }else {
-            errorCode = atoi(sta_buf + 2);
-        }
-    }
-    return false;
 }
 
 /////////////////////////////////// BG96 GNSS ///////////////////////////////////
@@ -1685,7 +1277,7 @@ bool SetGNSSConstellation(GNSS_Constellation_t constellation)
     return false;
 }
 
-bool SetGNSSAutoRun(bool auto_run)
+static bool SetGNSSAutoRun(bool auto_run)
 {
     char cmd[32];
     strcpy(cmd, GNSS_CONFIGURATION);
@@ -1703,7 +1295,7 @@ bool SetGNSSAutoRun(bool auto_run)
     return false;
 }
 
-bool SetGNSSEnableNMEASentences(bool enable)
+static bool SetGNSSEnableNMEASentences(bool enable)
 {
     char cmd[32];
     strcpy(cmd, GNSS_CONFIGURATION);
@@ -1718,7 +1310,7 @@ bool SetGNSSEnableNMEASentences(bool enable)
     return false;
 }
 
-bool TurnOnGNSS(GNSS_Work_Mode_t mode, Cmd_Status_t status)
+static bool TurnOnGNSS(GNSS_Work_Mode_t mode, Cmd_Status_t status)
 {
     char cmd[16],buf[8];
     strcpy(cmd, GNSS_TURN_ON);
@@ -1742,7 +1334,7 @@ bool TurnOnGNSS(GNSS_Work_Mode_t mode, Cmd_Status_t status)
     return false;
 }
 
-bool TurnOffGNSS()
+static bool TurnOffGNSS()
 {
     char cmd[16];
     strcpy(cmd, GNSS_TURN_OFF);
@@ -1752,7 +1344,7 @@ bool TurnOffGNSS()
     return false;
 }
 
-bool GetGNSSPositionInformation(char *position)
+static bool GetGNSSPositionInformation(char *position)
 {
     char cmd[16];
     strcpy(cmd, GNSS_GET_POSITION);
@@ -1767,7 +1359,7 @@ bool GetGNSSPositionInformation(char *position)
     return false;
 }
 
-bool GetGNSSNMEASentences(NMEA_Type_t type, char *sentences)
+static bool GetGNSSNMEASentences(NMEA_Type_t type, char *sentences)
 {
     char cmd[32];
     strcpy(cmd, GNSS_ACQUIRE_NMEA);
@@ -1799,577 +1391,6 @@ bool GetGNSSNMEASentences(NMEA_Type_t type, char *sentences)
         return true;
     }
     return false;
-}
-
-/////////////////////////////////// BG96 FILE ///////////////////////////////////
-bool GetFliesSpace(unsigned long *free_bytes, unsigned long *total_bytes)
-{
-    char cmd[16]; 
-    strcpy(cmd,FILE_SPACE_INFORMATION);
-    strcat(cmd,"=\"UFS\"");
-
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
-        char *sta_buf = SearchStrBuffer(": ");
-        char *med_buf = SearchChrBuffer(',');
-        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-        *med_buf = '\0';
-        *end_buf = '\0';
-        *free_bytes = atol(sta_buf + 2);
-        *total_bytes = atol(med_buf + 1);
-        return true;
-    }
-    return false;
-}
-
-bool GetFilesList(char *list)
-{
-    char cmd[16];
-    strcpy(cmd, FILE_LIST_FILES);
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
-        char *sta_buf = SearchStrBuffer(FILE_LIST_FILES);
-        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-        *end_buf = '\0';
-        strcpy(list, sta_buf);
-        return true;
-    }
-    return false;
-}
-
-bool DeleteFiles(const char *filename)
-{
-    char cmd[32],buf[32];
-    strcpy(cmd, FILE_DELETE_FILES);
-    sprintf(buf, "=\"%s\"", filename);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
-        return true;
-    }
-    return false;
-}
-
-bool UploadFiles(const char *filename, const char *u_file)
-{
-    char cmd[32],buf[32];
-    strcpy(cmd, FILE_UPLOAD_FILES);
-    sprintf(buf, "=\"%s\",%d", filename, strlen(u_file));
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_CONNECT, RESPONSE_ERROR, 5)){
-        if(SendDataAndCheck(u_file, RESPONSE_OK, RESPONSE_ERROR, 10)){
-            return true;
-        }
-    }
-    return false;
-}
-
-bool DownloadFiles(char *filename, char *d_file)
-{
-    char cmd[32],buf[32];
-    strcpy(cmd, FILE_DOWNLOAD_FILE);
-    sprintf(buf, "=\"%s\"", filename);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 30)){
-        char *end_buf = SearchStrBuffer(FILE_DOWNLOAD_FILE);
-        *end_buf = '\0';
-        char *sta_buf = SearchStrBuffer(RESPONSE_CONNECT);
-        strcpy(d_file, sta_buf + strlen(RESPONSE_CONNECT) + 2);
-        return true;
-    }
-    return false;
-}
-
-bool OpenFile(char *filename, Open_File_Mode_t mode, unsigned int *file_index)
-{
-    char cmd[32],buf[32];
-    strcpy(cmd, FILE_OPEN_FILE);
-    sprintf(buf, "=\"%s\",%d", filename, mode);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
-        char *sta_buf = SearchStrBuffer(": ");
-        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-        *end_buf = '\0';
-        *file_index = atoi(sta_buf + 2);
-        return true;
-    }
-    return false;
-}
-
-bool ReadFile(unsigned int file_index, char *read_data)
-{
-    char cmd[16],buf[8];
-    strcpy(cmd, FILE_READ_FILE);
-    sprintf(buf, "=%d", file_index);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 10)){
-        char *sta_buf = SearchStrBuffer("\r\n");
-        char *end_buf = SearchStrBuffer("\r\nOK");
-        *end_buf = '\0';
-        strcpy(read_data, sta_buf + 2);
-        return true;
-    }
-    return false;
-}
-
-bool WriteFile(unsigned int file_index, char *write_data)
-{
-    char cmd[32],buf[16];
-    strcpy(cmd, FILE_WRITE_FILE);
-    sprintf(buf, "=%d,%d", file_index, strlen(write_data));
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_CONNECT, RESPONSE_ERROR, 5)){
-        if(SendDataAndCheck(write_data, RESPONSE_OK, RESPONSE_ERROR, 10)){
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CloseFlie(unsigned int file_index)
-{
-    char cmd[16],buf[8];
-    strcpy(cmd, FILE_CLOSE_FILE);
-    sprintf(buf, "=%d", file_index);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-        return true;
-    }
-    return false;
-}
-
-bool SetFilePointer(unsigned int file_index, unsigned int offset, Pointer_Mode_t p_mode)
-{
-    char cmd[32],buf[16];
-    strcpy(cmd, FILE_SET_POSITION_FILE);
-    sprintf(buf, "=%d,%d,%d", file_index, offset, p_mode);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-        return true;
-    }
-    return false;
-}
-
-bool GetFilePointer(unsigned int file_index, unsigned int *offset)
-{
-    char cmd[32],buf[16];
-    strcpy(cmd, FILE_GET_POSITION_FILE);
-    sprintf(buf, "=%d", file_index);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-        char *sta_buf = SearchStrBuffer(": ");
-        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-        *end_buf = '\0';
-        *offset = atoi(sta_buf + 2);
-        return true;
-    }
-    return false;
-}
-
-bool TruncateFile(unsigned int file_index)
-{
-    char cmd[16],buf[8];
-    strcpy(cmd, FILE_TRUNCATE_FILE);
-    sprintf(buf, "=%d", file_index);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-        return true;
-    }
-    return false;
-}
-
-/////////////////////////////////// BG96 FILE ///////////////////////////////////
-bool SetSSLParameters(unsigned int ssl_index, SSL_Version_t s_version, SSL_Cipher_Suites_t s_ciper, unsigned int negotiation_time)
-{
-    char cmd[64],buf[32];
-    strcpy(cmd, SSL_CONFIG_PARAMETER);
-    sprintf(buf, "=\"sslversion\",%d,%d", ssl_index, s_version);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-        memset(cmd, '\0', 64);
-        memset(buf, '\0', 32);
-        strcpy(cmd, SSL_CONFIG_PARAMETER);
-        switch (s_ciper)
-        {
-            case TLS_RSA_WITH_AES_256_CBC_SHA:
-                sprintf(buf, "=\"ciphersuite\",%d,0X0035", ssl_index);
-                break;
-            case TLS_RSA_WITH_AES_128_CBC_SHA:
-                sprintf(buf, "=\"ciphersuite\",%d,0X002F", ssl_index);
-                break;
-            case TLS_RSA_WITH_RC4_128_SHA:
-                sprintf(buf, "=\"ciphersuite\",%d,0X0005", ssl_index);
-                break;
-            case TLS_RSA_WITH_RC4_128_MD5:
-                sprintf(buf, "=\"ciphersuite\",%d,0X0004", ssl_index);
-                break;
-            case TLS_RSA_WITH_3DES_EDE_CBC_SHA:
-                sprintf(buf, "=\"ciphersuite\",%d,0X000A", ssl_index);
-                break;
-            case TLS_RSA_WITH_AES_256_CBC_SHA256:
-                sprintf(buf, "=\"ciphersuite\",%d,0X003D", ssl_index);
-                break;
-            case TLS_ECDHE_RSA_WITH_RC4_128_SHA:
-                sprintf(buf, "=\"ciphersuite\",%d,0XC011", ssl_index);
-                break;
-            case TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA:
-                sprintf(buf, "=\"ciphersuite\",%d,0XC012", ssl_index);
-                break;
-            case TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA:
-                sprintf(buf, "=\"ciphersuite\",%d,0XC013", ssl_index);
-                break;
-            case TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:
-                sprintf(buf, "=\"ciphersuite\",%d,0XC014", ssl_index);
-                break;
-            case TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256:
-                sprintf(buf, "=\"ciphersuite\",%d,0C027", ssl_index);
-                break;
-            case TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384:
-                sprintf(buf, "=\"ciphersuite\",%d,0XC028", ssl_index);
-                break;
-            case TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:
-                sprintf(buf, "=\"ciphersuite\",%d,0XC02F", ssl_index);
-                break;
-            default:
-                sprintf(buf, "=\"ciphersuite\",%d,0XFFFF", ssl_index);
-                break;
-        }
-        strcat(cmd, buf);
-        if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-            memset(cmd, '\0', 64);
-            memset(buf, '\0', 32);
-            strcpy(cmd, SSL_CONFIG_PARAMETER);
-            sprintf(buf, "=\"negotiatetime\",%d,%d", ssl_index, negotiation_time);
-            strcat(cmd, buf);
-            if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-bool SetSSLCertificate(unsigned int ssl_index, const char *ca_cert_path, const char *client_cert_path, const char *client_key_path, bool validity_check)
-{
-    char cmd[64],buf[32];
-    strcpy(cmd, SSL_CONFIG_PARAMETER);
-    if(!strcmp(ca_cert_path,"") && !strcmp(client_cert_path,"") && !strcmp(client_key_path,"")){
-        sprintf(buf, "=\"seclevel\",%d,0", ssl_index);
-        strcat(cmd, buf);
-        if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-            return true;
-        }
-    }else if(strcmp(ca_cert_path,"") && !strcmp(client_cert_path,"") && !strcmp(client_key_path,"")){
-        sprintf(buf, "=\"seclevel\",%d,1", ssl_index);
-        strcat(cmd, buf);
-        if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-            return false;
-        }
-        memset(cmd, '\0', 64);
-        memset(buf, '\0', 32);
-        strcpy(cmd, SSL_CONFIG_PARAMETER);
-        sprintf(buf, "=\"cacert\",%d,\"%s\"", ssl_index, ca_cert_path);
-        strcat(cmd, buf);
-        if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-            return false;
-        }
-        memset(cmd, '\0', 64);
-        memset(buf, '\0', 32);
-        strcpy(cmd, SSL_CONFIG_PARAMETER);
-        if(validity_check){
-            sprintf(buf, "=\"ignorelocaltime\",%d,1", ssl_index);
-            strcat(cmd, buf);
-            if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-                return true;
-            }
-        }else{
-            sprintf(buf, "=\"ignorelocaltime\",%d,0", ssl_index);
-            strcat(cmd, buf);
-            if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-                return true;
-            }
-        }
-    }else if(strcmp(ca_cert_path,"") && strcmp(client_cert_path,"") && strcmp(client_key_path,"")){
-        sprintf(buf, "=\"seclevel\",%d,2", ssl_index);
-        strcat(cmd, buf);
-        if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-            return false;
-        }
-        memset(cmd, '\0', 64);
-        memset(buf, '\0', 32);
-        strcpy(cmd, SSL_CONFIG_PARAMETER);
-        sprintf(buf, "=\"cacert\",%d,\"%s\"", ssl_index, ca_cert_path);
-        strcat(cmd, buf);
-        if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-            return false;
-        }
-        memset(cmd, '\0', 64);
-        memset(buf, '\0', 32);
-        strcpy(cmd, SSL_CONFIG_PARAMETER);
-        sprintf(buf, "=\"clientcert\",%d,\"%s\"", ssl_index, client_cert_path);
-        strcat(cmd, buf);
-        if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-            return false;
-        }
-        memset(cmd, '\0', 64);
-        memset(buf, '\0', 32);
-        strcpy(cmd, SSL_CONFIG_PARAMETER);
-        sprintf(buf, "=\"clientkey\",%d,\"%s\"", ssl_index, client_key_path);
-        strcat(cmd, buf);
-        if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-            return false;
-        }
-        memset(cmd, '\0', 64);
-        memset(buf, '\0', 32);
-        strcpy(cmd, SSL_CONFIG_PARAMETER);
-        if(validity_check){
-            sprintf(buf, "=\"ignorelocaltime\",%d,1", ssl_index);
-            strcat(cmd, buf);
-            if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-                return true;
-            }
-        }else{
-            sprintf(buf, "=\"ignorelocaltime\",%d,0", ssl_index);
-            strcat(cmd, buf);
-            if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5)){
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-bool InitSSL(unsigned int ssl_index, char *ca_cert, char *client_cert, char *client_key, char *err_code)
-{
-    unsigned long start_time = GetTimeStamp();
-    char *e_str;
-    int f_err_code;
-    if (!SetSSLParameters(ssl_index, ALL_VERSION, SUPPORT_ALL_ABOVE, 300)){
-        e_str = "\r\nSSL ERROR: An error occurred while setting the ssl parameter.\r\n";
-        strcpy(err_code, e_str);
-        return false;
-    }
-
-    if (!strcmp(ca_cert,"") && !strcmp(client_cert,"") && !strcmp(client_key,"")){
-        if (SetSSLCertificate(ssl_index, "", "", "", false)){
-            e_str = "\r\nSSL OK: The ssl were successfully initialized.\r\n";
-            strcpy(err_code, e_str);
-            return true;
-        }
-        e_str = "\r\nSSL ERROR: An error occurred while setting the ssl certificate.\r\n";
-        strcpy(err_code, e_str);
-    }else if (strcmp(ca_cert,"") && !strcmp(client_cert,"") && !strcmp(client_key,"")){
-        while (!UploadFiles(ssl_ca_cert_name, ca_cert)){
-            if(ReturnErrorCode(&f_err_code)){
-                if (f_err_code == 407){
-                    start_time = GetTimeStamp();
-                    while (!DeleteFiles(ssl_ca_cert_name)){
-                        if(isDelayTimeout( start_time,10*1000UL)){
-                            e_str = "\r\nSSL ERROR: The ssl ca cert file exists. An error occurred while deleting the original file during the re-upload process.\r\n";
-                            strcpy(err_code, e_str);
-                            return false;
-                        }
-                    }
-                }
-            }else if(isDelayTimeout(start_time, 30*1000UL)){
-                e_str = "\r\nSSL ERROR: Error uploading file, Please check the corresponding documentation for details.\r\n";
-                strcpy(err_code, e_str);
-                return false;
-            }
-        }
-        start_time = GetTimeStamp();
-        while (!SetSSLCertificate(ssl_index, ssl_ca_cert_name, "", "", false)){
-            if (isDelayTimeout(start_time ,30 * 1000UL)){
-                e_str = "\r\nSSL ERROR: An error occurred while setting the ssl certificate.\r\n";
-                strcpy(err_code, e_str);
-                return false;
-            }
-        }
-        e_str = "\r\nSSL OK: The ssl were successfully initialized.\r\n";
-        strcpy(err_code, e_str);
-        return true;
-    }else if (strcmp(ca_cert,"") && strcmp(client_cert,"") && strcmp(client_key,"")){
-        while (!UploadFiles(ssl_ca_cert_name, ca_cert)){
-            if(ReturnErrorCode(&f_err_code)){
-                if (f_err_code == 407){
-                    start_time = GetTimeStamp();
-                    while (!DeleteFiles(ssl_ca_cert_name)){
-                        if(isDelayTimeout(start_time , 10*1000UL)){
-                            e_str = "\r\nSSL ERROR: The ssl ca cert file exists. An error occurred while deleting the original file during the re-upload process.\r\n";
-                            strcpy(err_code, e_str);
-                            return false;
-                        }
-                    }
-                }
-            }else if(isDelayTimeout(start_time , 30*1000UL)){
-                e_str = "\r\nSSL ERROR: Error uploading file, Please check the corresponding documentation for details.\r\n";
-                strcpy(err_code, e_str);
-                return false;
-            }
-        }
-        start_time = GetTimeStamp();
-        while (!UploadFiles(ssl_client_cert_name, client_cert)){
-            if(ReturnErrorCode(&f_err_code)){
-                if (f_err_code == 407){
-                    start_time = GetTimeStamp();
-                    while (!DeleteFiles(ssl_client_cert_name)){
-                        if(isDelayTimeout(start_time , 10*1000UL)){
-                            e_str = "\r\nSSL ERROR: The ssl ca cert file exists. An error occurred while deleting the original file during the re-upload process.\r\n";
-                            strcpy(err_code, e_str);
-                            return false;
-                        }
-                    }
-                }
-            }else if(isDelayTimeout(start_time ,30*1000UL)){
-                e_str = "\r\nSSL ERROR: Error uploading file, Please check the corresponding documentation for details.\r\n";
-                strcpy(err_code, e_str);
-                return false;
-            }
-        }
-        start_time = GetTimeStamp();
-        while (!UploadFiles(ssl_client_key_name, client_key)){
-            if(ReturnErrorCode(&f_err_code)){
-                if (f_err_code == 407){
-                    start_time = GetTimeStamp();
-                    while (!DeleteFiles(ssl_client_key_name)){
-                        if(isDelayTimeout(start_time , 10*1000UL)){
-                            e_str = "\r\nSSL ERROR: The ssl ca cert file exists. An error occurred while deleting the original file during the re-upload process.\r\n";
-                            strcpy(err_code, e_str);
-                            return false;
-                        }
-                    }
-                }
-            }else if(isDelayTimeout(start_time , 30*1000UL)){
-                e_str = "\r\nSSL ERROR: Error uploading file, Please check the corresponding documentation for details.\r\n";
-                strcpy(err_code, e_str);
-                return false;
-            }
-        }
-        start_time = GetTimeStamp();
-        while (!SetSSLCertificate(ssl_index, ssl_ca_cert_name, ssl_client_cert_name, ssl_client_key_name, false)){
-            if (isDelayTimeout(start_time , 30 * 1000UL)){
-                e_str = "\r\nSSL ERROR: An error occurred while setting the ssl certificate.\r\n";
-                strcpy(err_code, e_str);
-                return false;
-            }
-        }
-        e_str = "\r\nSSL OK: The ssl were successfully initialized.\r\n";
-        strcpy(err_code, e_str);
-        return true;
-    }
-    return false;
-}
-
-bool OpenSSLSocket(unsigned int pdp_index, unsigned int ssl_index, unsigned int socket_index, char *ip, unsigned int port, Access_Mode_t mode)
-{
-    char cmd[64],buf[64];
-    strcpy(cmd, SSL_OPEN_SOCKET);
-    sprintf(buf, "=%d,%d,%d,\"%s\",%d,%d", pdp_index, ssl_index, socket_index, ip, port, mode);
-    strcat(cmd, buf);
-    switch(mode)
-    {
-        case BUFFER_MODE:
-        case DIRECT_PUSH_MODE:
-            if (SendAndSearch_multi(cmd, SSL_OPEN_SOCKET, RESPONSE_ERROR, 150) > 0){
-                unsigned long start_time = GetTimeStamp();
-                while(!isDelayTimeout(start_time , 2000UL)){
-                    if (IsRingBufferAvailable()){
-                        ReadResponseByteToBuffer();
-                    }
-                }
-                char *sta_buf = SearchChrBuffer(',');
-                errorCode = -1;
-                if(atoi(sta_buf + 1) == 0){
-                    return true;
-                }else{
-                    errorCode = atoi(sta_buf + 1);
-                }
-            }
-            break;
-        case TRANSPARENT_MODE:
-            if (SendAndSearch_multi(cmd, RESPONSE_CONNECT, RESPONSE_ERROR, 150) > 0){
-                return true;
-            }
-            break;
-        default:
-            break;
-    }
-    return false;
-}
-
-bool SSLSocketSendData(unsigned int socket_index, char *ssl_send_data)
-{
-    char cmd[16], buf[8];
-    strcpy(cmd, SSL_SEND_DATA);
-    sprintf(buf, "=%d,%d", socket_index, strlen(ssl_send_data));
-    strcat(cmd, buf);
-    if(SendAndSearchChr(cmd, '>', 2)){
-        if(SendDataAndCheck(ssl_send_data, RESPONSE_SEND_OK, RESPONSE_SEND_FAIL, 30)){
-            return true;
-        }
-    }
-    return false;
-}
-
-bool SSLSocketRecvData(unsigned int socket_index, unsigned int ssl_recv_len, char *ssl_recv_data)
-{
-    char cmd[16],buf[16];
-    strcpy(cmd, SSL_READ_DATA);
-    sprintf(buf, "=%d,%d", socket_index, ssl_recv_len);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_CRLF_OK, RESPONSE_ERROR, 30)){
-        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-        *end_buf = '\0';
-        char *sta_buf = SearchStrBuffer(": "); 
-        strcpy(ssl_recv_data, sta_buf + 2);
-        return true;
-    }
-    return false;
-}
-
-bool CloseSSLSocket(unsigned int socket_index)
-{
-    char cmd[16],buf[16];
-    strcpy(cmd, SSL_CLOSE_SOCKET);
-    sprintf(buf, "=%d", socket_index);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 150)){
-        return true;
-    }
-    return false;
-}
-
-bool QuerySSLSocketStatus(unsigned int socket_index, char *ssl_status)
-{
-    char cmd[16],buf[16];
-    strcpy(cmd, SSL_QUERY_STATUS);
-    sprintf(buf, "=%d", socket_index);
-    strcat(cmd, buf);
-    if(SendAndSearch(cmd, RESPONSE_OK, 10)){
-        char *sta_buf = SearchStrBuffer(": ");
-        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-        *end_buf = '\0';
-        strcpy(ssl_status, sta_buf + 2);
-        return true;
-    }
-    return false;
-}
-
-SSL_Socket_Event_t WaitCheckSSLSocketEvent(char *event, unsigned int timeout)
-{
-    if(ReadResponseAndSearch(SSL_SOCKET_EVENT, timeout)){
-        unsigned long start_time = GetTimeStamp();
-        while(isDelayTimeout(start_time , 200UL)){
-            if (IsRingBufferAvailable()){
-                ReadResponseByteToBuffer();
-            }
-        }
-        char *sta_buf = SearchChrBuffer(',');
-        strcpy(event, sta_buf + 1);
-        if(SearchStrBuffer("closed")){
-            return SSL_SOCKET_CLOSE_EVENT;
-        }else if (SearchStrBuffer("recv")){
-            return SSL_SOCKET_RECV_EVENT;
-        }
-    }
-    return 0;
 }
 
 bool SwithToGSM(void)
@@ -2448,7 +1469,7 @@ bool BG96ATInitialize(void)
 
     trycnt = 10;
     while(trycnt--) {
-        if (true == GetDevIMEI((char *)g_imei_str)) {
+        if (true == GetDevIMEI()) {
             break;
         }
     }
@@ -2459,7 +1480,7 @@ bool BG96ATInitialize(void)
 
     trycnt = 10;
     while(trycnt--) {
-        if (true == GetDevSimICCID((char *)g_iccid_str)) {
+        if (true == GetDevSimICCID()) {
             break;
         }
     }
@@ -2470,7 +1491,7 @@ bool BG96ATInitialize(void)
 
     trycnt = 10;
     while(trycnt--) {
-        if (true == GetCurrentTimeZone((char *)g_devtime_str)) {
+        if (true == GetCurrentTimeZone()) {
             break;
         }
     }
@@ -2507,7 +1528,7 @@ bool BG96TcpSend(char* send_buf)
     }
 }
 
-bool ConnectToTcpServer(void)
+bool ConnectToTcpServer(u8* svr_ip, u8* svr_port, u8* svr_apn)
 {
     u8 trycnt = 10;
 
@@ -2518,7 +1539,7 @@ bool ConnectToTcpServer(void)
     char apn_error[64];
 
     while(trycnt--) {
-        if (InitAPN(comm_pdp_index, (char *)g_svr_apn, "", "", apn_error)) {
+        if (InitAPN(comm_pdp_index, (char *)svr_apn, "", "", apn_error)) {
             break;
         }
 
@@ -2533,7 +1554,7 @@ bool ConnectToTcpServer(void)
 
     trycnt = 10;
     while(trycnt--) {
-        if (OpenSocketService(comm_pdp_index, comm_socket_index, socket, (char *)g_svr_ip, atoi((char *)g_svr_port), 0, DIRECT_PUSH_MODE)){
+        if (OpenSocketService(comm_pdp_index, comm_socket_index, socket, (char *)svr_ip, atoi((char *)svr_port), 0, DIRECT_PUSH_MODE)){
             break;
         }
 
@@ -2773,75 +1794,6 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf)
     return size_got;
 }
 
-int HttpClientDemo(void)
-{
-    const char APN[] = "mobit.apn";
-    const char http_url[] = "http://tlele.cn";   //"http://app.tongxinmao.com:89/app/api/ip";
-    unsigned int comm_pdp_index = 1;    // The range is 1 ~ 16
-    HTTP_Body_Data_Type_t  http_type = APPLICATION_X_WWW_FORM_URLENCODED;
-
-    // Setup
-    printf("This is the Mobit Debug Serial!\n");
-    DelayMs(1000);
-    //while(!InitModule());
-
-    SetDevCommandEcho(false);
-
-    char inf[64];
-    if(GetDevInformation(inf)){
-        printf("Dev Info: %s!\n", inf);
-    }
-
-    char apn_error[64];
-    while (!InitAPN(comm_pdp_index, (char *)APN, "", "", apn_error)){
-        printf("apn_error :%s\n", apn_error);
-    }
-
-    printf("apn_error :%s\n", apn_error);
-
-    while(!SetHTTPConfigParameters(comm_pdp_index, false, false, http_type)){
-        printf("Config the HTTP Parameter Fail!\n");
-        int e_code;
-        if (ReturnErrorCode(&e_code)){
-            printf("ERROR CODE: %d\n", e_code);
-            printf("Please check the documentation for error details.\n");
-            while(1);
-        }
-    }
-    printf("Config the HTTP Parameter Success!\n");
-
-    while(!HTTPURL((char *)http_url, WRITE_MODE)){
-        printf("Set the HTTP URL Fail!\n");
-        int e_code;
-        if (ReturnErrorCode(&e_code)){
-            printf("ERROR CODE: %d\n", e_code);
-            printf("Please check the documentation for error details.\n");
-            while(1);
-        }
-    }
-    printf("Set the HTTP URL Success!\n");
-
-    const char recv_file[] = "test.mp3";//"http_read.txt";
-
-    while(1) {
-        if(!HTTPGET(80)){
-            printf("HTTP GET Success!\n");
-            int e_code;
-            if (ReturnErrorCode(&e_code)){
-                printf("ERROR CODE: %d\n", e_code);
-                printf("Please check the documentation for error details.\n");
-                while(1);
-            }
-        }
-        printf("HTTP GET Success!\n");
-
-        if(HTTPReadToFile((char *)recv_file, 80)){
-            printf("HTTP Read to File Success!\n");
-        }
-    }
-    return 0;
-}
-
 int GNSSDemo(void)
 {
     GNSS_Work_Mode_t mode = STAND_ALONE;
@@ -2866,10 +1818,8 @@ int GNSSDemo(void)
     }
     printf("Open the GNSS Function Success!\n");
 
-    char gs_gnss_posi[128];
-
     while(1) {
-        while (!GetGNSSPositionInformation(gs_gnss_posi)){
+        while (!GetGNSSPositionInformation((char *)gs_gnss_pos)){
             printf("Get the GNSS Position Fail!\n");
             int e_code;
             if (ReturnErrorCode(&e_code)){
@@ -2879,7 +1829,7 @@ int GNSSDemo(void)
             DelayMs(5000);
         }
         printf("Get the GNSS Position Success!\n");
-        printf("gs_gnss_posi = %s\n", gs_gnss_posi);
+        printf("gs_gnss_pos = %s\n", gs_gnss_pos);
     }
     return 0;
 }
@@ -2909,8 +1859,8 @@ void GetGPSInfo(char* gnss_part)
         return;
     }
 
-    memset(gs_gnss_posi, 0, LEN_BYTE_SZ128);
-    if (!GetGNSSPositionInformation(gs_gnss_posi)){
+    memset(gs_gnss_pos, 0, LEN_BYTE_SZ128);
+    if (!GetGNSSPositionInformation((char *)gs_gnss_pos)){
         printf("Get the GNSS Position Fail!\n");
         int e_code;
         if (ReturnErrorCode(&e_code)){
@@ -2924,8 +1874,8 @@ void GetGPSInfo(char* gnss_part)
     printf("Get the GNSS Position Success!\n");
 
     memset(gnss_part, 0, LEN_BYTE_SZ128);
-    for (i=0; i<strlen(gs_gnss_posi); i++) {
-        if (',' == gs_gnss_posi[i]) {
+    for (i=0; i<strlen((const char*)gs_gnss_pos); i++) {
+        if (',' == gs_gnss_pos[i]) {
             k++;
 
             if ((2==k) || (3==k) || (7==k)) {
@@ -2936,11 +1886,11 @@ void GetGPSInfo(char* gnss_part)
         }
 
         if ((1==k) || (2==k) || (6==k) || (7==k)) {
-            gnss_part[m++] = gs_gnss_posi[i];
+            gnss_part[m++] = gs_gnss_pos[i];
         }
     }
 
-    printf("gs_gnss_posi = %s\n", gs_gnss_posi);
+    printf("gs_gnss_pos = %s\n", gs_gnss_pos);
     printf("gnss_defi = %s\n", gnss_part);
 }
 //******************************************************************************

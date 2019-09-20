@@ -31,87 +31,21 @@
 
 // static u8 is_mode_nb = 0;
 static unsigned long start_time_hbeat = 0;
-static char one_svr_cmds[RX_RINGBUF_MAX_LEN] = {0};
 
-static void process_bg96(void)
-{
-    int i = 0;
-    int skip_flag = 0;
+u8 g_svr_ip[LEN_NET_TCP]  = "122.4.233.119";
+u8 g_svr_port[LEN_NET_TCP] = "10211";
+u8 g_svr_apn[LEN_NET_TCP] = "CMNET";
 
-    if (0 == IsNetRingBufferAvailable()) {
-        return;
-    }
-
-    while(1) {
-        if (0 == IsNetRingBufferAvailable()) {
-            WaitUartNetRxIdle();
-
-            // buffer is empty for 50MS
-            if (0 == IsNetRingBufferAvailable()) {
-                break;
-            }
-        }
-        one_svr_cmds[i++] = ReadByteFromNetRingBuffer();
-
-        if (3 == i) {
-            if ((one_svr_cmds[0]=='S')&&(one_svr_cmds[1]=='T')&&(one_svr_cmds[2]=='A')) {
-                skip_flag = 0;
-            } else {
-                // invalid MSGs or overwritten: "XTA" -> just skip till net "STA"
-                skip_flag = 1;
-            }
-        }
-
-        if (i > 3) {
-            if ((one_svr_cmds[i-3]=='S')&&(one_svr_cmds[i-2]=='T')&&(one_svr_cmds[i-3]=='A')) {
-                if (i != 3) {
-                    i = 3;
-                    one_svr_cmds[0] = 'S';
-                    one_svr_cmds[1] = 'T';
-                    one_svr_cmds[2] = 'A';
-                }
-
-                skip_flag = 0;
-            }
-
-            if ((one_svr_cmds[i-3]=='E')&&(one_svr_cmds[i-2]=='N')&&(one_svr_cmds[i-1]=='D')) {
-                if ((one_svr_cmds[0]=='S')&&(one_svr_cmds[1]=='T')&&(one_svr_cmds[2]=='A')) {
-                    // process the valid MSGs
-                    printf("process MSGs: %s\n", one_svr_cmds);
-                    one_svr_cmds[i-3] = '\0';// D
-                    one_svr_cmds[i-2] = '\0';// N
-                    one_svr_cmds[i-1] = '\0';// E
-                    if (('#'==one_svr_cmds[3]) && ('$'==one_svr_cmds[i-4])) {
-                        one_svr_cmds[i-4] = '\0';// $
-                        ParseMobitMsg(one_svr_cmds+3);
-                    } else {
-                        printf("Error MSGs %c:%c\n", one_svr_cmds[3], one_svr_cmds[i-4]);
-                    }
-                } else {
-                    // skip the invalid MSGs
-                    i = 0;
-                }
-
-                skip_flag = 0;
-                memset(one_svr_cmds, 0, RX_RINGBUF_MAX_LEN);
-
-                continue;
-            }
-        }
-
-        if (1 == skip_flag) {
-            i = 0;
-        }
-    }
-}
-
-int main()
+int main(void)
 {
     u8 net_sta = 0;
+    u32 boot_times = 0;
 
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
 
     unsigned long task_cnt = 0;
+
+    u8 params_dat[LEN_BYTE_SZ64+1] = "";
 
     System_Config();
     GPIOB_Init();
@@ -134,10 +68,47 @@ int main()
 
     InitRingBuffers();
 
+    // Write params into flash when the first time boot
+    FlashRead_SysParams(PARAM_ID_1ST_BOOT, params_dat, 64);
+    if (strncmp(params_dat, "1", 1) != 0) {
+        FlashWrite_SysParams(PARAM_ID_SVR_IP, (u8*)g_svr_ip, strlen((const char*)g_svr_ip));
+        FlashWrite_SysParams(PARAM_ID_SVR_PORT, (u8*)g_svr_port, strlen((const char*)g_svr_port));
+        FlashWrite_SysParams(PARAM_ID_SVR_APN, (u8*)g_svr_apn, strlen((const char*)g_svr_apn));
+        FlashWrite_SysParams(PARAM_ID_IAP_MD5, (u8*)"11112222333344445555666677778888", 32);
+        FlashWrite_SysParams(PARAM_ID_1ST_BOOT, (u8*)"1", 1);
+    }
+
+    memset(params_dat, 0, LEN_BYTE_SZ64);
+    FlashRead_SysParams(PARAM_ID_BOOT_TM, params_dat, 64);
+    if (strspn(params_dat, "0123456789") == strlen(params_dat)) {
+        boot_times = atoi(params_dat);
+    }
+
+    boot_times += 1;
+    FlashWrite_SysParams(PARAM_ID_BOOT_TM, params_dat, 3);
+
+    ProtocolParamsInit();
+
     while(1)
     {
         hbeat_gap = GetHeartBeatGap();
         net_sta = GetNetStatus();
+
+        if (1 == IsApnChangeWait()) {
+            CloseTcpService();
+
+            delay_ms(200);
+            if (0x80 == net_sta) {
+                ResetApnChange();
+
+                // ConnectToTcpServer(g_svr_ip, g_svr_port, g_svr_apn);
+                if (0x81 == net_sta) {
+                    FlashWrite_SysParams(PARAM_ID_SVR_IP, (u8*)g_svr_ip, strlen((const char*)g_svr_ip));
+                    FlashWrite_SysParams(PARAM_ID_SVR_PORT, (u8*)g_svr_port, strlen((const char*)g_svr_port));
+                    FlashWrite_SysParams(PARAM_ID_SVR_APN, (u8*)g_svr_apn, strlen((const char*)g_svr_apn));
+                }
+            }
+        }
 
         // -- TODO: cannot waste long time which will affect NFC-Read
         // -------------------- Re-Connect ------------------ //
@@ -151,7 +122,7 @@ int main()
 
             net_sta = GetNetStatus();
             if ((0x80==net_sta) || (0x40==net_sta)) {// lost connection
-                // ConnectToTcpServer();
+                // ConnectToTcpServer(g_svr_ip, g_svr_port, g_svr_apn);
             }
         }
 
@@ -184,7 +155,7 @@ int main()
         // ---------------------- TASK 2 -------------------- //
         // --
         if (0 == (task_cnt%11)) {  // every 0.5s
-//            process_bg96();
+//            ProcessTcpSvrCmds();
 //            ReadMobibNFCCard();
         }
 

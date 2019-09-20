@@ -23,7 +23,7 @@
 // AT commands response
 static const char RESPONSE_READY[] = "RDY";
 static const char RESPONSE_OK[] = "OK";
- static const char RESPONSE_CRLF_OK[] = "\r\n\r\nOK";
+static const char RESPONSE_CRLF_OK[] = "\r\n\r\nOK";
 static const char RESPONSE_ERROR[] = "ERROR";
 static const char RESPONSE_POWER_DOWN[] = "POWERED DOWN";
 static const char RESPONSE_CONNECT[] = "CONNECT";
@@ -63,44 +63,8 @@ static const char SOCKET_SEND_DATA[] = "+QISEND";
 static const char SOCKET_READ_DATA[] = "+QIRD";
 static const char SOCKET_SEND_HEX_DATA[] = "+QISENDEX";
 static const char DATA_ACCESS_MODES[] = "+QISWTMD";
-static const char PING_FUNCTION[] = "+QPING";
-static const char NTP_FUNCTION[] = "+QNTP";
-static const char CONFIGURE_DNS_SERVER[] = "+QIDNSCFG";
-static const char DNS_FUNCTION[] = "+QIDNSGIP";
 static const char QUERY_ERROR_CODE[] = "+QIGETERROR";
 static const char RECV_SOCKET_EVENT[] = "+QIURC";
-
-// FILE AT Commands
-static const char FILE_SPACE_INFORMATION[] = "+QFLDS";
-static const char FILE_LIST_FILES[] = "+QFLST";
-static const char FILE_DELETE_FILES[] = "+QFDEL";
-static const char FILE_UPLOAD_FILES[] = "+QFUPL";
-static const char FILE_DOWNLOAD_FILE[] = "+QFDWL";
-static const char FILE_OPEN_FILE[] = "+QFOPEN";
-static const char FILE_READ_FILE[] = "+QFREAD";
-static const char FILE_WRITE_FILE[] = "+QFWRITE";
-static const char FILE_SET_POSITION_FILE[] = "+QFSEEK";
-static const char FILE_GET_POSITION_FILE[] = "+QFPOSITION";
-static const char FILE_TRUNCATE_FILE[] = "+QFTUCAT";
-static const char FILE_CLOSE_FILE[] = "+QFCLOSE";
-
-// SSL AT Commands
-static const char SSL_CONFIG_PARAMETER[] = "+QSSLCFG";
-static const char SSL_OPEN_SOCKET[] = "+QSSLOPEN";
-static const char SSL_SEND_DATA[] = "+QSSLSEND";
-static const char SSL_READ_DATA[] = "+QSSLRECV";
-static const char SSL_CLOSE_SOCKET[] = "+QSSLCLOSE";
-static const char SSL_QUERY_STATUS[] = "+QSSLSTATE";
-static const char SSL_SOCKET_EVENT[] = "+QSSLURC";
-
-// HTTP AT Commands
-static const char HTTP_CONFIG_PARAMETER[] = "+QHTTPCFG";
-static const char HTTP_SET_URL[] = "+QHTTPURL";
-static const char HTTP_GET_REQUEST[] = "+QHTTPGET";
-static const char HTTP_POST_REQUEST[] = "+QHTTPPOST";
-static const char HTTP_FILE_POST_REQUEST[] = "+QHTTPPOSTFILE";
-static const char HTTP_READ_RESPONSE[] = "+QHTTPREAD";
-static const char HTTP_FILE_READ_RESPONSE[] = "+QHTTPREADFILE";
 
 // FTP AT Commands
 static const char FTP_CONFIG_PARAMETER[] = "+QFTPCFG";
@@ -201,23 +165,6 @@ typedef enum nmea_sentences_type {
     GPVTG = 16,
 } NMEA_Type_t;
 
-// For HTTP
-typedef enum http_body_data_type {
-    APPLICATION_X_WWW_FORM_URLENCODED = 0,
-    TEXT_PLAIN = 1,
-    APPLICATION_OCTET_STREAM = 2,
-    MULTIPART_FORM_DATA = 3,
-} HTTP_Body_Data_Type_t;
-
-// For SSL
-typedef enum ssl_version {
-    SSL_3_0 = 0,
-    TLS_1_0 = 1,
-    TLS_1_1 = 2,
-    TLS_1_2 = 3,
-    ALL_VERSION = 4,
-} SSL_Version_t;
-
 // For TCPIP
 typedef enum protocol_type {
     IPV4 = 1,
@@ -302,28 +249,6 @@ typedef enum cmd_response {
 } Cmd_Response_t;
 
 /////////////////////////////////// BG96 API ///////////////////////////////////
-bool InitModule();
-
-bool SetDevCommandEcho(bool echo);
-
-bool GetDevInformation(char *inf);
-
-bool GetDevVersion(char *ver);
-
-bool GetDevIMEI(char *imei);
-
-Cmd_Response_t SetDevFunctionality(Functionality_t mode);
-
-bool DevLocalRate(unsigned long *rate, Cmd_Status_t status);
-
-bool GetDevSimIMSI(char *imsi);
-
-bool DevSimPIN(char *pin, Cmd_Status_t status);
-
-bool GetDevSimICCID(char *iccid);
-
-Net_Status_t DevNetRegistrationStatus();
-
 bool GetDevNetSignalQuality(unsigned int *rssi);
 
 Cmd_Response_t ScanOperatorNetwork(char *net);
@@ -337,32 +262,6 @@ bool DevNetPacketCounter(unsigned long *send_bytes, unsigned long *recv_bytes, b
 bool DevPowerDown();
 
 bool DevClock(char *d_clock, Cmd_Status_t status);
-
-// For FILE
-bool GetFliesSpace(unsigned long *free_bytes, unsigned long *total_bytes);
-
-bool GetFilesList(char *list);
-
-bool DeleteFiles(const char *filename);
-
-bool UploadFiles(const char *filename, const char *u_file);
-
-bool DownloadFiles(char *filename, char *d_file);
-
-bool OpenFile(char *filename, Open_File_Mode_t mode, unsigned int *file_index);
-
-bool ReadFile(unsigned int file_index, char *read_data);
-
-bool WriteFile(unsigned int file_index, char *write_data);
-
-bool CloseFlie(unsigned int file_index);
-
-bool SetFilePointer(unsigned int file_index, unsigned int offset, Pointer_Mode_t p_mode);
-
-bool GetFilePointer(unsigned int file_index, unsigned int *offset);
-
-bool TruncateFile(unsigned int file_index);
-
 
 // For GNSS
 bool SetGNSSConstellation(GNSS_Constellation_t constellation);
@@ -379,107 +278,19 @@ bool TurnOffGNSS();
 
 bool GetGNSSNMEASentences(NMEA_Type_t type, char *sentences);
 
-// For HTTP
-bool SetHTTPConfigParameters(unsigned int pdp_index, bool request_header, bool response_header, HTTP_Body_Data_Type_t type);
-
-bool SetHTTPEnableSSL(unsigned int ssl_index);
-
-bool HTTPURL(char *url, Cmd_Status_t status);
-
-bool HTTPGET(unsigned int timeout);
-
-bool HTTPPOST(char *post_data, unsigned int timeout);
-
-bool HTTTPPOSTFile(char *filename, unsigned int timeout);
-
-bool HTTPRead(char *read_data, unsigned int timeout);
-
-bool HTTPReadToFile(char *filename, unsigned int timeout);
-
-// For SSL
-bool SetSSLParameters(unsigned int ssl_index, SSL_Version_t s_version, SSL_Cipher_Suites_t s_ciper, unsigned int negotiation_time);
-
-bool SetSSLCertificate(unsigned int ssl_index, const char *ca_cert_path, const char *client_cert_path, const char *client_key_path, bool validity_check);
-
-bool InitSSL(unsigned int ssl_index, char *ca_cert, char *client_cert, char *client_key, char *err_code);
-
-bool OpenSSLSocket(unsigned int pdp_index, unsigned int ssl_index, unsigned int socket_index, char *ip, unsigned int port, Access_Mode_t mode);
-
-bool SSLSocketSendData(unsigned int socket_index, char *ssl_send_data);
-
-bool SSLSocketRecvData(unsigned int socket_index, unsigned int ssl_recv_len, char *ssl_recv_data);
-
-bool CloseSSLSocket(unsigned int socket_index);
-
-bool QuerySSLSocketStatus(unsigned int socket_index, char *ssl_status);
-
-SSL_Socket_Event_t WaitCheckSSLSocketEvent(char *event, unsigned int timeout);
-
 // For TCPIP
-bool SetDevAPNParameters(unsigned int pdp_index, Protocol_Type_t type, char *apn, char *usr, char *pwd, Authentication_Methods_t met);
-
-Cmd_Response_t ActivateDevAPN(unsigned int pdp_index);
-
-bool DeactivateDevAPN(unsigned int pdp_index);
-
-bool GetDevAPNIPAddress(unsigned int pdp_index, char *ip);
-
-bool InitAPN(unsigned int pdp_index, char *apn, char *usr, char *pwd, char *err_code);
-
-bool OpenSocketService(unsigned int pdp_index, unsigned int socket_index, Socket_Type_t socket, char *ip, unsigned int port, unsigned int local_port, Access_Mode_t mode);
-
-bool CloseSocketService(unsigned int socket_index);
-
-bool SocketSendData(unsigned int socket_index, Socket_Type_t socket, char *data_buf, char *ip, unsigned int port);
-
-bool SocketRecvData(unsigned int socket_index, unsigned int recv_len, Socket_Type_t socket, char *recv_buf);
-
-bool SocketSendHEXData(unsigned int socket_index, char *hex_buf);
+bool CloseTcpService(void);
 
 bool SwitchAccessModes(unsigned int socket_index, Access_Mode_t mode);
 
-bool DevPingFunction(unsigned int socket_index, char *host);
-
-bool DevNTPFunction(unsigned int socket_index, char *ntp_ip, unsigned int port, char *time);
-
-bool ConfigDNSServer(unsigned int socket_index, char *primary_addr, char *secondary_addr);
-
-bool DevDNSFunction(unsigned int socket_index, char *domain_name, char *ip);
-
 bool QueryLastErrorCode(char *err_code);
-
-Socket_Event_t WaitCheckSocketEvent(char *event, unsigned int timeout);
 
 // For Serial
 bool SendDataAndCheck(const char *data_buf, const char *ok_str, const char *err_str, unsigned int timeout);
 
 bool SendATcommand(const char *command);
 
-unsigned int ReadResponseByteToBuffer();
-
-unsigned int ReadResponseToBuffer(unsigned int timeout);
-
-Cmd_Response_t ReadResponseAndSearch(const char *test_str, unsigned int timeout);
-
-Cmd_Response_t ReadResponseAndSearchChr(const char test_chr, unsigned int timeout);
-
-Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const char *e_test_str, unsigned int timeout);
-
-Cmd_Response_t SendAndSearch(const char *command, const char *test_str, unsigned int timeout);
-
-Cmd_Response_t SendAndSearchChr(const char *command, const char test_chr, unsigned int timeout);
-
-Cmd_Response_t SendAndSearch_multi(const char *command, const char *test_str, const char *e_test_str, unsigned int timeout);
-
 bool ReturnErrorCode(int *s_err_code);
-
-void CleanBuffer();
-
-int IsRingBufferAvailable();
-
-char *SearchStrBuffer(const char *test_str);
-
-char *SearchChrBuffer(const char test_chr);
 
 void Configure_BG96(void);
 
@@ -493,7 +304,7 @@ bool HeartBeat(void);
 void InitRingBuffers(void);
 
 bool BG96ATInitialize(void);
-bool ConnectToTcpServer(void);
+bool ConnectToTcpServer(u8* svr_ip, u8* svr_port, u8* svr_apn);
 bool ConnectToFtpServer(u8* iap_file, u8* ftp_ip, u8* ftp_port);
 bool BG96TcpSend(char* send_buf);
 u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf);

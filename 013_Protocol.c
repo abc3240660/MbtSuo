@@ -99,13 +99,16 @@ static u32 gs_ftp_offset = 0;
 static u8 gs_ftp_ip[LEN_NET_TCP]  = "101.132.150.94";
 static u8 gs_ftp_port[LEN_NET_TCP] = "21";
 
-
 // TODO: Need to reset into 0 if IAP failed for ReIAP Request
-static u32 sum_got = 0;
+static u32 gs_ftp_sum_got = 0;
 static u8 gs_is_erased = 0;
+
+static u8 gs_change_apn = 0;
 
 static MD5_CTX g_ftp_md5_ctx;
 static u8 gs_ftp_res_md5[LEN_COMMON_USE] = "";
+
+static char one_svr_cmds[RX_RINGBUF_MAX_LEN] = {0};
 
 // --
 // ---------------------- global variables -------------------- //
@@ -313,6 +316,8 @@ void ParseMobitMsg(char* msg)
                     memset(g_svr_apn, 0, LEN_NET_TCP);
                     strncpy((char*)g_svr_apn, split_str, LEN_NET_TCP);
                     printf("g_svr_apn = %s\n", g_svr_apn);
+
+                    gs_change_apn = 1;
                 }
             } else if (DELETE_NFC == cmd_type) {
                 if (3 == index) {
@@ -438,7 +443,7 @@ void ProcessIapRequest(void)
                 flash_page = FLASH_PAGE_BAK;
             } else {
                 flash_offset = FLASH_BASE_BAK;
-                flash_offset += sum_got / 2;
+                flash_offset += gs_ftp_sum_got / 2;
                 flash_offset -= 0x100;
                 flash_page = FLASH_PAGE_BAK + (flash_offset / 0x10000);
             }
@@ -447,7 +452,7 @@ void ProcessIapRequest(void)
             printf("WR flash_address = 0x%X-%.8lX\n", flash_page, flash_offset);
             FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 128);
 
-            sum_got += got_size;
+            gs_ftp_sum_got += got_size;
         }
 
         if (gs_ftp_offset >= iap_total_size) {
@@ -906,7 +911,7 @@ bool DoEnterSleepFast(void)
 bool DoQueryGPSFast(void)
 {
     printf("DoQueryGPSFast...\n");
-    
+
     GetGPSInfo(gs_gnss_part);
 
     return true;
@@ -977,4 +982,117 @@ void ReportLockerUnlocked(void)
     }
 
     gs_till_svr_ack |= (temp<<DOOR_UNLOCKED);
+}
+
+u8 IsApnChangeWait(void)
+{
+    return gs_net_sta;
+}
+
+void ResetApnChange(void)
+{
+    gs_net_sta = 0;
+}
+
+void ProcessTcpSvrCmds(void)
+{
+    int i = 0;
+    int skip_flag = 0;
+
+    if (0 == IsNetRingBufferAvailable()) {
+        return;
+    }
+
+    while(1) {
+        if (0 == IsNetRingBufferAvailable()) {
+            WaitUartNetRxIdle();
+
+            // buffer is empty for 50MS
+            if (0 == IsNetRingBufferAvailable()) {
+                break;
+            }
+        }
+        one_svr_cmds[i++] = ReadByteFromNetRingBuffer();
+
+        if (3 == i) {
+            if ((one_svr_cmds[0]=='S')&&(one_svr_cmds[1]=='T')&&(one_svr_cmds[2]=='A')) {
+                skip_flag = 0;
+            } else {
+                // invalid MSGs or overwritten: "XTA" -> just skip till net "STA"
+                skip_flag = 1;
+            }
+        }
+
+        if (i > 3) {
+            if ((one_svr_cmds[i-3]=='S')&&(one_svr_cmds[i-2]=='T')&&(one_svr_cmds[i-3]=='A')) {
+                if (i != 3) {
+                    i = 3;
+                    one_svr_cmds[0] = 'S';
+                    one_svr_cmds[1] = 'T';
+                    one_svr_cmds[2] = 'A';
+                }
+
+                skip_flag = 0;
+            }
+
+            if ((one_svr_cmds[i-3]=='E')&&(one_svr_cmds[i-2]=='N')&&(one_svr_cmds[i-1]=='D')) {
+                if ((one_svr_cmds[0]=='S')&&(one_svr_cmds[1]=='T')&&(one_svr_cmds[2]=='A')) {
+                    // process the valid MSGs
+                    printf("process MSGs: %s\n", one_svr_cmds);
+                    one_svr_cmds[i-3] = '\0';// D
+                    one_svr_cmds[i-2] = '\0';// N
+                    one_svr_cmds[i-1] = '\0';// E
+                    if (('#'==one_svr_cmds[3]) && ('$'==one_svr_cmds[i-4])) {
+                        one_svr_cmds[i-4] = '\0';// $
+                        ParseMobitMsg(one_svr_cmds+3);
+                    } else {
+                        printf("Error MSGs %c:%c\n", one_svr_cmds[3], one_svr_cmds[i-4]);
+                    }
+                } else {
+                    // skip the invalid MSGs
+                    i = 0;
+                }
+
+                skip_flag = 0;
+                memset(one_svr_cmds, 0, RX_RINGBUF_MAX_LEN);
+
+                continue;
+            }
+        }
+
+        if (1 == skip_flag) {
+            i = 0;
+        }
+    }
+}
+
+void ProtocolParamsInit(void)
+{
+    u8 params_dat[LEN_BYTE_SZ64+1] = "";
+
+    // Write params into flash when the first time boot
+    FlashRead_SysParams(PARAM_ID_1ST_BOOT, params_dat, 64);
+    if (strncmp(params_dat, "1", 1) != 0) {
+        FlashWrite_SysParams(PARAM_ID_ALM_ON, (u8*)"1", 1);
+        FlashWrite_SysParams(PARAM_ID_BEEP_ON, (u8*)"1", 1);
+        FlashWrite_SysParams(PARAM_ID_BEEP_LEVEL, (u8*)"18", 2);
+    }
+
+    memset(params_dat, 0, LEN_BYTE_SZ64);
+    FlashRead_SysParams(PARAM_ID_ALM_ON, params_dat, 64);
+    if (strspn(params_dat, "0123456789") == strlen(params_dat)) {
+        gs_alarm_on = atoi(params_dat);
+    }
+
+    memset(params_dat, 0, LEN_BYTE_SZ64);
+    FlashRead_SysParams(PARAM_ID_BEEP_ON, params_dat, 64);
+    if (strspn(params_dat, "0123456789") == strlen(params_dat)) {
+        gs_beep_on = atoi(params_dat);
+    }
+
+    memset(params_dat, 0, LEN_BYTE_SZ64);
+    FlashRead_SysParams(PARAM_ID_BEEP_LEVEL, params, 64);
+    if (strspn(params_dat, "0123456789") == strlen(params_dat)) {
+        gs_alarm_level = atoi(params_dat);
+    }
 }
