@@ -315,6 +315,11 @@ void GetGPSInfo(char* gnss_part);
 
 u8 GetFtpStatus(void);
 
+bool BG96TcpSendTail(void);
+bool BG96TcpSendCancel(void);
+bool BG96TcpSendMiddle(char *data_buf);
+bool BG96TcpSendHead(unsigned int socket_index, Socket_Type_t socket);
+
 #endif //__BG96_H
 
 //******************************************************************************

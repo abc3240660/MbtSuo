@@ -54,11 +54,11 @@ static u8 gs_ftp_test = 0;
 ringbuffer_t g_at_rbuf;
 ringbuffer_t g_net_rbuf;
 
-u8 g_devtime_str[LEN_COMMON_USE] = "";
-u8 g_devzone_str[LEN_COMMON_USE] = "";
+u8 g_devtime_str[LEN_COMMON_USE+1] = "";
+u8 g_devzone_str[LEN_COMMON_USE+1] = "";
 
-u8 g_imei_str[LEN_COMMON_USE] = "868446032285351";
-u8 g_iccid_str[LEN_COMMON_USE] = "898602B4151830031698";
+u8 g_imei_str[LEN_COMMON_USE+1] = "";
+u8 g_iccid_str[LEN_COMMON_USE+1] = "";
 
 //******************************************************************************
 // Configure BG96
@@ -246,18 +246,18 @@ static bool GetDevInformation(char *inf)
     if (SUCCESS_RESPONSE == SendAndSearch(DEV_INFORMATION, RESPONSE_OK, 2)) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
-        strcpy(inf, rxBuffer);
+        strncpy(inf, rxBuffer, LEN_BYTE_SZ64);
         return true;
     }
     return false;
 }
 
-bool GetDevVersion(char *ver)
+bool GetDevVersion(char *ver, u8 buf_len)
 {
     if (SUCCESS_RESPONSE == SendAndSearch(DEV_VERSION, RESPONSE_OK, 2)) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
-        strcpy(ver, rxBuffer);
+        strncpy(ver, rxBuffer, buf_len);
         return true;
     }
     return false;
@@ -269,7 +269,7 @@ static bool GetDevIMEI(void)
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
         memset(g_imei_str, 0, LEN_COMMON_USE);
-        strcpy(g_imei_str, rxBuffer);
+        strncpy(g_imei_str, rxBuffer, LEN_COMMON_USE);
         printf("g_imei_str = %s\n", g_imei_str);
 
         return true;
@@ -280,10 +280,10 @@ static bool GetDevIMEI(void)
 
 static Cmd_Response_t SetDevFunctionality(Functionality_t mode)
 {
-    char cmd[16] = "";
+    char cmd[LEN_BYTE_SZ16+1] = "";
     Cmd_Response_t fun_status;
 
-    strcpy(cmd, DEV_FUN_LEVEL);
+    strncpy(cmd, DEV_FUN_LEVEL, LEN_BYTE_SZ16);
     switch (mode)
     {
         case MINIMUM_FUNCTIONALITY:
@@ -305,10 +305,10 @@ static Cmd_Response_t SetDevFunctionality(Functionality_t mode)
 static bool DevLocalRate(unsigned long *rate, Cmd_Status_t status)
 {
     int i = 0;
-    char cmd[16] = "";
-    char buf[16] = "";
+    char cmd[LEN_BYTE_SZ16+1] = "";
+    char buf[LEN_BYTE_SZ16+1] = "";
 
-    strcpy(cmd, DEV_LOCAL_RATE);
+    strncpy(cmd, DEV_LOCAL_RATE, LEN_BYTE_SZ16);
     if (status == READ_MODE) {
         strcat(cmd, "?");
         if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
@@ -338,7 +338,7 @@ static bool GetDevSimIMSI(char *imsi)
     if (SUCCESS_RESPONSE == SendAndSearch(DEV_SIM_IMSI, RESPONSE_OK, 2)) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
-        strcpy(imsi, rxBuffer);
+        strncpy(imsi, rxBuffer, LEN_COMMON_USE);
         return true;
     }
     return false;
@@ -346,9 +346,9 @@ static bool GetDevSimIMSI(char *imsi)
 
 static bool DevSimPIN(char *pin, Cmd_Status_t status)
 {
-    char cmd[16] = "";
+    char cmd[LEN_BYTE_SZ16] = "";
 
-    strcpy(cmd, DEV_SIM_PIN);
+    strncpy(cmd, DEV_SIM_PIN, LEN_BYTE_SZ16);
     if (status == READ_MODE) {
         strcat(cmd, "?");
         if (SendAndSearch(cmd, "READY",2)) {
@@ -356,7 +356,7 @@ static bool DevSimPIN(char *pin, Cmd_Status_t status)
             return true;
         }
     } else if (status == WRITE_MODE) {
-        char buf[16];
+        char buf[LEN_BYTE_SZ16+1] = "";
         sprintf(buf, "=\"%s\"", pin);
         strcat(cmd, buf);
         if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
@@ -373,7 +373,7 @@ static bool GetDevSimICCID(void)
         *end_buf = '\0';
         char *sta_buf = SearchStrBuffer(": ");
         memset(g_iccid_str, 0, LEN_COMMON_USE);
-        strcpy(g_iccid_str, sta_buf + 2);
+        strncpy(g_iccid_str, sta_buf+2, LEN_COMMON_USE);
         printf("g_iccid_str = %s\n", g_iccid_str);
 
         return true;
@@ -384,9 +384,9 @@ static bool GetDevSimICCID(void)
 
 static bool GetCurrentTimeZone(void)
 {
-    char cmd[16] = "";
+    char cmd[LEN_BYTE_SZ16+1] = "";
 
-    strcpy(cmd, DEV_TIME_ZONE);
+    strncpy(cmd, DEV_TIME_ZONE, LEN_BYTE_SZ16);
     strcat(cmd, "?");
 
     if (SUCCESS_RESPONSE == SendAndSearch(cmd, RESPONSE_OK, 2)) {
@@ -434,10 +434,10 @@ static bool GetCurrentTimeZone(void)
 
 static Net_Status_t DevNetRegistrationStatus()
 {
-    char cmd[16] = "";
+    char cmd[LEN_BYTE_SZ16+1] = "";
     Net_Status_t n_status = NOT_REGISTERED;
 
-    strcpy(cmd, DEV_NET_STATUS_G);
+    strncpy(cmd, DEV_NET_STATUS_G, LEN_BYTE_SZ16);
     strcat(cmd, "?");
     if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
@@ -454,7 +454,7 @@ static Net_Status_t DevNetRegistrationStatus()
         }
     }
 
-    strcpy(cmd, DEV_EPS_NET_STATUS);
+    strncpy(cmd, DEV_EPS_NET_STATUS, LEN_BYTE_SZ16);
     strcat(cmd, "?");
     if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
@@ -473,7 +473,8 @@ static Net_Status_t DevNetRegistrationStatus()
     return n_status;
 }
 
-bool GetDevNetSignalQuality(unsigned int *rssi)
+// not used at all
+static bool GetDevNetSignalQuality(unsigned int *rssi)
 {
     if (SendAndSearch(DEV_NET_RSSI, RESPONSE_OK, 2)) {
         char *sta_buf = SearchStrBuffer(": ");
@@ -485,32 +486,34 @@ bool GetDevNetSignalQuality(unsigned int *rssi)
     return false;
 }
 
-Cmd_Response_t ScanOperatorNetwork(char *net)
+// not used at all
+static Cmd_Response_t ScanOperatorNetwork(char *net, u8 buf_len)
 {
-    char cmd[16] = "";
+    char cmd[LEN_BYTE_SZ16+1] = "";
     Cmd_Response_t scan_status;
 
-    strcpy(cmd, DEV_NET_OPERATOR);
+    strncpy(cmd, DEV_NET_OPERATOR, LEN_BYTE_SZ16);
     strcat(cmd, "=?");
     scan_status = SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 180);
     if (scan_status == SUCCESS_RESPONSE) {
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
         char *sta_buf = SearchStrBuffer(": ");
-        strcpy(net, sta_buf + 2);
+        strncpy(net, sta_buf+2, buf_len);
     } else if (scan_status == FAIL_RESPONSE) {
         char *sta_buf = SearchStrBuffer(": ");
-        strcpy(net, sta_buf + 2);
+        strncpy(net, sta_buf+2, buf_len);
     }
     return scan_status;
 }
 
-Cmd_Response_t DevOperatorNetwork(unsigned int *mode, unsigned int *format, char *oper, Net_Type_t *act, Cmd_Status_t status)
+// not used at all
+static Cmd_Response_t DevOperatorNetwork(unsigned int *mode, unsigned int *format, char *oper, u8 buf_len, Net_Type_t *act, Cmd_Status_t status)
 {
-    char cmd[16] = "";
+    char cmd[LEN_BYTE_SZ16+1] = "";
     Cmd_Response_t oper_status = UNKNOWN_RESPONSE;
 
-    strcpy(cmd, DEV_NET_OPERATOR);
+    strncpy(cmd, DEV_NET_OPERATOR,LEN_BYTE_SZ16);
     if (status == READ_MODE) {
         strcat(cmd, "?");
         oper_status = SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5);
@@ -518,10 +521,10 @@ Cmd_Response_t DevOperatorNetwork(unsigned int *mode, unsigned int *format, char
             char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
             *end_buf = '\0';
             char *sta_buf = SearchStrBuffer(": ");
-            char message[64] = "";
+            char message[LEN_BYTE_SZ64+1] = "";
             char *p[5] = {NULL};
             int i = 0;
-            strcpy(message, sta_buf + 2);
+            strncpy(message, sta_buf+2, LEN_BYTE_SZ64);
             p[0] = strtok(message, ",");
             while (p[i] != NULL) {
                 i++;
@@ -530,7 +533,7 @@ Cmd_Response_t DevOperatorNetwork(unsigned int *mode, unsigned int *format, char
             p[i] = '\0';
             *mode = atoi(p[0]);
             *format = atoi(p[1]);
-            strcpy(oper,p[2]);
+            strncpy(oper, p[2], buf_len);
             *act = atoi(p[3]);
         }
     } else if (status == WRITE_MODE) {
@@ -542,65 +545,36 @@ Cmd_Response_t DevOperatorNetwork(unsigned int *mode, unsigned int *format, char
     return oper_status;
 }
 
-bool GetDevNetworkInformation(char *type, char *oper, char *band, char *channel)
+static bool GetDevNetworkInformation(char *type, char *oper, char *band, char *channel)
 {
     if (SendAndSearch(DEV_NET_INFORMATION, RESPONSE_OK, 2)) {
         char *sta_buf = SearchStrBuffer(": ");
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
-        char message[64] = "";
+        char message[LEN_BYTE_SZ64+1] = "";
         char *p[5] = {NULL};
         int i = 0;
-        strcpy(message, sta_buf + 2);
+        strncpy(message, sta_buf+2, LEN_BYTE_SZ64);
         p[0] = strtok(message, ",");
         while (p[i] != NULL) {
             i++;
             p[i] = strtok(NULL,",");
         }
         p[i] = '\0';
-        strcpy(type, p[0]);
-        strcpy(oper, p[1]);
-        strcpy(band, p[2]);
-        strcpy(channel, p[3]);
+        strncpy(type, p[0], LEN_BYTE_SZ16);
+        strncpy(oper, p[1], LEN_BYTE_SZ16);
+        strncpy(band, p[2], LEN_BYTE_SZ16);
+        strncpy(channel, p[3], LEN_BYTE_SZ16);
         return true;
     }
     return false;
 }
 
-bool DevNetPacketCounter(unsigned long *send_bytes, unsigned long *recv_bytes, bool clean)
+static bool DevPowerDown()
 {
-    char cmd[16] = "";
+    char cmd[LEN_BYTE_SZ16+1] = "";
 
-    strcpy(cmd, DEV_NET_PACKET_COUNTER);
-    strcat(cmd, "?");
-    if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
-        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-        *end_buf = '\0';
-        char *med_buf = SearchChrBuffer(',');
-        *med_buf = '\0';
-        char *sta_buf = SearchStrBuffer(": ");
-        *send_bytes = atol(sta_buf + 2);
-        *recv_bytes = atol(med_buf + 1);
-        if (clean == true) {
-            memset(cmd, '\0', 16);
-            strcpy(cmd, DEV_NET_PACKET_COUNTER);
-            strcat(cmd, "=0");
-            if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
-                return true;
-            } else {
-                return false;
-            }
-        }
-        return true;
-    }
-    return false;
-}
-
-bool DevPowerDown()
-{
-    char cmd[16] = "";
-
-    strcpy(cmd, DEV_POWER_DOWN);
+    strncpy(cmd, DEV_POWER_DOWN, LEN_BYTE_SZ16);
     strcat(cmd, "=1");
     if (SendAndSearch(cmd, RESPONSE_POWER_DOWN, 2)) {
         return true;
@@ -608,38 +582,13 @@ bool DevPowerDown()
     return false;
 }
 
-bool DevClock(char *d_clock, Cmd_Status_t status)
-{
-    char cmd[32] = "";
-
-    strcpy(cmd, DEV_CLOCK);
-    if (status == READ_MODE) {
-        strcat(cmd, "?");
-        if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
-            char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-            *end_buf = '\0';
-            char *sta_buf = SearchStrBuffer(": ");
-            strcpy(d_clock, sta_buf + 2);
-            return true;
-        }
-    } else if (status == WRITE_MODE) {
-        char buf[32] = "";
-        sprintf(buf, "=\"%s\"", d_clock);
-        strcat(cmd, buf);
-        if (SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 /////////////////////////////////// BG96 TCPIP ///////////////////////////////////
 static bool SetDevAPNParameters(unsigned int pdp_index, Protocol_Type_t type, char *apn, char *usr, char *pwd, Authentication_Methods_t met)
 {
-    char cmd[64] = "";
-    char buf[64] = "";
+    char cmd[LEN_BYTE_SZ64+1] = "";
+    char buf[LEN_BYTE_SZ64+1] = "";
 
-    strcpy(cmd, APN_PARAMETERS);
+    strncpy(cmd, APN_PARAMETERS, LEN_BYTE_SZ64);
     sprintf(buf, "=%d,%d,\"%s\",\"%s\",\"%s\",%d", pdp_index, type, apn, usr, pwd, met);
     strcat(cmd, buf);
     if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
@@ -650,21 +599,21 @@ static bool SetDevAPNParameters(unsigned int pdp_index, Protocol_Type_t type, ch
 
 static Cmd_Response_t ActivateDevAPN(unsigned int pdp_index)
 {
-    char cmd[16] = "";
-    char buf[8] = "";
+    char cmd[LEN_BYTE_SZ16+1] = "";
+    char buf[LEN_BYTE_SZ8+1] = "";
 
-    strcpy(cmd, ACTIVATE_APN);
+    strncpy(cmd, ACTIVATE_APN, LEN_BYTE_SZ16);
     sprintf(buf, "=%d", pdp_index);
     strcat(cmd, buf);
     return SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 150);
 }
 
-bool DeactivateDevAPN(unsigned int pdp_index)
+static bool DeactivateDevAPN(unsigned int pdp_index)
 {
-    char cmd[16] = "";
-    char buf[8] = "";
+    char cmd[LEN_BYTE_SZ16+1] = "";
+    char buf[LEN_BYTE_SZ8+1] = "";
 
-    strcpy(cmd, DEACTIVATE_APN);
+    strncpy(cmd, DEACTIVATE_APN, LEN_BYTE_SZ16);
     sprintf(buf, "=%d", pdp_index);
     strcat(cmd, buf);
     if (SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 40) > 0) {
@@ -675,10 +624,10 @@ bool DeactivateDevAPN(unsigned int pdp_index)
 
 static bool GetDevAPNIPAddress(unsigned int pdp_index, char *ip)
 {
-    char cmd[16] = "";
-    char buf[8] = "";
+    char cmd[LEN_BYTE_SZ16+1] = "";
+    char buf[LEN_BYTE_SZ8+1] = "";
 
-    strcpy(cmd, GET_APN_IP_ADDRESS);
+    strncpy(cmd, GET_APN_IP_ADDRESS, LEN_BYTE_SZ16);
     sprintf(buf, "=%d", pdp_index);
     strcat(cmd, buf);
     if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
@@ -688,13 +637,13 @@ static bool GetDevAPNIPAddress(unsigned int pdp_index, char *ip)
         if (strcmp(sta_buf + 1, "0.0.0.0") <= 0) {
             return false;
         }
-        strcpy(ip, sta_buf + 1);
+        strncpy(ip, sta_buf+1, LEN_BYTE_SZ16);
         return true;
     }
     return false;
 }
 
-static bool InitAPN(unsigned int pdp_index, char *apn, char *usr, char *pwd, char *err_code)
+static bool InitAPN(unsigned int pdp_index, char *apn, char *usr, char *pwd, char *err_code, u8 buf_len)
 {
     Net_Status_t i_status;
     Cmd_Response_t init_status;
@@ -704,7 +653,7 @@ static bool InitAPN(unsigned int pdp_index, char *apn, char *usr, char *pwd, cha
     while (!DevSimPIN("", READ_MODE)) {
         if (isDelayTimeout(start_time,10*1000UL)) {
             e_str = "\r\nAPN ERROR: No SIM card detected!\r\n";
-            strcpy(err_code, e_str);
+            strncpy(err_code, e_str, buf_len);
             return false;
         }
     }
@@ -713,7 +662,7 @@ static bool InitAPN(unsigned int pdp_index, char *apn, char *usr, char *pwd, cha
         i_status = DevNetRegistrationStatus();
         if (isDelayTimeout(start_time,120*1000UL)) {
             e_str = "\r\nAPN ERROR: Can't registered to the Operator network!\r\n";
-            strcpy(err_code, e_str);
+            strncpy(err_code, e_str, buf_len);
             return false;
         }
     }
@@ -721,7 +670,7 @@ static bool InitAPN(unsigned int pdp_index, char *apn, char *usr, char *pwd, cha
     while (!isDelayTimeout(start_time,3000UL)) {
         if (SetDevAPNParameters(pdp_index, IPV4, apn, usr, pwd, PAP_OR_CHAP))
         {
-            char i_ip[16] = "";
+            char i_ip[LEN_BYTE_SZ16+1] = "";
             if (GetDevAPNIPAddress(pdp_index, i_ip)) {
                 sprintf(err_code, "\r\nAPN OK: The IP address is %s\r\n", i_ip);
                 return true;
@@ -729,23 +678,23 @@ static bool InitAPN(unsigned int pdp_index, char *apn, char *usr, char *pwd, cha
                 init_status = ActivateDevAPN(pdp_index);
                 if (init_status == TIMEOUT_RESPONSE) {
                     e_str = "\r\nAPN ERROR: Please reset your device!\r\n";
-                    strcpy(err_code, e_str);
+                    strncpy(err_code, e_str, buf_len);
                     return false;
                 }
             }
         }
         e_str = "\r\nAPN ERROR: Activate APN file!\r\n";
-        strcpy(err_code, e_str);
+        strncpy(err_code, e_str, buf_len);
     }
     return false;
 }
 
 static bool OpenSocketService(unsigned int pdp_index, unsigned int socket_index, Socket_Type_t socket, char *ip, unsigned int port, unsigned int local_port, Access_Mode_t mode)
 {
-    char cmd[128] = "";
-    char buf[128] = "";
+    char cmd[LEN_BYTE_SZ128+1] = "";
+    char buf[LEN_BYTE_SZ128+1] = "";
 
-    strcpy(cmd, OPEN_SOCKET);
+    strncpy(cmd, OPEN_SOCKET, LEN_BYTE_SZ128);
     switch (socket)
     {
         case TCP_CLIENT:
@@ -799,10 +748,10 @@ static bool OpenSocketService(unsigned int pdp_index, unsigned int socket_index,
 
 bool CloseSocketService(unsigned int socket_index)
 {
-    char cmd[16] = "";
-    char buf[8] = "";
+    char cmd[LEN_BYTE_SZ16+1] = "";
+    char buf[LEN_BYTE_SZ8+1] = "";
 
-    strcpy(cmd, CLOSE_SOCKET);
+    strncpy(cmd, CLOSE_SOCKET, LEN_BYTE_SZ16);
     sprintf(buf, "=%d", socket_index);
     if (SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 150)) {
         return true;
@@ -812,10 +761,10 @@ bool CloseSocketService(unsigned int socket_index)
 
 static bool SocketSendData(unsigned int socket_index, Socket_Type_t socket, char *data_buf, char *ip, unsigned int port)
 {
-    char cmd[64] = "";
-    char buf[64] = "";
+    char cmd[LEN_BYTE_SZ512+1] = "";
+    char buf[LEN_BYTE_SZ512+1] = "";
 
-    strcpy(cmd, SOCKET_SEND_DATA);
+    strncpy(cmd, SOCKET_SEND_DATA, LEN_BYTE_SZ512);
     switch (socket)
     {
         case TCP_CLIENT:
@@ -840,56 +789,99 @@ static bool SocketSendData(unsigned int socket_index, Socket_Type_t socket, char
     return false;
 }
 
-static bool SocketRecvData(unsigned int socket_index, unsigned int recv_len, Socket_Type_t socket, char *recv_buf)
+void sim7500e_tcp_send(char* send)
 {
-    char cmd[16] = "";
-    char buf[16] = "";
+    u8 err = 0;
+    u8 try_cnt = 2;
+    OSSemPend(sem_atsend,0,&err);
 
-    strcpy(cmd, SOCKET_READ_DATA);
+    while (try_cnt--) {
+        if (sim7500e_send_cmd("AT+CIPSEND",">",40)==0) {
+            sim7500e_send_cmd((u8*)send,0,500);
+            delay_ms(20);
+            if (sim7500e_send_cmd((u8*)0X1A,"SEND ",500)) {// SEND OK
+                printf("[TCP] cannot receive SEND OK!\n");
+            } else {
+                break;
+            }
+        } else {
+            printf("[TCP] cannot receive > TAG!\n");
+            sim7500e_send_cmd((u8*)0X1B,"OK",500);
+        }
+    }
+
+    OSSemPost(sem_atsend);
+}
+
+bool BG96TcpSendHead(unsigned int socket_index, Socket_Type_t socket)
+{
+    char cmd[LEN_BYTE_SZ64+1] = "";
+    char buf[LEN_BYTE_SZ64+1] = "";
+
+    strncpy(cmd, SOCKET_SEND_DATA, LEN_BYTE_SZ64);
     switch (socket)
     {
         case TCP_CLIENT:
-        case TCP_SEVER:
         case UDP_CLIENT:
-            sprintf(buf, "=%d,%d", socket_index, recv_len);
-            break;
-        case UDP_SEVER:
             sprintf(buf, "=%d", socket_index);
             break;
         default:
             return false;
     }
     strcat(cmd, buf);
-    if (SendAndSearch_multi(cmd, RESPONSE_CRLF_OK, RESPONSE_ERROR, 10)) {
-        char *sta_buf = SearchStrBuffer(": ");
-        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-        *end_buf = '\0';
-        strcpy(recv_buf, sta_buf + 2);
-        return true;
+
+    if (SendAndSearchChr(cmd, '>', 2)) {// 2s
+        if (SendDataAndCheck(data_buf, RESPONSE_SEND_OK, RESPONSE_SEND_FAIL, 10)) {
+            return true;
+        }
     }
+
     return false;
 }
 
-static bool SocketSendHEXData(unsigned int socket_index, char *hex_buf)
+bool BG96TcpSendMiddle(char *data_buf)
 {
-    char cmd[256] = "";
-    char buf[256] = "";
+    // to read recv fifo till empty
+    while (ReadByteFromRingBuffer() >= 0);
 
-    strcpy(cmd, SOCKET_SEND_HEX_DATA);
-    sprintf(buf, "=%d,\"%s\"", socket_index, hex_buf);
-    strcat(cmd, buf);
-    if (SendAndSearch_multi(cmd, RESPONSE_SEND_OK, RESPONSE_SEND_FAIL, 2)) {
+    if (SendATcommand(data_buf)) {
         return true;
     }
+
     return false;
 }
 
-bool SwitchAccessModes(unsigned int socket_index, Access_Mode_t mode)
+bool BG96TcpSendTail(void)
 {
-    char cmd[16] = "";
-    char buf[16] = "";
+    // to read recv fifo till empty
+    while (ReadByteFromRingBuffer() >= 0);
 
-    strcpy(cmd, DATA_ACCESS_MODES);
+    Uart2_Putc(0x1A);
+
+    if (SendDataAndCheck(data_buf, RESPONSE_SEND_OK, RESPONSE_SEND_FAIL, 10)) {
+        return true;
+    }
+
+    return false;
+}
+
+bool BG96TcpSendCancel(void)
+{
+    Uart2_Putc(0x1B);
+
+    if (SendAndSearch(data_buf, RESPONSE_SEND_OK, 1000)) {
+        return true;
+    }
+
+    return false;
+}
+
+static bool SwitchAccessModes(unsigned int socket_index, Access_Mode_t mode)
+{
+    char cmd[LEN_BYTE_SZ16+1] = "";
+    char buf[LEN_BYTE_SZ16+1] = "";
+
+    strncpy(cmd, DATA_ACCESS_MODES, LEN_BYTE_SZ16);
     sprintf(buf, "=%d,%d", socket_index, mode);
     strcat(cmd, buf);
     if (mode == TRANSPARENT_MODE) {
@@ -904,14 +896,14 @@ bool SwitchAccessModes(unsigned int socket_index, Access_Mode_t mode)
     return false;
 }
 
-bool QueryLastErrorCode(char *err_code)
+bool QueryLastErrorCode(char *err_code, u8 buf_len)
 {
-    char cmd[16] = "";
+    char cmd[LEN_BYTE_SZ16+1] = "";
 
-    strcpy(cmd, QUERY_ERROR_CODE);
+    strncpy(cmd, QUERY_ERROR_CODE, LEN_BYTE_SZ16);
     if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
         char *sta_buf = SearchStrBuffer(": ");
-        strcpy(err_code, sta_buf + 2);
+        strncpy(err_code, sta_buf+2, buf_len);
         return true;
     }
     return false;
@@ -1099,8 +1091,8 @@ static Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const ch
                 }
                 char *str_buf = SearchStrBuffer(": ");
                 if (str_buf != NULL) {
-                    char err_code[8];
-                    strcpy(err_code, str_buf + 2);
+                    char err_code[LEN_BYTE_SZ16+1];
+                    strncpy(err_code, str_buf+2, LEN_BYTE_SZ16);
                     char *end_buf = strstr(err_code, "\r\n");
                     *end_buf = '\0';
                     errorCode = atoi(err_code);
@@ -1123,8 +1115,8 @@ static Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const ch
                     }
                     char *str_buf = SearchStrBuffer(": ");
                     if (str_buf != NULL) {
-                        char err_code[8];
-                        strcpy(err_code, str_buf + 2);
+                        char err_code[LEN_BYTE_SZ16+1];
+                        strncpy(err_code, str_buf+2, LEN_BYTE_SZ16);
                         char *end_buf = strstr(err_code, "\r\n");
                         *end_buf = '\0';
                         errorCode = atoi(err_code);
@@ -1265,10 +1257,12 @@ static void CleanBuffer(void)
 }
 
 /////////////////////////////////// BG96 GNSS ///////////////////////////////////
-bool SetGNSSConstellation(GNSS_Constellation_t constellation)
+static bool SetGNSSConstellation(GNSS_Constellation_t constellation)
 {
-    char cmd[32], buf[32];
-    strcpy(cmd, GNSS_CONFIGURATION);
+    char cmd[LEN_BYTE_SZ32+1] = "";
+    char buf[LEN_BYTE_SZ32+1] = "";
+
+    strncpy(cmd, GNSS_CONFIGURATION, LEN_BYTE_SZ32);
     sprintf(buf, "=\"gnssconfig\",%d", constellation);
     strcat(cmd, buf);
     if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
@@ -1279,8 +1273,10 @@ bool SetGNSSConstellation(GNSS_Constellation_t constellation)
 
 static bool SetGNSSAutoRun(bool auto_run)
 {
-    char cmd[32];
-    strcpy(cmd, GNSS_CONFIGURATION);
+    char cmd[LEN_BYTE_SZ32+1] = "";
+
+    strncpy(cmd, GNSS_CONFIGURATION, LEN_BYTE_SZ32);
+
     if(auto_run){
         strcat(cmd, "\"autogps\",1");
         if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
@@ -1297,8 +1293,10 @@ static bool SetGNSSAutoRun(bool auto_run)
 
 static bool SetGNSSEnableNMEASentences(bool enable)
 {
-    char cmd[32];
-    strcpy(cmd, GNSS_CONFIGURATION);
+    char cmd[LEN_BYTE_SZ32+1] = "";
+
+    strncpy(cmd, GNSS_CONFIGURATION, LEN_BYTE_SZ32);
+
     if (enable){
         strcat(cmd, "=\"nmeasrc\",1");
     }else {
@@ -1312,8 +1310,11 @@ static bool SetGNSSEnableNMEASentences(bool enable)
 
 static bool TurnOnGNSS(GNSS_Work_Mode_t mode, Cmd_Status_t status)
 {
-    char cmd[16],buf[8];
-    strcpy(cmd, GNSS_TURN_ON);
+    char cmd[LEN_BYTE_SZ16+1] = "";
+    char buf[LEN_BYTE_SZ8+1] = "";
+
+    strncpy(cmd, GNSS_TURN_ON, LEN_BYTE_SZ16);
+
     if (status == READ_MODE){
         strcat(cmd, "?");
         if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
@@ -1336,8 +1337,9 @@ static bool TurnOnGNSS(GNSS_Work_Mode_t mode, Cmd_Status_t status)
 
 static bool TurnOffGNSS()
 {
-    char cmd[16];
-    strcpy(cmd, GNSS_TURN_OFF);
+    char cmd[LEN_BYTE_SZ16+1] = "";
+    strncpy(cmd, GNSS_TURN_OFF, LEN_BYTE_SZ16);
+
     if (SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 10)){
         return true;
     }
@@ -1346,59 +1348,26 @@ static bool TurnOffGNSS()
 
 static bool GetGNSSPositionInformation(char *position)
 {
-    char cmd[16];
-    strcpy(cmd, GNSS_GET_POSITION);
+    char cmd[LEN_BYTE_SZ16+1] = "";
+    strncpy(cmd, GNSS_GET_POSITION, LEN_BYTE_SZ16);
+
     strcat(cmd, "=2");
     if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 10)){
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
         char *sta_buf = SearchStrBuffer(": ");
-        strcpy(position, sta_buf + 2);
+        strncpy(position, sta_buf+2, LEN_BYTE_SZ128);
         return true;
     }
     return false;
 }
 
-static bool GetGNSSNMEASentences(NMEA_Type_t type, char *sentences)
-{
-    char cmd[32];
-    strcpy(cmd, GNSS_ACQUIRE_NMEA);
-    switch(type)
-    {
-        case GPGGA:
-            strcat(cmd, "=\"GCA\"");
-            break;
-        case GPRMC:
-            strcat(cmd, "=\"RMC\"");
-            break;
-        case GPGSV:
-            strcat(cmd, "=\"GSV\"");
-            break;
-        case GPGSA:
-            strcat(cmd, "=\"GSA\"");
-            break;
-        case GPVTG:
-            strcat(cmd, "=\"VTG\"");
-            break;
-        default:
-            return false;
-    }
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 10)){
-        char *sta_buf = SearchStrBuffer(": ");
-        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-        *end_buf = '\0';
-        strcpy(sentences, sta_buf + 2);
-        return true;
-    }
-    return false;
-}
-
-bool SwithToGSM(void)
+static bool SwithToGSM(void)
 {
     return true;
 }
 
-bool SwithToNB(void)
+static bool SwithToNB(void)
 {
     return true;
 }
@@ -1423,7 +1392,7 @@ bool CloseFtpService(void)
     return false;
 }
 
-bool QueryNetStatus(void)
+static bool QueryNetStatus(void)
 {
     const char *cmd = "+CGATT?";
 
@@ -1536,10 +1505,10 @@ bool ConnectToTcpServer(u8* svr_ip, u8* svr_port, u8* svr_apn)
     unsigned int comm_socket_index = 0;  // The range is 0 ~ 11
     Socket_Type_t socket = TCP_CLIENT;
 
-    char apn_error[64];
+    char apn_error[LEN_BYTE_SZ64+1] = "";
 
     while(trycnt--) {
-        if (InitAPN(comm_pdp_index, (char *)svr_apn, "", "", apn_error)) {
+        if (InitAPN(comm_pdp_index, (char *)svr_apn, "", "", apn_error, LEN_BYTE_SZ64)) {
             break;
         }
 
@@ -1577,53 +1546,53 @@ bool ConnectToTcpServer(u8* svr_ip, u8* svr_port, u8* svr_apn)
 /////////////////////////////////// BG96 FTP ///////////////////////////////////
 bool OpenFtpSession(unsigned int pdp_index, u8* ftp_ip, u8* ftp_port)
 {
-    char cmd[64] = "";
-    char buf[32] = "";
+    char cmd[LEN_BYTE_SZ64+1] = "";
+    char buf[LEN_BYTE_SZ32+1] = "";
 
     if ((NULL==ftp_ip) || (NULL==ftp_port)) {
         return false;
     }
 
-    strcpy(cmd, FTP_CONFIG_PARAMETER);
+    strncpy(cmd, FTP_CONFIG_PARAMETER, LEN_BYTE_SZ64);
     sprintf(buf, "=\"contextid\",%d", pdp_index);
     strcat(cmd, buf);
     if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
         return false;
     }
 
-    memset(cmd, '\0', 64);
-    strcpy(cmd, FTP_CONFIG_PARAMETER);
+    memset(cmd, '\0', LEN_BYTE_SZ64);
+    strncpy(cmd, FTP_CONFIG_PARAMETER, LEN_BYTE_SZ64);
     // strcat(cmd, "=\"account\",\"lide\",\"Lide2019!@#\"");    
     strcat(cmd, "=\"account\",\"Administrator\",\"AInijia88443628._\"");
     if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
         return false;
     }
 
-    memset(cmd, '\0', 64);
-    strcpy(cmd, FTP_CONFIG_PARAMETER);
+    memset(cmd, '\0', LEN_BYTE_SZ64);
+    strncpy(cmd, FTP_CONFIG_PARAMETER, LEN_BYTE_SZ64);
     strcat(cmd, "=\"filetype\",1");
     if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
         return false;
     }
 
-    memset(cmd, '\0', 64);
-    strcpy(cmd, FTP_CONFIG_PARAMETER);
+    memset(cmd, '\0', LEN_BYTE_SZ64);
+    strncpy(cmd, FTP_CONFIG_PARAMETER, LEN_BYTE_SZ64);
     // strcat(cmd, "=\"transmode\",1");
     strcat(cmd, "=\"transmode\",0");
     if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
         return false;
     }
 
-    memset(cmd, '\0', 64);
-    strcpy(cmd, FTP_CONFIG_PARAMETER);
+    memset(cmd, '\0', LEN_BYTE_SZ64);
+    strncpy(cmd, FTP_CONFIG_PARAMETER, LEN_BYTE_SZ64);
     strcat(cmd, "=\"rsptimeout\",90");
     if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
         return false;
     }
 
-    memset(buf, '\0', 32);
-    memset(cmd, '\0', 64);
-    strcpy(cmd, FTP_OPEN_SESSION);
+    memset(buf, '\0', LEN_BYTE_SZ32);
+    memset(cmd, '\0', LEN_BYTE_SZ64);
+    strncpy(cmd, FTP_OPEN_SESSION, LEN_BYTE_SZ64);
     sprintf(buf, "=\"%s\",%s", ftp_ip, ftp_port);
     strcat(cmd, buf);
     if(SendAndSearch_multi(cmd, "+QFTPOPEN: 0,0", RESPONSE_ERROR, 30) != SUCCESS_RESPONSE){
@@ -1640,17 +1609,17 @@ u32 GetFTPFileSize(u8* iap_file)
     u32 size_pos = 0;
     u16 size_got = 0;
 
-    char cmd[64] = "";
-    char buf[32] = "";
+    char cmd[LEN_BYTE_SZ64+1] = "";
+    char buf[LEN_BYTE_SZ32+1] = "";
     char size_str[8]= "";
 
     if (NULL == iap_file)
         return 0;
     }
 
-    memset(cmd, '\0', 64);
-    memset(buf, '\0', 32);
-    strcpy(cmd, FTP_GET_FIL_SIZE);
+    memset(cmd, '\0', LEN_BYTE_SZ64);
+    memset(buf, '\0', LEN_BYTE_SZ32);
+    strncpy(cmd, FTP_GET_FIL_SIZE, LEN_BYTE_SZ64);
     sprintf(buf, "=\"%s\"", iap_file);
     strcat(cmd, buf);
     if(!SendAndSearch_multi(cmd, "+QFTPSIZE: 0,", RESPONSE_ERROR, 30)){
@@ -1728,8 +1697,8 @@ bool ConnectToFtpServer(u8* iap_file, u8* ftp_ip, u8* ftp_port)
 u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf)
 {
     u16 i = 0;
-    char cmd[64];
-    char buf[32];
+    char cmd[LEN_BYTE_SZ64+1] = "";
+    char buf[LEN_BYTE_SZ32+1 = ""];
     char size_str[8]= "";
 
     u16 size_pos = 0;
@@ -1743,7 +1712,7 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf)
 
     gs_ftp_test = 1;
 
-    strcpy(cmd, FTP_DOWNLOAD_DAT);
+    strncpy(cmd, FTP_DOWNLOAD_DAT, LEN_BYTE_SZ64);
     // sprintf(buf, "=\"test.mp3\",\"COM:\",%ld,%ld", offset, length);
     sprintf(buf, "=\"Mbtsuo_0915.bin\",\"COM:\",%ld,%ld", offset, length);
     strcat(cmd, buf);
@@ -1804,7 +1773,7 @@ int GNSSDemo(void)
 
     SetDevCommandEcho(false);
 
-    char inf[64];
+    char inf[LEN_BYTE_SZ64+1] = "";
     if(GetDevInformation(inf)){
         printf("Dev Info: %s!\n", inf);
     }

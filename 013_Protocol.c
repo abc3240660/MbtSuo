@@ -113,11 +113,11 @@ static char one_svr_cmds[RX_RINGBUF_MAX_LEN] = {0};
 // --
 // ---------------------- global variables -------------------- //
 // --
-extern u8 g_imei_str[LEN_COMMON_USE];
-extern u8 g_iccid_str[LEN_COMMON_USE];
+extern u8 g_imei_str[LEN_COMMON_USE+1];
+extern u8 g_iccid_str[LEN_COMMON_USE+1];
 
-extern u8 g_devtime_str[LEN_COMMON_USE];
-extern u8 g_devzone_str[LEN_COMMON_USE];
+extern u8 g_devtime_str[LEN_COMMON_USE+1];
+extern u8 g_devzone_str[LEN_COMMON_USE+1];
 
 extern u8 g_svr_ip[LEN_NET_TCP];
 extern u8 g_svr_port[LEN_NET_TCP];

@@ -157,7 +157,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                 cnt_tail_exp = 0;
 
                 memset(tmpuse_buf, 0, RX_RINGBUF_MAX_LEN);
-                strcpy(tmpuse_buf, "+QIUR");
+                strncpy(tmpuse_buf, "+QIUR", strlen("+QIUR"));
             }
         } else {
             if (cnt_after != 0) {
