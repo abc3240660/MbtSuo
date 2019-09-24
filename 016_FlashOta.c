@@ -6,6 +6,10 @@
 #include "015_Common.h"
 #include "016_FlashOta.h"
 
+extern u8 g_svr_ip[LEN_NET_TCP];
+extern u8 g_svr_port[LEN_NET_TCP];
+extern u8 g_svr_apn[LEN_NET_TCP];
+
 // NOTE: all address in this file = Actual Flash Address in datasheet
 //                                = InstructionWords Address Gap
 //                                = InstructionWords's Number * 2
@@ -196,7 +200,7 @@ u16 FlashWrite_DeleteOneCard(u8 *card_dat)
                     pageData[i*CNTR_INWORD_PER_CARD+j].HighLowUINT16s.LowWord = 0;
                     pageData[i*CNTR_INWORD_PER_CARD+j].HighLowUINT16s.HighWord = 0;
                 }
-                
+
                 printf("Delete CardID %s from 0x1-%.4X\n", (char*)card_dat, FLASH_BASE_CARD_ID+CNTR_INWORD_PER_CARD*2*i);
             }
         }
@@ -341,7 +345,7 @@ u16 FlashWrite_SysParams(PARAM_ID params_id, u8 *data, u16 length)
         }
 
         pageData[i+(flash_offset-FLASH_BASE_IP)/2].HighLowUINT16s.LowWord += data[j*3+2];
-        
+
         j++;
     }
 
@@ -520,9 +524,9 @@ u16 FlashWrite_InstructionWords(u16 flash_base, u16 flash_offset, OneInstruction
         flashAddr.Uint16Addr.LowAddr = flash_offset+i*2;
         pageData[i] = InnerFlash_ReadOneInstruction(flashAddr);
     }
- 
+
     flashAddr.Uint16Addr.LowAddr = flash_offset;
-    
+
     // Modify from the pointed offset
     // index maybe >= 1024, so need to ensure that not overflow pageData's size
     for(i=0;i<length;i++)
@@ -592,15 +596,11 @@ void FlashWriteRead_CardIDTest(void)
     FlashWrite_OneNFCCard((u8*)"3080021003000255616");
 
     FlashRead_AllNFCCards(NULL);
-    
+
     FlashWrite_DeleteOneCard((u8*)"3080021002000255615");
-    
+
     FlashRead_AllNFCCards(NULL);
 }
-
-extern u8 g_svr_ip[LEN_NET_TCP];
-extern u8 g_svr_port[LEN_NET_TCP];
-extern u8 g_svr_apn[LEN_NET_TCP];
 
 void FlashWriteRead_ParamsTest(void)
 {

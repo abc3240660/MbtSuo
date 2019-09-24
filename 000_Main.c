@@ -88,6 +88,7 @@ int main(void)
     FlashWrite_SysParams(PARAM_ID_BOOT_TM, params_dat, 3);
 
     ProtocolParamsInit();
+    CardIDFlashBankInit();
 
     while(1)
     {
@@ -137,7 +138,7 @@ int main(void)
             if (start_time_hbeat != 0) {
                 if (isDelayTimeout(start_time_hbeat,hbeat_gap*1000UL)) {
                     start_time_hbeat = GetTimeStamp();
-//                    TcpHeartBeat();
+                    TcpHeartBeat();
                 }
             }
         } else {
@@ -155,28 +156,26 @@ int main(void)
         // ---------------------- TASK 2 -------------------- //
         // --
         if (0 == (task_cnt%11)) {  // every 0.5s
-//            ProcessTcpSvrCmds();
-//            ReadMobibNFCCard();
+            ReadMobibNFCCard();
         }
 
         // --
         // ---------------------- TASK 3 -------------------- //
-        if (0 == (task_cnt%21)) {  // every 1.0s
         // --
+        if (0 == (task_cnt%21)) {  // every 1.0s
+            ProcessTcpSvrCmds();
         }
 
         // --
         // ---------------------- TASK 4 -------------------- //
         // --
         if (0 == (task_cnt%31)) {  // every 1.5s
-//            ProcessTcpServerCommand();
         }
 
         // --
         // ---------------------- TASK 5 -------------------- //
         // --
         if (0 == (task_cnt%41)) {  // every 2.0s
-//            ReadMobibNFCCard();
         }
 
         // --

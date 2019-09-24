@@ -78,26 +78,26 @@ static unsigned long start_time_locked = 0;
 static unsigned long start_time_unlocked = 0;
 static unsigned long start_time_finish_addc = 0;
 
-static u8 gs_first_md5[LEN_COMMON_USE] = "";
+static u8 gs_first_md5[LEN_COMMON_USE+1] = "";
 
-static char gs_send_md5[LEN_DW_MD5] = "e10adc3949ba59abbe56e057f20f883e";
+static char gs_send_md5[LEN_DW_MD5+1] = "e10adc3949ba59abbe56e057f20f883e";
 
 static unsigned long gs_dw_size_total = 0;
 static unsigned long gs_dw_recved_sum = 0;
 
-static char tcp_send_buf[LEN_MAX_SEND] = "";
+static char tcp_send_buf[LEN_MAX_SEND+1] = "";
 
-static u8 tmp_buf_big[LEN_BYTE_SZ512] = "";
+static u8 gs_tmp_buf_big[LEN_BYTE_SZ512+1] = "";
 
-static char gs_gnss_part[LEN_BYTE_SZ128] = "";
+static char gs_gnss_part[LEN_BYTE_SZ128+1] = "";
 
 static u32 gs_ftp_offset = 0;
 
 //static u8 gs_ftp_ip[LEN_NET_TCP]  = "122.4.233.119";
 //static u8 gs_ftp_port[LEN_NET_TCP] = "10218";
 
-static u8 gs_ftp_ip[LEN_NET_TCP]  = "101.132.150.94";
-static u8 gs_ftp_port[LEN_NET_TCP] = "21";
+static u8 gs_ftp_ip[LEN_NET_TCP+1]  = "101.132.150.94";
+static u8 gs_ftp_port[LEN_NET_TCP+1] = "21";
 
 // TODO: Need to reset into 0 if IAP failed for ReIAP Request
 static u32 gs_ftp_sum_got = 0;
@@ -106,9 +106,9 @@ static u8 gs_is_erased = 0;
 static u8 gs_change_apn = 0;
 
 static MD5_CTX g_ftp_md5_ctx;
-static u8 gs_ftp_res_md5[LEN_COMMON_USE] = "";
+static u8 gs_ftp_res_md5[LEN_COMMON_USE+1] = "";
 
-static char one_svr_cmds[RX_RINGBUF_MAX_LEN] = {0};
+static char gs_one_tcpcmds[RX_RINGBUF_MAX_LEN+1] = {0};
 
 // --
 // ---------------------- global variables -------------------- //
@@ -321,20 +321,20 @@ void ParseMobitMsg(char* msg)
                 }
             } else if (DELETE_NFC == cmd_type) {
                 if (3 == index) {
-                    u8 tmp_card[LEN_BYTE_SZ32] = "";
-                    memset(tmp_buf_big, 0, LEN_BYTE_SZ512);
-                    strncpy((char*)tmp_buf_big, split_str, LEN_BYTE_SZ512);
-                    printf("gs_delete_cards = %s\n", tmp_buf_big);
+                    u8 tmp_card[LEN_BYTE_SZ32+1] = "";
+                    memset(gs_tmp_buf_big, 0, LEN_BYTE_SZ512);
+                    strncpy((char*)gs_tmp_buf_big, split_str, LEN_BYTE_SZ512);
+                    printf("gs_delete_cards = %s\n", gs_tmp_buf_big);
 
-                    for (i=0; i<strlen((char*)tmp_buf_big);i++) {
-                        if ('|' == tmp_buf_big[i]) {
+                    for (i=0; i<strlen((char*)gs_tmp_buf_big);i++) {
+                        if ('|' == gs_tmp_buf_big[i]) {
                             DeleteMobibCard(tmp_card, NULL);
                             printf("To deleteX %s\n", tmp_card);
 
                             k = 0;
                             memset(tmp_card, 0, LEN_BYTE_SZ512);
                         } else {
-                            tmp_card[k++] = tmp_buf_big[i];
+                            tmp_card[k++] = gs_tmp_buf_big[i];
                         }
                     }
 
@@ -783,7 +783,7 @@ bool TcpReQueryParams(void)
 bool TcpReQueryGPS(void)
 {
     // #MOBIT,868446032285351,GGEO,51.106922|3.702681|20|180,0,Re,e10adc3949ba59abbe56e057f20f883e$
-    
+
     if (0 == strlen(gs_gnss_part)) {
         gs_gnss_part[0] = 'F';
     }
@@ -798,16 +798,16 @@ bool TcpReQueryNFCs(void)
 {
     // #MOBIT,868446032285351,QCL,a|b|c|d|e|f|g|h,Re,e10adc3949ba59abbe56e057f20f883e$
 
-    // Max Size: 19*16 = 304B
-    memset(tmp_buf_big, 0, LEN_BYTE_SZ512);
-    QueryMobibCard(tmp_buf_big);
+    // Max Size: 20*20 = 400B + 64BHead/Tail = 464B
+    memset(gs_tmp_buf_big, 0, LEN_BYTE_SZ512);
+    QueryMobibCard(gs_tmp_buf_big);
 
-    if (0 == strlen((const char*)tmp_buf_big)) {
-        tmp_buf_big[0] = 'F';
+    if (0 == strlen((const char*)gs_tmp_buf_big)) {
+        gs_tmp_buf_big[0] = 'F';
     }
 
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_NFC, tmp_buf_big, gs_send_md5);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_NFC, gs_tmp_buf_big, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -856,7 +856,7 @@ bool DoUnLockTheLockerFast(void)
     u8 i = 0;
 
     LB1938_MotorCtrl(MOTOR_LEFT, MOTOR_HOLD_TIME);
-        
+
     for (i=0; i<20; i++) {
         if(i%2){
             LATD |= (1<<8);
@@ -874,7 +874,7 @@ bool DoUnLockTheLockerFast(void)
 bool DoRingAlarmFast(void)
 {
     u8 i = 0;
-        
+
     for (i=0; i<20; i++) {
         if(i%2){
             LATD |= (1<<8);
@@ -1012,10 +1012,10 @@ void ProcessTcpSvrCmds(void)
                 break;
             }
         }
-        one_svr_cmds[i++] = ReadByteFromNetRingBuffer();
+        gs_one_tcpcmds[i++] = ReadByteFromNetRingBuffer();
 
         if (3 == i) {
-            if ((one_svr_cmds[0]=='S')&&(one_svr_cmds[1]=='T')&&(one_svr_cmds[2]=='A')) {
+            if ((gs_one_tcpcmds[0]=='S')&&(gs_one_tcpcmds[1]=='T')&&(gs_one_tcpcmds[2]=='A')) {
                 skip_flag = 0;
             } else {
                 // invalid MSGs or overwritten: "XTA" -> just skip till net "STA"
@@ -1024,29 +1024,29 @@ void ProcessTcpSvrCmds(void)
         }
 
         if (i > 3) {
-            if ((one_svr_cmds[i-3]=='S')&&(one_svr_cmds[i-2]=='T')&&(one_svr_cmds[i-3]=='A')) {
+            if ((gs_one_tcpcmds[i-3]=='S')&&(gs_one_tcpcmds[i-2]=='T')&&(gs_one_tcpcmds[i-3]=='A')) {
                 if (i != 3) {
                     i = 3;
-                    one_svr_cmds[0] = 'S';
-                    one_svr_cmds[1] = 'T';
-                    one_svr_cmds[2] = 'A';
+                    gs_one_tcpcmds[0] = 'S';
+                    gs_one_tcpcmds[1] = 'T';
+                    gs_one_tcpcmds[2] = 'A';
                 }
 
                 skip_flag = 0;
             }
 
-            if ((one_svr_cmds[i-3]=='E')&&(one_svr_cmds[i-2]=='N')&&(one_svr_cmds[i-1]=='D')) {
-                if ((one_svr_cmds[0]=='S')&&(one_svr_cmds[1]=='T')&&(one_svr_cmds[2]=='A')) {
+            if ((gs_one_tcpcmds[i-3]=='E')&&(gs_one_tcpcmds[i-2]=='N')&&(gs_one_tcpcmds[i-1]=='D')) {
+                if ((gs_one_tcpcmds[0]=='S')&&(gs_one_tcpcmds[1]=='T')&&(gs_one_tcpcmds[2]=='A')) {
                     // process the valid MSGs
-                    printf("process MSGs: %s\n", one_svr_cmds);
-                    one_svr_cmds[i-3] = '\0';// D
-                    one_svr_cmds[i-2] = '\0';// N
-                    one_svr_cmds[i-1] = '\0';// E
-                    if (('#'==one_svr_cmds[3]) && ('$'==one_svr_cmds[i-4])) {
-                        one_svr_cmds[i-4] = '\0';// $
-                        ParseMobitMsg(one_svr_cmds+3);
+                    printf("process MSGs: %s\n", gs_one_tcpcmds);
+                    gs_one_tcpcmds[i-3] = '\0';// D
+                    gs_one_tcpcmds[i-2] = '\0';// N
+                    gs_one_tcpcmds[i-1] = '\0';// E
+                    if (('#'==gs_one_tcpcmds[3]) && ('$'==gs_one_tcpcmds[i-4])) {
+                        gs_one_tcpcmds[i-4] = '\0';// $
+                        ParseMobitMsg(gs_one_tcpcmds+3);
                     } else {
-                        printf("Error MSGs %c:%c\n", one_svr_cmds[3], one_svr_cmds[i-4]);
+                        printf("Error MSGs %c:%c\n", gs_one_tcpcmds[3], gs_one_tcpcmds[i-4]);
                     }
                 } else {
                     // skip the invalid MSGs
@@ -1054,7 +1054,7 @@ void ProcessTcpSvrCmds(void)
                 }
 
                 skip_flag = 0;
-                memset(one_svr_cmds, 0, RX_RINGBUF_MAX_LEN);
+                memset(gs_one_tcpcmds, 0, RX_RINGBUF_MAX_LEN);
 
                 continue;
             }

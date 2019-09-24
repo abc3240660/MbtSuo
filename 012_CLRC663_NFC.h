@@ -21,10 +21,10 @@ extern "C" {
 #include "002_CLRC663.h"
 
 #define bitSet(x,n) (x|=0x01<<n)
-    
+
 //#define DEBUG_ISO14443B
 //#define PRINT_IDENTIFICATION_NUMBERS
-    
+
 uint16_t clrc663_SPI_transfer(const uint8_t* tx, uint8_t* rx, uint16_t len);
 void clrc663_SPI_select();
 void clrc663_SPI_unselect();
@@ -36,6 +36,7 @@ void AddNewMobibCard(u8* card_id, u8* serial_nr);
 void DeleteMobibCard(u8* card_id, u8* serial_nr);
 void DeleteAllMobibCard(void);
 u8 ReadMobibNFCCard(void);
+void CardIDFlashBankInit(void);
 
 #ifdef __cplusplus
 }
