@@ -103,7 +103,7 @@ int main(void)
             if (0x80 == net_sta) {
                 ResetApnChange();
 
-                // ConnectToTcpServer(g_svr_ip, g_svr_port, g_svr_apn);
+                ConnectToTcpServer(g_svr_ip, g_svr_port, g_svr_apn);
                 if (0x81 == net_sta) {
                     FlashWrite_SysParams(PARAM_ID_SVR_IP, (u8*)g_svr_ip, strlen((const char*)g_svr_ip));
                     FlashWrite_SysParams(PARAM_ID_SVR_PORT, (u8*)g_svr_port, strlen((const char*)g_svr_port));
@@ -119,7 +119,7 @@ int main(void)
         // if net-register failed or lost connection
         if (0 == (task_cnt++%200)) {
             if (0 == net_sta) {
-                Configure_BG96();
+                // Configure_BG96();
             }
 
             net_sta = GetNetStatus();
@@ -157,7 +157,7 @@ int main(void)
         // ---------------------- TASK 2 -------------------- //
         // --
         if (0 == (task_cnt%11)) {  // every 0.5s
-            ReadMobibNFCCard();
+            // ReadMobibNFCCard();
         }
 
         // --

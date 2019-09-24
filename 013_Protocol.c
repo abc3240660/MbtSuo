@@ -67,9 +67,9 @@ static u8 gs_alarm_on[LEN_COMMON_USE+1] = "1";
 static u8 gs_beep_on[LEN_COMMON_USE+1] = "1";
 static u8 gs_alarm_level[LEN_COMMON_USE+1] = "80";
 
-static u8 gs_iap_waiting = 0;
+static u8 gs_iap_waiting = 1;
 static u8 gs_iap_md5[LEN_DW_MD5+1] = "";
-static u8 gs_iap_file[LEN_DW_URL+1] = "";
+static u8 gs_iap_file[LEN_DW_URL+1] = "Mbtsuo_0915.bin";
 
 static u16 gs_hbeat_gap = DEFAULT_HBEAT_GAP;
 
@@ -883,7 +883,7 @@ void ProcessIapRequest(void)
     u8 ftp_sta = 0;
     u16 got_size = 0;
     u32 ftp_len_per = 512;
-    u32 iap_total_size = 0;
+    static u32 iap_total_size = 0;
 
     u8 iap_buf[LEN_BYTE_SZ1024] = "";
 
@@ -905,9 +905,13 @@ void ProcessIapRequest(void)
     // Start first Connect or Re-Connect
     if (0 == ftp_sta) {
         ConnectToFtpServer(gs_iap_file, gs_ftp_ip, gs_ftp_port);
-    }
+        
+        iap_total_size = GetFTPFileSize(gs_iap_file);
 
-    iap_total_size = GetFTPFileSize(gs_iap_file);
+        if (iap_total_size <= 0) {
+            return;
+        }
+    }
 
     memset(iap_buf, 0, LEN_BYTE_SZ1024);
     if (0x81 == ftp_sta) {

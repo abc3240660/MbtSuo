@@ -211,11 +211,56 @@ unsigned int ReadResponseToBuffer(unsigned int timeout)
     unsigned int recv_len = 0;
 
     CleanBuffer();
-    while (!isDelayTimeout(start_time,timeout*1000)) {
-        if (IsRingBufferAvailable()) {
-            recv_len += ReadResponseByteToBuffer();
+
+    if (888 == timeout) {
+        unsigned int timeoutx = 1000;
+
+        while (!isDelayTimeout(start_time, timeoutx)) {// 500ms
+            if (IsRingBufferAvailable()) {
+                recv_len += ReadResponseByteToBuffer();
+                
+                if (timeoutx < 20) {
+                    timeoutx += 20;
+                }
+            }
+        }        
+    } else {
+        while (!isDelayTimeout(start_time,timeout*1000)) {
+            if (IsRingBufferAvailable()) {
+                recv_len += ReadResponseByteToBuffer();
+            }
         }
     }
+
+    return recv_len;
+}
+
+// Return: Only return after timeout
+static unsigned int ReadResponseToBufferUnclear(unsigned int timeout)
+{
+    unsigned long start_time = GetTimeStamp();
+    unsigned int recv_len = 0;
+
+    if (888 == timeout) {
+        unsigned int timeoutx = 300;
+
+        while (!isDelayTimeout(start_time, timeoutx)) {// 500ms
+            if (IsRingBufferAvailable()) {
+                recv_len += ReadResponseByteToBuffer();
+                
+                if (timeoutx < 20) {
+                    timeoutx += 20;
+                }
+            }
+        }        
+    } else {
+        while (!isDelayTimeout(start_time,timeout*1000)) {
+            if (IsRingBufferAvailable()) {
+                recv_len += ReadResponseByteToBuffer();
+            }
+        }
+    }
+
     return recv_len;
 }
 
@@ -1321,7 +1366,7 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf)
     }
 
     trycnt = 0;
-    ReadResponseToBuffer(2);
+    ReadResponseToBuffer(888);
 
     printf("FTPGET Recv %d Bytes: %.2X%.2X%.2X\n", bufferHead, rxBuffer[0], rxBuffer[1], rxBuffer[2]);
 
@@ -1470,6 +1515,7 @@ static u32 ParseFTPFileSize(void)
     char size_str[LEN_BYTE_SZ8+1] = "";
 
     memset(size_str, 0, 8);
+    printf("FTP DW size=%s\n", rxBuffer);
     for (i=0; i<bufferHead; i++) {
         if (('F'==rxBuffer[i+0]) && ('T'==rxBuffer[i+1]) && ('P'==rxBuffer[i+2]) &&
             ('S'==rxBuffer[i+3]) && (':'==rxBuffer[i+7]) && ('0'==rxBuffer[i+9])) {
@@ -1487,7 +1533,13 @@ static u32 ParseFTPFileSize(void)
 
     printf("iap_size1 = %s\n", size_str);
     if (size_pos != 0) {
-        size_got = atoi(size_str);
+        for (i=0; i<strlen(size_str); i++) {
+            if ((size_str[i]<'0') || (size_str[i]>'9')) {
+                break;
+            }
+            size_got *= 10;
+            size_got += size_str[i] - '0';
+        }
     }
     
     printf("iap_size2 = %ld\n", size_got);
@@ -1514,7 +1566,7 @@ u32 GetFTPFileSize(u8* iap_file)
         return 0;
     }
 
-    ReadResponseToBuffer(1);
+    ReadResponseToBufferUnclear(888);
 
     return ParseFTPFileSize();
 }
