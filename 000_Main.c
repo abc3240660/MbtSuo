@@ -70,7 +70,7 @@ int main(void)
 
     // Write params into flash when the first time boot
     FlashRead_SysParams(PARAM_ID_1ST_BOOT, params_dat, 64);
-    if (strncmp(params_dat, "1", 1) != 0) {
+    if (strncmp((const char*)params_dat, (const char*)"1", 1) != 0) {
         FlashWrite_SysParams(PARAM_ID_SVR_IP, (u8*)g_svr_ip, strlen((const char*)g_svr_ip));
         FlashWrite_SysParams(PARAM_ID_SVR_PORT, (u8*)g_svr_port, strlen((const char*)g_svr_port));
         FlashWrite_SysParams(PARAM_ID_SVR_APN, (u8*)g_svr_apn, strlen((const char*)g_svr_apn));
@@ -80,11 +80,12 @@ int main(void)
 
     memset(params_dat, 0, LEN_BYTE_SZ64);
     FlashRead_SysParams(PARAM_ID_BOOT_TM, params_dat, 64);
-    if (strspn(params_dat, "0123456789") == strlen(params_dat)) {
-        boot_times = atoi(params_dat);
+    if (strspn((const char*)params_dat, (const char*)"0123456789") == strlen((const char*)params_dat)) {
+        boot_times = atoi((const char*)params_dat);
     }
 
     boot_times += 1;
+    sprintf((char *)params_dat, "%ld", boot_times);
     FlashWrite_SysParams(PARAM_ID_BOOT_TM, params_dat, 3);
 
     ProtocolParamsInit();

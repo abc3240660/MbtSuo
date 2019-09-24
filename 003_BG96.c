@@ -60,30 +60,6 @@ u8 g_devzone_str[LEN_COMMON_USE+1] = "";
 u8 g_imei_str[LEN_COMMON_USE+1] = "";
 u8 g_iccid_str[LEN_COMMON_USE+1] = "";
 
-//******************************************************************************
-// Configure BG96
-//******************************************************************************
-void Configure_BG96(void)
-{
-    u8 trycnt = 2;
-//    bool resultBool = false;
-
-    while(trycnt--) {
-//    resultBool = InitModule();
-//    if(resultBool){
-//        printf("init bg96 success!\r\n");
-//    }else{
-//        printf("init bg96 failure!\r\n");
-//    }
-
-        if (BG96ATInitialize()) {
-            break;
-        }
-
-        delay_ms(1000);
-    }
-}
-
 void InitRingBuffers(void)
 {
     ringbuffer_init(&g_at_rbuf,atRingbuf,RX_RINGBUF_MAX_LEN);
@@ -128,6 +104,29 @@ static int WriteToBG96(const char *data_buf)
 }
 
 //******************************************************************************************
+// FuncName: IsRingBufferAvailable
+// Descriptions: get the number of bytes available to read
+// Return:   the number of bytes available in RingBuffer
+//******************************************************************************************
+static int IsRingBufferAvailable()
+{
+    int ret;
+
+    ret = ringbuffer_buf_use_size(&g_at_rbuf);
+
+    return ret;
+}
+
+int IsNetRingBufferAvailable()
+{
+    int ret;
+
+    ret = ringbuffer_buf_use_size(&g_net_rbuf);
+
+    return ret;
+}
+
+//******************************************************************************************
 // FuncName: ReadByteFromRingBuffer
 // Descriptions: PIC24F read one byte from RingBuffer
 // Return:   the first byte of incoming data available(or -1 if no data is available)
@@ -154,29 +153,6 @@ char ReadByteFromNetRingBuffer()
     return dat;
 }
 
-//******************************************************************************************
-// FuncName: IsRingBufferAvailable
-// Descriptions: get the number of bytes available to read
-// Return:   the number of bytes available in RingBuffer
-//******************************************************************************************
-static int IsRingBufferAvailable()
-{
-    int ret;
-
-    ret = ringbuffer_buf_use_size(&g_at_rbuf);
-
-    return ret;
-}
-
-int IsNetRingBufferAvailable()
-{
-    int ret;
-
-    ret = ringbuffer_buf_use_size(&g_net_rbuf);
-
-    return ret;
-}
-
 bool WaitUartNetRxIdle()
 {
     int size1 = 0;
@@ -198,58 +174,273 @@ bool WaitUartNetRxIdle()
     return true;
 }
 
-/////////////////////////////////// BG96 Common ///////////////////////////////////
-static bool InitModule()
+static void CleanBuffer(void)
 {
-    SetPinDir(RESET_PIN, OUTPUT);
-    SetPinVal(RESET_PIN, LOW);
-    SetPinDir(POWKEY_PIN, OUTPUT);
-    DelayMs(100);
-    SetPinVal(POWKEY_PIN, HIGH);
-    DelayMs(200);
-    SetPinVal(POWKEY_PIN, LOW);
-    if (ReadResponseToBuffer(5)) {
-        if (SearchStrBuffer(RESPONSE_READY)) {
-            return true;
-        }
-    }
-    DelayMs(1000);
-    SetPinVal(POWKEY_PIN, HIGH);
-    DelayMs(2000);
-    SetPinVal(POWKEY_PIN, LOW);
-    if (ReadResponseToBuffer(5)) {
-        if (SearchStrBuffer(RESPONSE_POWER_DOWN)) {
-            DelayMs(10000);
-        }
-    }
-
-    return false;
+    memset(rxBuffer, '\0', RX_BUFFER_LENGTH);
+    bufferHead = 0;
 }
 
-static bool SetDevCommandEcho(bool echo)
+unsigned int ReadResponseByteToBuffer()
 {
-    const char *cmd;
+    char c = ReadByteFromRingBuffer();
 
-    if (echo == true) {
-        cmd = "E1";
+    rxBuffer[bufferHead] = c;
+    
+//    if (1 == gs_ftp_test) {
+//        printf("rxBuffer = %s\n", rxBuffer);
+//    }
+    
+    bufferHead = (bufferHead + 1) % RX_BUFFER_LENGTH;
+
+#if 0// defined UART_DEBUG
+    if (c == '\n'){
+        printf("%c", c);
+        printf("<--- ");
     } else {
-        cmd = "E0";
+        printf("%c", c);
     }
-    if (SUCCESS_RESPONSE == SendAndSearch(cmd, RESPONSE_OK, 2)) {
-        return true;
-    }
-    return false;
+#endif
+
+    return 1;
 }
 
-static bool GetDevInformation(char *inf)
+// Return: Only return after timeout
+unsigned int ReadResponseToBuffer(unsigned int timeout)
 {
-    if (SUCCESS_RESPONSE == SendAndSearch(DEV_INFORMATION, RESPONSE_OK, 2)) {
-        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-        *end_buf = '\0';
-        strncpy(inf, rxBuffer, LEN_BYTE_SZ64);
-        return true;
+    unsigned long start_time = GetTimeStamp();
+    unsigned int recv_len = 0;
+
+    CleanBuffer();
+    while (!isDelayTimeout(start_time,timeout*1000)) {
+        if (IsRingBufferAvailable()) {
+            recv_len += ReadResponseByteToBuffer();
+        }
     }
-    return false;
+    return recv_len;
+}
+
+static char *SearchChrBuffer(const char test_chr)
+{
+    int buf_len = strlen((const char *)rxBuffer);
+
+    if (0<buf_len && buf_len < RX_BUFFER_LENGTH) {
+        return strrchr((const char *)rxBuffer, test_chr);
+    } else {
+        return NULL;
+    }
+}
+
+// Search the last words of the while reply
+// AT Reply: XXXs + Keywords
+//         : Keywords must be the end of the whole reply
+// Return: Will return after got the Keywords or timeout
+static Cmd_Response_t ReadResponseAndSearchChr(const char test_chr, unsigned int timeout)
+{
+    unsigned long start_time = GetTimeStamp();
+    unsigned int recv_len = 0;
+
+    CleanBuffer();
+    while (!isDelayTimeout(start_time,timeout*1000)) {
+        if (IsRingBufferAvailable()) {
+            recv_len += ReadResponseByteToBuffer();
+            if (SearchChrBuffer(test_chr)) {
+                return SUCCESS_RESPONSE;
+            }
+        }
+    }
+    if (recv_len > 0){
+        return UNKNOWN_RESPONSE;
+    } else {
+        return TIMEOUT_RESPONSE;
+    }
+}
+
+
+// The below call path will read reply into rxBuffer
+// So SearchStrBuffer can search someting expect
+// ReadResponseToBuffer
+//   -->ReadResponseByteToBuffer
+// SendAndSearchChr
+//   -->ReadResponseAndSearchChr
+//        -->ReadResponseByteToBuffer
+// SendAndSearch
+//   -->ReadResponseAndSearch
+//        -->ReadResponseByteToBuffer
+// SendAndSearch_multi
+//   -->ReadResponseAndSearch_multi
+//        -->ReadResponseByteToBuffer
+static char *SearchStrBuffer(const char *test_str)
+{
+#if 1
+    u16 i = 0;
+    u16 valid_len = 150;
+
+    for (i=0; i<RX_BUFFER_LENGTH; i++) {
+        if (test_str[i] != 0) {
+            valid_len = i;
+        }
+    }
+
+    for (i=0; i<valid_len; i++) {
+        if (rxBuffer[i] == test_str[0]) {
+            if (0 == memcmp(rxBuffer+i, test_str, strlen(test_str))) {
+                return (rxBuffer+i);
+            }
+        }
+    }
+    
+    return NULL;
+#else
+    int buf_len = strlen((const char *)rxBuffer);
+
+    if (buf_len < RX_BUFFER_LENGTH) {
+        return strstr((const char *)rxBuffer, test_str);
+    } else {
+        return NULL;
+    }
+#endif
+}
+
+// Search the last words of the while reply
+// AT Reply: XXXs + Keywords
+//         : Keywords must be the end of the whole reply
+// Return: Will return after got the Keywords or timeout
+static Cmd_Response_t ReadResponseAndSearch(const char *test_str, unsigned int timeout)
+{
+    unsigned long start_time = GetTimeStamp();
+    unsigned int recv_len = 0;
+    CleanBuffer();
+    while (!isDelayTimeout(start_time,timeout*1000UL)) {
+        if (IsRingBufferAvailable()) {
+            recv_len += ReadResponseByteToBuffer();
+            if (SearchStrBuffer(test_str)) {
+                return SUCCESS_RESPONSE;
+            }
+        }
+    }
+    if (recv_len > 0) {
+        return UNKNOWN_RESPONSE;
+    } else {
+        return TIMEOUT_RESPONSE;
+    }
+}
+
+static Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const char *e_test_str, unsigned int timeout)
+{
+    unsigned long start_time = GetTimeStamp();
+    unsigned int recv_len = 0;
+    unsigned int temp_len = 0;
+
+    errorCode = -1;
+    CleanBuffer();
+    while (!isDelayTimeout(start_time,timeout*1000UL)) {
+        if (IsRingBufferAvailable()) {
+            temp_len = ReadResponseByteToBuffer();
+//            printf("temp_len = %d\n", temp_len);
+            recv_len += temp_len;
+//            printf("recv_len = %d\n", recv_len);
+            if (SearchStrBuffer(test_str)) {
+                printf("\nSuccess Response\n");
+                return SUCCESS_RESPONSE;
+            } else if (SearchStrBuffer(e_test_str)) {
+                start_time = GetTimeStamp();
+                // only break when timeout
+                // to ensure have got the whole infomation about error code
+                while (!isDelayTimeout(start_time,1000UL)) {
+                    if (IsRingBufferAvailable()) {
+                        recv_len += ReadResponseByteToBuffer();
+                    }
+                }
+                char *str_buf = SearchStrBuffer(": ");
+                if (str_buf != NULL) {
+                    char err_code[LEN_BYTE_SZ16+1];
+                    strncpy(err_code, str_buf+2, LEN_BYTE_SZ16);
+                    char *end_buf = strstr(err_code, "\r\n");
+                    *end_buf = '\0';
+                    errorCode = atoi(err_code);
+                }
+                printf("\nFail Response P1\n");
+                return FAIL_RESPONSE;
+            }
+
+            // You may receive "ERROR" when waiting for "SEND_FAIL"
+            if (0 == strcmp(e_test_str, RESPONSE_SEND_FAIL)) {
+                if (SearchStrBuffer(RESPONSE_ERROR)) {
+                    start_time = GetTimeStamp();
+                    // TODO: to ensure if need to parse the fail code
+                    // only break when timeout
+                    // to ensure have got the whole infomation about error code
+                    while (!isDelayTimeout(start_time,1000UL)) {
+                        if (IsRingBufferAvailable()) {
+                            recv_len += ReadResponseByteToBuffer();
+                        }
+                    }
+                    char *str_buf = SearchStrBuffer(": ");
+                    if (str_buf != NULL) {
+                        char err_code[LEN_BYTE_SZ16+1];
+                        strncpy(err_code, str_buf+2, LEN_BYTE_SZ16);
+                        char *end_buf = strstr(err_code, "\r\n");
+                        *end_buf = '\0';
+                        errorCode = atoi(err_code);
+                    }
+                    printf("\nError Response\n");
+                    return FAIL_RESPONSE;
+                }
+            }
+        }
+    }
+
+    printf("recv_len = %d\n", recv_len);
+    if (recv_len > 0){
+        printf("\nFail Response P2\n");
+        return FAIL_RESPONSE;
+    } else {
+        printf("\nTimeout Response\n");
+        return TIMEOUT_RESPONSE;
+    }
+}
+
+// Only used for get '>' when after AT+SEND before send datas
+Cmd_Response_t SendAndSearchChr(const char *command, const char test_chr, unsigned int timeout)
+{
+    int i = 0;
+
+    for (i = 0; i < 3; i++) {
+        if (SendATcommand(command)) {
+            if (ReadResponseAndSearchChr(test_chr, timeout) == SUCCESS_RESPONSE) {
+                return SUCCESS_RESPONSE;
+            }
+        }
+    }
+    return TIMEOUT_RESPONSE;
+}
+
+Cmd_Response_t SendAndSearch(const char *command, const char *test_str, unsigned int timeout)
+{
+    int i = 0;
+
+    for (i = 0; i < 3; i++) {
+        if (SendATcommand(command)) {
+            if (ReadResponseAndSearch(test_str, timeout) == SUCCESS_RESPONSE) {
+                return SUCCESS_RESPONSE;
+            }
+        }
+    }
+    return TIMEOUT_RESPONSE;
+}
+
+Cmd_Response_t SendAndSearch_multi(const char *command, const char *test_str, const char *e_test_str, unsigned int timeout)
+{
+    int i = 0;
+    Cmd_Response_t resp_status = UNKNOWN_RESPONSE;
+
+    for (i = 0; i < 3; i++) {
+        if (SendATcommand(command)) {
+            resp_status = ReadResponseAndSearch_multi(test_str, e_test_str, timeout);
+            return resp_status;
+        }
+    }
+    return resp_status;
 }
 
 bool GetDevVersion(char *ver, u8 buf_len)
@@ -269,78 +460,12 @@ static bool GetDevIMEI(void)
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
         memset(g_imei_str, 0, LEN_COMMON_USE);
-        strncpy(g_imei_str, rxBuffer, LEN_COMMON_USE);
+        strncpy((char*)g_imei_str, (const char*)rxBuffer, LEN_COMMON_USE);
         printf("g_imei_str = %s\n", g_imei_str);
 
         return true;
     }
 
-    return false;
-}
-
-static Cmd_Response_t SetDevFunctionality(Functionality_t mode)
-{
-    char cmd[LEN_BYTE_SZ16+1] = "";
-    Cmd_Response_t fun_status;
-
-    strncpy(cmd, DEV_FUN_LEVEL, LEN_BYTE_SZ16);
-    switch (mode)
-    {
-        case MINIMUM_FUNCTIONALITY:
-            strcat(cmd, "=0");
-            break;
-        case FULL_FUNCTIONALITY:
-            strcat(cmd, "=1");
-            break;
-        case DISABLE_RF:
-            strcat(cmd, "=4");
-            break;
-        default:
-            return UNKNOWN_RESPONSE;
-    }
-    fun_status = SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 15);
-    return fun_status;
-}
-
-static bool DevLocalRate(unsigned long *rate, Cmd_Status_t status)
-{
-    int i = 0;
-    char cmd[LEN_BYTE_SZ16+1] = "";
-    char buf[LEN_BYTE_SZ16+1] = "";
-
-    strncpy(cmd, DEV_LOCAL_RATE, LEN_BYTE_SZ16);
-    if (status == READ_MODE) {
-        strcat(cmd, "?");
-        if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
-            char *sta_buf = SearchStrBuffer(": ");
-            char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-            *end_buf = '\0';
-            *rate = atol(sta_buf + 2);
-            return true;
-        }
-    } else if (status == WRITE_MODE) {
-        for (i = 0; i < sizeof(Band_list)/sizeof(Band_list[0]); i++) {
-            if (*rate == Band_list[i]) {
-                memset(buf, 0, 16);
-                sprintf(buf, "=%ld;&W", *rate);
-                strcat(cmd, buf);
-                if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
-static bool GetDevSimIMSI(char *imsi)
-{
-    if (SUCCESS_RESPONSE == SendAndSearch(DEV_SIM_IMSI, RESPONSE_OK, 2)) {
-        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-        *end_buf = '\0';
-        strncpy(imsi, rxBuffer, LEN_COMMON_USE);
-        return true;
-    }
     return false;
 }
 
@@ -373,7 +498,7 @@ static bool GetDevSimICCID(void)
         *end_buf = '\0';
         char *sta_buf = SearchStrBuffer(": ");
         memset(g_iccid_str, 0, LEN_COMMON_USE);
-        strncpy(g_iccid_str, sta_buf+2, LEN_COMMON_USE);
+        strncpy((char*)g_iccid_str, sta_buf+2, LEN_COMMON_USE);
         printf("g_iccid_str = %s\n", g_iccid_str);
 
         return true;
@@ -473,115 +598,6 @@ static Net_Status_t DevNetRegistrationStatus()
     return n_status;
 }
 
-// not used at all
-static bool GetDevNetSignalQuality(unsigned int *rssi)
-{
-    if (SendAndSearch(DEV_NET_RSSI, RESPONSE_OK, 2)) {
-        char *sta_buf = SearchStrBuffer(": ");
-        char *end_buf = SearchChrBuffer(',');
-        *end_buf = '\0';
-        *rssi = atoi(sta_buf + 2);
-        return true;
-    }
-    return false;
-}
-
-// not used at all
-static Cmd_Response_t ScanOperatorNetwork(char *net, u8 buf_len)
-{
-    char cmd[LEN_BYTE_SZ16+1] = "";
-    Cmd_Response_t scan_status;
-
-    strncpy(cmd, DEV_NET_OPERATOR, LEN_BYTE_SZ16);
-    strcat(cmd, "=?");
-    scan_status = SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 180);
-    if (scan_status == SUCCESS_RESPONSE) {
-        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-        *end_buf = '\0';
-        char *sta_buf = SearchStrBuffer(": ");
-        strncpy(net, sta_buf+2, buf_len);
-    } else if (scan_status == FAIL_RESPONSE) {
-        char *sta_buf = SearchStrBuffer(": ");
-        strncpy(net, sta_buf+2, buf_len);
-    }
-    return scan_status;
-}
-
-// not used at all
-static Cmd_Response_t DevOperatorNetwork(unsigned int *mode, unsigned int *format, char *oper, u8 buf_len, Net_Type_t *act, Cmd_Status_t status)
-{
-    char cmd[LEN_BYTE_SZ16+1] = "";
-    Cmd_Response_t oper_status = UNKNOWN_RESPONSE;
-
-    strncpy(cmd, DEV_NET_OPERATOR,LEN_BYTE_SZ16);
-    if (status == READ_MODE) {
-        strcat(cmd, "?");
-        oper_status = SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 5);
-        if (oper_status == SUCCESS_RESPONSE) {
-            char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-            *end_buf = '\0';
-            char *sta_buf = SearchStrBuffer(": ");
-            char message[LEN_BYTE_SZ64+1] = "";
-            char *p[5] = {NULL};
-            int i = 0;
-            strncpy(message, sta_buf+2, LEN_BYTE_SZ64);
-            p[0] = strtok(message, ",");
-            while (p[i] != NULL) {
-                i++;
-                p[i] = strtok(NULL, ",");
-            }
-            p[i] = '\0';
-            *mode = atoi(p[0]);
-            *format = atoi(p[1]);
-            strncpy(oper, p[2], buf_len);
-            *act = atoi(p[3]);
-        }
-    } else if (status == WRITE_MODE) {
-        char buf[32] = "";
-        sprintf(buf, "=%d,%d,\"%s\",%d", *mode, *format, oper, *act);
-        strcat(cmd, buf);
-        oper_status = SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 30);
-    }
-    return oper_status;
-}
-
-static bool GetDevNetworkInformation(char *type, char *oper, char *band, char *channel)
-{
-    if (SendAndSearch(DEV_NET_INFORMATION, RESPONSE_OK, 2)) {
-        char *sta_buf = SearchStrBuffer(": ");
-        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
-        *end_buf = '\0';
-        char message[LEN_BYTE_SZ64+1] = "";
-        char *p[5] = {NULL};
-        int i = 0;
-        strncpy(message, sta_buf+2, LEN_BYTE_SZ64);
-        p[0] = strtok(message, ",");
-        while (p[i] != NULL) {
-            i++;
-            p[i] = strtok(NULL,",");
-        }
-        p[i] = '\0';
-        strncpy(type, p[0], LEN_BYTE_SZ16);
-        strncpy(oper, p[1], LEN_BYTE_SZ16);
-        strncpy(band, p[2], LEN_BYTE_SZ16);
-        strncpy(channel, p[3], LEN_BYTE_SZ16);
-        return true;
-    }
-    return false;
-}
-
-static bool DevPowerDown()
-{
-    char cmd[LEN_BYTE_SZ16+1] = "";
-
-    strncpy(cmd, DEV_POWER_DOWN, LEN_BYTE_SZ16);
-    strcat(cmd, "=1");
-    if (SendAndSearch(cmd, RESPONSE_POWER_DOWN, 2)) {
-        return true;
-    }
-    return false;
-}
-
 /////////////////////////////////// BG96 TCPIP ///////////////////////////////////
 static bool SetDevAPNParameters(unsigned int pdp_index, Protocol_Type_t type, char *apn, char *usr, char *pwd, Authentication_Methods_t met)
 {
@@ -606,20 +622,6 @@ static Cmd_Response_t ActivateDevAPN(unsigned int pdp_index)
     sprintf(buf, "=%d", pdp_index);
     strcat(cmd, buf);
     return SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 150);
-}
-
-static bool DeactivateDevAPN(unsigned int pdp_index)
-{
-    char cmd[LEN_BYTE_SZ16+1] = "";
-    char buf[LEN_BYTE_SZ8+1] = "";
-
-    strncpy(cmd, DEACTIVATE_APN, LEN_BYTE_SZ16);
-    sprintf(buf, "=%d", pdp_index);
-    strcat(cmd, buf);
-    if (SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 40) > 0) {
-        return true;
-    }
-    return false;
 }
 
 static bool GetDevAPNIPAddress(unsigned int pdp_index, char *ip)
@@ -789,30 +791,6 @@ static bool SocketSendData(unsigned int socket_index, Socket_Type_t socket, char
     return false;
 }
 
-void sim7500e_tcp_send(char* send)
-{
-    u8 err = 0;
-    u8 try_cnt = 2;
-    OSSemPend(sem_atsend,0,&err);
-
-    while (try_cnt--) {
-        if (sim7500e_send_cmd("AT+CIPSEND",">",40)==0) {
-            sim7500e_send_cmd((u8*)send,0,500);
-            delay_ms(20);
-            if (sim7500e_send_cmd((u8*)0X1A,"SEND ",500)) {// SEND OK
-                printf("[TCP] cannot receive SEND OK!\n");
-            } else {
-                break;
-            }
-        } else {
-            printf("[TCP] cannot receive > TAG!\n");
-            sim7500e_send_cmd((u8*)0X1B,"OK",500);
-        }
-    }
-
-    OSSemPost(sem_atsend);
-}
-
 bool BG96TcpSendHead(unsigned int socket_index, Socket_Type_t socket)
 {
     char cmd[LEN_BYTE_SZ64+1] = "";
@@ -831,9 +809,7 @@ bool BG96TcpSendHead(unsigned int socket_index, Socket_Type_t socket)
     strcat(cmd, buf);
 
     if (SendAndSearchChr(cmd, '>', 2)) {// 2s
-        if (SendDataAndCheck(data_buf, RESPONSE_SEND_OK, RESPONSE_SEND_FAIL, 10)) {
-            return true;
-        }
+        return true;
     }
 
     return false;
@@ -858,7 +834,7 @@ bool BG96TcpSendTail(void)
 
     Uart2_Putc(0x1A);
 
-    if (SendDataAndCheck(data_buf, RESPONSE_SEND_OK, RESPONSE_SEND_FAIL, 10)) {
+    if (ReadResponseAndSearch_multi(RESPONSE_SEND_OK, RESPONSE_SEND_FAIL, 10)) {
         return true;
     }
 
@@ -869,43 +845,10 @@ bool BG96TcpSendCancel(void)
 {
     Uart2_Putc(0x1B);
 
-    if (SendAndSearch(data_buf, RESPONSE_SEND_OK, 1000)) {
+    if (ReadResponseAndSearch(RESPONSE_SEND_OK, 1000)) {
         return true;
     }
 
-    return false;
-}
-
-static bool SwitchAccessModes(unsigned int socket_index, Access_Mode_t mode)
-{
-    char cmd[LEN_BYTE_SZ16+1] = "";
-    char buf[LEN_BYTE_SZ16+1] = "";
-
-    strncpy(cmd, DATA_ACCESS_MODES, LEN_BYTE_SZ16);
-    sprintf(buf, "=%d,%d", socket_index, mode);
-    strcat(cmd, buf);
-    if (mode == TRANSPARENT_MODE) {
-        if (SendAndSearch_multi(cmd, RESPONSE_CONNECT, RESPONSE_ERROR, 2)) {
-            return true;
-        }
-    } else {
-        if (SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool QueryLastErrorCode(char *err_code, u8 buf_len)
-{
-    char cmd[LEN_BYTE_SZ16+1] = "";
-
-    strncpy(cmd, QUERY_ERROR_CODE, LEN_BYTE_SZ16);
-    if (SendAndSearch(cmd, RESPONSE_OK, 2)) {
-        char *sta_buf = SearchStrBuffer(": ");
-        strncpy(err_code, sta_buf+2, buf_len);
-        return true;
-    }
     return false;
 }
 
@@ -974,270 +917,6 @@ bool SendATcommand(const char *command)
     return true;
 }
 
-
-unsigned int ReadResponseByteToBuffer()
-{
-    char c = ReadByteFromRingBuffer();
-
-    rxBuffer[bufferHead] = c;
-    
-//    if (1 == gs_ftp_test) {
-//        printf("rxBuffer = %s\n", rxBuffer);
-//    }
-    
-    bufferHead = (bufferHead + 1) % RX_BUFFER_LENGTH;
-
-#if 0// defined UART_DEBUG
-    if (c == '\n'){
-        printf("%c", c);
-        printf("<--- ");
-    } else {
-        printf("%c", c);
-    }
-#endif
-
-    return 1;
-}
-
-// Return: Only return after timeout
-unsigned int ReadResponseToBuffer(unsigned int timeout)
-{
-    unsigned long start_time = GetTimeStamp();
-    unsigned int recv_len = 0;
-
-    CleanBuffer();
-    while (!isDelayTimeout(start_time,timeout*1000)) {
-        if (IsRingBufferAvailable()) {
-            recv_len += ReadResponseByteToBuffer();
-        }
-    }
-    return recv_len;
-}
-
-// Search the last words of the while reply
-// AT Reply: XXXs + Keywords
-//         : Keywords must be the end of the whole reply
-// Return: Will return after got the Keywords or timeout
-static Cmd_Response_t ReadResponseAndSearchChr(const char test_chr, unsigned int timeout)
-{
-    unsigned long start_time = GetTimeStamp();
-    unsigned int recv_len = 0;
-
-    CleanBuffer();
-    while (!isDelayTimeout(start_time,timeout*1000)) {
-        if (IsRingBufferAvailable()) {
-            recv_len += ReadResponseByteToBuffer();
-            if (SearchChrBuffer(test_chr)) {
-                return SUCCESS_RESPONSE;
-            }
-        }
-    }
-    if (recv_len > 0){
-        return UNKNOWN_RESPONSE;
-    } else {
-        return TIMEOUT_RESPONSE;
-    }
-}
-
-// Search the last words of the while reply
-// AT Reply: XXXs + Keywords
-//         : Keywords must be the end of the whole reply
-// Return: Will return after got the Keywords or timeout
-static Cmd_Response_t ReadResponseAndSearch(const char *test_str, unsigned int timeout)
-{
-    unsigned long start_time = GetTimeStamp();
-    unsigned int recv_len = 0;
-    CleanBuffer();
-    while (!isDelayTimeout(start_time,timeout*1000UL)) {
-        if (IsRingBufferAvailable()) {
-            recv_len += ReadResponseByteToBuffer();
-            if (SearchStrBuffer(test_str)) {
-                return SUCCESS_RESPONSE;
-            }
-        }
-    }
-    if (recv_len > 0) {
-        return UNKNOWN_RESPONSE;
-    } else {
-        return TIMEOUT_RESPONSE;
-    }
-}
-
-static Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const char *e_test_str, unsigned int timeout)
-{
-    unsigned long start_time = GetTimeStamp();
-    unsigned int recv_len = 0;
-    unsigned int temp_len = 0;
-
-    errorCode = -1;
-    CleanBuffer();
-    while (!isDelayTimeout(start_time,timeout*1000UL)) {
-        if (IsRingBufferAvailable()) {
-            temp_len = ReadResponseByteToBuffer();
-//            printf("temp_len = %d\n", temp_len);
-            recv_len += temp_len;
-//            printf("recv_len = %d\n", recv_len);
-            if (SearchStrBuffer(test_str)) {
-                printf("\nSuccess Response\n");
-                return SUCCESS_RESPONSE;
-            } else if (SearchStrBuffer(e_test_str)) {
-                start_time = GetTimeStamp();
-                // only break when timeout
-                // to ensure have got the whole infomation about error code
-                while (!isDelayTimeout(start_time,1000UL)) {
-                    if (IsRingBufferAvailable()) {
-                        recv_len += ReadResponseByteToBuffer();
-                    }
-                }
-                char *str_buf = SearchStrBuffer(": ");
-                if (str_buf != NULL) {
-                    char err_code[LEN_BYTE_SZ16+1];
-                    strncpy(err_code, str_buf+2, LEN_BYTE_SZ16);
-                    char *end_buf = strstr(err_code, "\r\n");
-                    *end_buf = '\0';
-                    errorCode = atoi(err_code);
-                }
-                printf("\nFail Response P1\n");
-                return FAIL_RESPONSE;
-            }
-
-            // You may receive "ERROR" when waiting for "SEND_FAIL"
-            if (0 == strcmp(e_test_str, RESPONSE_SEND_FAIL)) {
-                if (SearchStrBuffer(RESPONSE_ERROR)) {
-                    start_time = GetTimeStamp();
-                    // TODO: to ensure if need to parse the fail code
-                    // only break when timeout
-                    // to ensure have got the whole infomation about error code
-                    while (!isDelayTimeout(start_time,1000UL)) {
-                        if (IsRingBufferAvailable()) {
-                            recv_len += ReadResponseByteToBuffer();
-                        }
-                    }
-                    char *str_buf = SearchStrBuffer(": ");
-                    if (str_buf != NULL) {
-                        char err_code[LEN_BYTE_SZ16+1];
-                        strncpy(err_code, str_buf+2, LEN_BYTE_SZ16);
-                        char *end_buf = strstr(err_code, "\r\n");
-                        *end_buf = '\0';
-                        errorCode = atoi(err_code);
-                    }
-                    printf("\nError Response\n");
-                    return FAIL_RESPONSE;
-                }
-            }
-        }
-    }
-
-    printf("recv_len = %d\n", recv_len);
-    if (recv_len > 0){
-        printf("\nFail Response P2\n");
-        return FAIL_RESPONSE;
-    } else {
-        printf("\nTimeout Response\n");
-        return TIMEOUT_RESPONSE;
-    }
-}
-
-// Only used for get '>' when after AT+SEND before send datas
-Cmd_Response_t SendAndSearchChr(const char *command, const char test_chr, unsigned int timeout)
-{
-    int i = 0;
-
-    for (i = 0; i < 3; i++) {
-        if (SendATcommand(command)) {
-            if (ReadResponseAndSearchChr(test_chr, timeout) == SUCCESS_RESPONSE) {
-                return SUCCESS_RESPONSE;
-            }
-        }
-    }
-    return TIMEOUT_RESPONSE;
-}
-
-Cmd_Response_t SendAndSearch(const char *command, const char *test_str, unsigned int timeout)
-{
-    int i = 0;
-
-    for (i = 0; i < 3; i++) {
-        if (SendATcommand(command)) {
-            if (ReadResponseAndSearch(test_str, timeout) == SUCCESS_RESPONSE) {
-                return SUCCESS_RESPONSE;
-            }
-        }
-    }
-    return TIMEOUT_RESPONSE;
-}
-
-Cmd_Response_t SendAndSearch_multi(const char *command, const char *test_str, const char *e_test_str, unsigned int timeout)
-{
-    int i = 0;
-    Cmd_Response_t resp_status = UNKNOWN_RESPONSE;
-
-    for (i = 0; i < 3; i++) {
-        if (SendATcommand(command)) {
-            resp_status = ReadResponseAndSearch_multi(test_str, e_test_str, timeout);
-            return resp_status;
-        }
-    }
-    return resp_status;
-}
-
-
-// The below call path will read reply into rxBuffer
-// So SearchStrBuffer can search someting expect
-// ReadResponseToBuffer
-//   -->ReadResponseByteToBuffer
-// SendAndSearchChr
-//   -->ReadResponseAndSearchChr
-//        -->ReadResponseByteToBuffer
-// SendAndSearch
-//   -->ReadResponseAndSearch
-//        -->ReadResponseByteToBuffer
-// SendAndSearch_multi
-//   -->ReadResponseAndSearch_multi
-//        -->ReadResponseByteToBuffer
-static char *SearchStrBuffer(const char *test_str)
-{
-#if 1
-    u16 i = 0;
-    u16 valid_len = 150;
-
-    for (i=0; i<RX_BUFFER_LENGTH; i++) {
-        if (test_str[i] != 0) {
-            valid_len = i;
-        }
-    }
-
-    for (i=0; i<valid_len; i++) {
-        if (rxBuffer[i] == test_str[0]) {
-            if (0 == memcmp(rxBuffer+i, test_str, strlen(test_str))) {
-                return (rxBuffer+i);
-            }
-        }
-    }
-    
-    return NULL;
-#else
-    int buf_len = strlen((const char *)rxBuffer);
-
-    if (buf_len < RX_BUFFER_LENGTH) {
-        return strstr((const char *)rxBuffer, test_str);
-    } else {
-        return NULL;
-    }
-#endif
-}
-
-static char *SearchChrBuffer(const char test_chr)
-{
-    int buf_len = strlen((const char *)rxBuffer);
-
-    if (0<buf_len && buf_len < RX_BUFFER_LENGTH) {
-        return strrchr((const char *)rxBuffer, test_chr);
-    } else {
-        return NULL;
-    }
-}
-
 bool ReturnErrorCode(int *s_err_code)
 {
     *s_err_code = -1;
@@ -1250,64 +929,7 @@ bool ReturnErrorCode(int *s_err_code)
     return false;
 }
 
-static void CleanBuffer(void)
-{
-    memset(rxBuffer, '\0', RX_BUFFER_LENGTH);
-    bufferHead = 0;
-}
-
 /////////////////////////////////// BG96 GNSS ///////////////////////////////////
-static bool SetGNSSConstellation(GNSS_Constellation_t constellation)
-{
-    char cmd[LEN_BYTE_SZ32+1] = "";
-    char buf[LEN_BYTE_SZ32+1] = "";
-
-    strncpy(cmd, GNSS_CONFIGURATION, LEN_BYTE_SZ32);
-    sprintf(buf, "=\"gnssconfig\",%d", constellation);
-    strcat(cmd, buf);
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
-        return true;
-    }
-    return false;
-}
-
-static bool SetGNSSAutoRun(bool auto_run)
-{
-    char cmd[LEN_BYTE_SZ32+1] = "";
-
-    strncpy(cmd, GNSS_CONFIGURATION, LEN_BYTE_SZ32);
-
-    if(auto_run){
-        strcat(cmd, "\"autogps\",1");
-        if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
-            return true;
-        }
-    }else {
-        strcat(cmd, "\"autogps\",0");
-        if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
-            return true;
-        }
-    }
-    return false;
-}
-
-static bool SetGNSSEnableNMEASentences(bool enable)
-{
-    char cmd[LEN_BYTE_SZ32+1] = "";
-
-    strncpy(cmd, GNSS_CONFIGURATION, LEN_BYTE_SZ32);
-
-    if (enable){
-        strcat(cmd, "=\"nmeasrc\",1");
-    }else {
-        strcat(cmd, "=\"nmeasrc\",0");
-    }
-    if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
-        return true;
-    }
-    return false;
-}
-
 static bool TurnOnGNSS(GNSS_Work_Mode_t mode, Cmd_Status_t status)
 {
     char cmd[LEN_BYTE_SZ16+1] = "";
@@ -1402,6 +1024,22 @@ static bool QueryNetStatus(void)
         return true;
     }
 
+    return false;
+}
+
+
+static bool SetDevCommandEcho(bool echo)
+{
+    const char *cmd;
+
+    if (echo == true) {
+        cmd = "E1";
+    } else {
+        cmd = "E0";
+    }
+    if (SUCCESS_RESPONSE == SendAndSearch(cmd, RESPONSE_OK, 2)) {
+        return true;
+    }
     return false;
 }
 
@@ -1603,57 +1241,6 @@ bool OpenFtpSession(unsigned int pdp_index, u8* ftp_ip, u8* ftp_port)
     return true;
 }
 
-u32 GetFTPFileSize(u8* iap_file)
-{
-    u32 i = 0;
-    u32 size_pos = 0;
-    u16 size_got = 0;
-
-    char cmd[LEN_BYTE_SZ64+1] = "";
-    char buf[LEN_BYTE_SZ32+1] = "";
-    char size_str[8]= "";
-
-    if (NULL == iap_file)
-        return 0;
-    }
-
-    memset(cmd, '\0', LEN_BYTE_SZ64);
-    memset(buf, '\0', LEN_BYTE_SZ32);
-    strncpy(cmd, FTP_GET_FIL_SIZE, LEN_BYTE_SZ64);
-    sprintf(buf, "=\"%s\"", iap_file);
-    strcat(cmd, buf);
-    if(!SendAndSearch_multi(cmd, "+QFTPSIZE: 0,", RESPONSE_ERROR, 30)){
-        return 0;
-    }
-
-    ReadResponseToBuffer(1);
-
-    memset(size_str, 0, 8);
-    for (i=0; i<bufferHead; i++) {
-        if (('F'==rxBuffer[i+0]) && ('T'==rxBuffer[i+1]) && ('P'==rxBuffer[i+2]) &&
-            ('S'==rxBuffer[i+3]) && (':'==rxBuffer[i+7]) && ('0'==rxBuffer[i+9])) {
-            size_pos = i+11;
-            printf("FTP DW size=%s\n", rxBuffer+size_pos);
-        }
-
-        if ((size_pos!=0) && (i>=size_pos)) {
-            if (('\r'==rxBuffer[i+0]) && ('\n'==rxBuffer[i+1])) {
-                break;
-            }
-            size_str[i-size_pos] = rxBuffer[i];
-        }
-    }
-
-    printf("iap_size1 = %s\n", size_str);
-    if (size_pos != 0) {
-        size_got = atoi(size_str);
-    }
-
-    printf("iap_size2 = %ld\n", size_got);
-
-    return size_got;
-}
-
 bool ConnectToFtpServer(u8* iap_file, u8* ftp_ip, u8* ftp_port)
 {
     u8 trycnt = 10;
@@ -1698,7 +1285,7 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf)
 {
     u16 i = 0;
     char cmd[LEN_BYTE_SZ64+1] = "";
-    char buf[LEN_BYTE_SZ32+1 = ""];
+    char buf[LEN_BYTE_SZ32+1] = "";
     char size_str[8]= "";
 
     u16 size_pos = 0;
@@ -1763,46 +1350,6 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf)
     return size_got;
 }
 
-int GNSSDemo(void)
-{
-    GNSS_Work_Mode_t mode = STAND_ALONE;
-
-    printf("This is the Mobit Debug Serial!\n");
-    DelayMs(1000);
-    while(!InitModule());
-
-    SetDevCommandEcho(false);
-
-    char inf[LEN_BYTE_SZ64+1] = "";
-    if(GetDevInformation(inf)){
-        printf("Dev Info: %s!\n", inf);
-    }
-
-    while (!TurnOnGNSS(STAND_ALONE, WRITE_MODE)){
-        printf("Open the GNSS Function Failed!\n");
-        if(TurnOnGNSS(mode, READ_MODE)){
-            printf("The GNSS Function is Opened!\n");
-            TurnOffGNSS();
-        }
-    }
-    printf("Open the GNSS Function Success!\n");
-
-    while(1) {
-        while (!GetGNSSPositionInformation((char *)gs_gnss_pos)){
-            printf("Get the GNSS Position Fail!\n");
-            int e_code;
-            if (ReturnErrorCode(&e_code)){
-                printf("ERROR CODE: %d\n", e_code);
-                printf("Please check the documentation for error details.\n");
-            }
-            DelayMs(5000);
-        }
-        printf("Get the GNSS Position Success!\n");
-        printf("gs_gnss_pos = %s\n", gs_gnss_pos);
-    }
-    return 0;
-}
-
 u8 GetNetStatus(void)
 {
     return gs_net_sta;
@@ -1862,6 +1409,116 @@ void GetGPSInfo(char* gnss_part)
     printf("gs_gnss_pos = %s\n", gs_gnss_pos);
     printf("gnss_defi = %s\n", gnss_part);
 }
+
+/////////////////////////////////// BG96 Common ///////////////////////////////////
+static bool InitModule()
+{
+    SetPinDir(RESET_PIN, OUTPUT);
+    SetPinVal(RESET_PIN, LOW);
+    SetPinDir(POWKEY_PIN, OUTPUT);
+    DelayMs(100);
+    SetPinVal(POWKEY_PIN, HIGH);
+    DelayMs(200);
+    SetPinVal(POWKEY_PIN, LOW);
+    if (ReadResponseToBuffer(5)) {
+        if (SearchStrBuffer(RESPONSE_READY)) {
+            return true;
+        }
+    }
+    DelayMs(1000);
+    SetPinVal(POWKEY_PIN, HIGH);
+    DelayMs(2000);
+    SetPinVal(POWKEY_PIN, LOW);
+    if (ReadResponseToBuffer(5)) {
+        if (SearchStrBuffer(RESPONSE_POWER_DOWN)) {
+            DelayMs(10000);
+        }
+    }
+
+    return false;
+}
+
+//******************************************************************************
+// Configure BG96
+//******************************************************************************
+void Configure_BG96(void)
+{
+    u8 trycnt = 2;
+//    bool resultBool = false;
+
+    while(trycnt--) {
+//    resultBool = InitModule();
+//    if(resultBool){
+//        printf("init bg96 success!\r\n");
+//    }else{
+//        printf("init bg96 failure!\r\n");
+//    }
+
+        if (BG96ATInitialize()) {
+            break;
+        }
+
+        delay_ms(1000);
+    }
+}
+
+static u32 ParseFTPFileSize(void)
+{
+    u32 i = 0;
+    u32 size_pos = 0;
+    u32 size_got = 0;
+    char size_str[LEN_BYTE_SZ8+1] = "";
+
+    memset(size_str, 0, 8);
+    for (i=0; i<bufferHead; i++) {
+        if (('F'==rxBuffer[i+0]) && ('T'==rxBuffer[i+1]) && ('P'==rxBuffer[i+2]) &&
+            ('S'==rxBuffer[i+3]) && (':'==rxBuffer[i+7]) && ('0'==rxBuffer[i+9])) {
+            size_pos = i+11;
+            printf("FTP DW size=%s\n", rxBuffer+size_pos);
+        }
+
+        if ((size_pos!=0) && (i>=size_pos)) {
+            if (('\r'==rxBuffer[i+0]) && ('\n'==rxBuffer[i+1])) {
+                break;
+            }
+            size_str[i-size_pos] = rxBuffer[i];
+        }
+    }
+
+    printf("iap_size1 = %s\n", size_str);
+    if (size_pos != 0) {
+        size_got = atoi(size_str);
+    }
+    
+    printf("iap_size2 = %ld\n", size_got);
+
+    return size_got;
+}
+
+
+u32 GetFTPFileSize(u8* iap_file)
+{
+    char cmd[LEN_BYTE_SZ64+1] = "";
+    char buf[LEN_BYTE_SZ32+1] = "";
+
+    if (NULL == iap_file) {
+        return 0;
+    }
+
+    memset(cmd, '\0', LEN_BYTE_SZ64);
+    memset(buf, '\0', LEN_BYTE_SZ32);
+    strncpy(cmd, FTP_GET_FIL_SIZE, LEN_BYTE_SZ64);
+    sprintf(buf, "=\"%s\"", iap_file);
+    strcat(cmd, buf);
+    if (!SendAndSearch_multi(cmd, "+QFTPSIZE: 0,", RESPONSE_ERROR, 30)) {
+        return 0;
+    }
+
+    ReadResponseToBuffer(1);
+
+    return ParseFTPFileSize();
+}
+
 //******************************************************************************
 //* END OF FILE
 //******************************************************************************

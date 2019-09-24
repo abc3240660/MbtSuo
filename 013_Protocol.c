@@ -15,6 +15,7 @@
 #include "001_Tick_10ms.h"
 #include "003_BG96.h"
 #include "004_LB1938.h"
+#include "007_Uart.h"
 #include "012_CLRC663_NFC.h"
 #include "013_Protocol.h"
 #include "014_Md5.h"
@@ -361,231 +362,6 @@ void ParseMobitMsg(char* msg)
         split_str = strtok(NULL, delims);
 
         index++;
-    }
-}
-
-void ProcessIapRequest(void)
-{
-    if (gs_iap_waiting != 1) {
-        return;
-    }
-
-    u16 i = 0;
-    u8 ftp_sta = 0;
-    u16 got_size = 0;
-    u32 ftp_len_per = 512;
-    u32 iap_total_size = 0;
-
-    u8 iap_buf[LEN_BYTE_SZ1024] = "";
-
-    ftp_sta = GetFtpStatus();
-
-    // ----------------
-    // --------
-    // Erase BAK partition & Initialize MD5
-    if (0 == gs_is_erased) {
-        gs_is_erased = 1;
-        GAgent_MD5Init(&g_ftp_md5_ctx);
-
-        FlashErase_LargePage(FLASH_PAGE_BAK, FLASH_BASE_BAK);// SIZE: 0xE000
-        FlashErase_LargePage(FLASH_PAGE_BAK+1, 0);// SIZE: 0x10000
-    }
-
-    // ----------------
-    // --------
-    // Start first Connect or Re-Connect
-    if (0 == ftp_sta) {
-        ConnectToFtpServer(gs_iap_file, gs_ftp_ip, gs_ftp_port);
-    }
-
-    iap_total_size = GetFTPFileSize(gs_iap_file);
-
-    memset(iap_buf, 0, LEN_BYTE_SZ1024);
-    if (0x81 == ftp_sta) {
-        got_size = BG96FtpGetData(gs_ftp_offset, ftp_len_per, iap_buf);
-
-        if (got_size > 0) {
-            u16 flash_page = FLASH_PAGE_BAK;// 0x2,2000
-            u32 flash_offset = FLASH_BASE_BAK;
-
-            OneInstruction_t dat[1024];
-
-            gs_ftp_offset += got_size;
-            printf("gs_ftp_offset = %ld\n", ftp_offset);
-
-            got_size = atoi(size_str);
-
-            MD5Update((u8*)iap_buf, got_size);
-            GAgent_MD5Update(&g_ftp_md5_ctx, buf, len);
-
-            //for (i=0; i<got_size/4; i++) {
-            //    printf("=%.2X-%.2X-%.2X-%.2X\n", (u8)iap_buf[4*i], (u8)iap_buf[4*i+1], (u8)iap_buf[4*i+2], (u8)iap_buf[4*i+3]);
-            //}
-
-            for(i=0;i<(got_size/4);i++)
-            {
-                if ((i*4+2) >= got_size) {
-                    break;
-                }
-                dat[i].HighLowUINT16s.HighWord = (u8)iap_buf[i*4+2];
-                if ((i*4+1) >= got_size) {
-                    break;
-                }
-                dat[i].HighLowUINT16s.LowWord = (u8)iap_buf[i*4+1] << 8;
-                if ((i*4+0) >= got_size) {
-                    break;
-                }
-                dat[i].HighLowUINT16s.LowWord += (u8)iap_buf[i*4+0];
-            }
-
-            if ((0==offset) && (0x200==length)) {
-                flash_offset = 0;
-                flash_page = FLASH_PAGE_BAK;
-            } else {
-                flash_offset = FLASH_BASE_BAK;
-                flash_offset += gs_ftp_sum_got / 2;
-                flash_offset -= 0x100;
-                flash_page = FLASH_PAGE_BAK + (flash_offset / 0x10000);
-            }
-
-            // printf("flash_offset = %.8lX, %ld\n", flash_offset, flash_offset);
-            printf("WR flash_address = 0x%X-%.8lX\n", flash_page, flash_offset);
-            FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 128);
-
-            gs_ftp_sum_got += got_size;
-        }
-
-        if (gs_ftp_offset >= iap_total_size) {
-            gs_iap_waiting = 0;
-            GAgent_MD5Final(&g_ftp_md5_ctx, gs_ftp_res_md5);
-
-            printf("FTP MD5 = ");
-            for (i=0; i<16; i++) {
-                printf("%.2X", gs_ftp_res_md5[i]);
-            }
-            printf("\r\n");
-
-            printf("FTP DW Finished...\n");
-
-            FlashWrite_SysParams(PARAM_ID_IAP_FLAG, (u8*)IAP_REQ_ON, 4);
-            FlashWrite_SysParams(PARAM_ID_RSVD_U1, (u8*)BIN_SIZE_STR, 6);
-
-            printf("Before APP Reset...\n");
-            asm("reset");
-        }
-    }
-}
-
-void ProcessTcpServerCommand(void)
-{
-    // during download mode, skip other operations
-    // till download success or failed
-    if (gs_iap_waiting != 0) {
-        DoFtpIAP();
-
-        // try twice NG, skip this request
-        if (gs_iap_waiting != 0) {
-            gs_iap_waiting = 0;
-
-            memset(gs_iap_md5, 0, LEN_DW_MD5);
-            memset(gs_iap_file, 0, LEN_DW_URL);
-
-            gs_dw_size_total = 0;
-            gs_dw_recved_sum = 0;
-        }
-
-        return;
-    }
-
-    unsigned long temp = 1;
-
-    if (gs_need_ack & (temp<<QUERY_PARAMS)) {
-        gs_need_ack &= ~(temp<<QUERY_PARAMS);
-        TcpReQueryParams();
-    } else if (gs_need_ack & (temp<<QUERY_GPS)) {
-        gs_need_ack &= ~(temp<<QUERY_GPS);
-        TcpReQueryGPS();
-    } else if (gs_need_ack & (temp<<QUERY_NFC)) {
-        gs_need_ack &= ~(temp<<QUERY_NFC);
-        TcpReQueryNFCs();
-    } else if (gs_need_ack & (temp<<QUERY_ALARM)) {
-        gs_need_ack &= ~(temp<<QUERY_ALARM);
-        TcpReQueryAlarm();
-    } else if (gs_need_ack & (temp<<QUERY_ICCID)) {
-        gs_need_ack &= ~(temp<<QUERY_ICCID);
-        TcpReQueryIccid();
-    } else {
-        u8 i = 0;
-        for (i=0 ;i<32; i++) {
-            if (gs_need_ack & (temp<<i)) {
-                if (QUERY_PARAMS == i) {
-                    continue;
-                } else if (QUERY_GPS == i) {
-                    continue;
-                } else if (QUERY_NFC == i) {
-                    continue;
-                } else if (QUERY_ALARM == i) {
-                    continue;
-                } else if (QUERY_ICCID == i) {
-                    continue;
-                } else {
-                    if ((IAP_UPGRADE==i) || (ADD_NFC==i) ||
-                        (MODIFY_ALARM==i) || (RING_ALARM==i)) {
-                        TcpReNormalAck((u8*)(cmd_list[i]), NULL);
-                    } else if ((IAP_UPGRADE==i) || (ADD_NFC==i)) {
-                        // TODO: must check if unlock success
-                        // read the value of PIN connected to the locker position
-                        if (1) {// TODO
-                            TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("1"));
-                        } else {
-                            TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("0"));
-                        }
-                    } else if (DELETE_NFC == i) {
-                        TcpReDeleteNFCs();
-                    } else {
-                        TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("1"));
-                    }
-
-                    if (FACTORY_RST == i) {
-                        TcpFinishFactoryReset();
-                    }
-
-                    gs_need_ack &= ~(temp<<i);
-                }
-            }
-        }
-    }
-
-    // always send till received ACK from server
-    // period: 10s
-    if (gs_till_svr_ack & (temp<<DOOR_LOCKED)) {
-        if (start_time_locked != 0) {
-            if (isDelayTimeout(start_time_locked,10*1000UL)) {
-                TcpLockerLocked();
-            }
-        }
-    } else if (gs_till_svr_ack & (temp<<DOOR_UNLOCKED)) {
-        if (start_time_unlocked != 0) {
-            if (isDelayTimeout(start_time_unlocked,10*1000UL)) {
-                TcpLockerUnlocked();
-                // TODO: delete this test
-                gs_till_svr_ack = 0;
-            }
-        }
-    } else if (gs_till_svr_ack & (temp<<FINISH_ADDNFC)) {
-        if (start_time_finish_addc != 0) {
-            if (isDelayTimeout(start_time_finish_addc,10*1000UL)) {
-                TcpFinishAddNFCCard();
-                // TODO: delete this test
-                gs_till_svr_ack = 0;
-            }
-        }
-    } else if (gs_till_svr_ack & (temp<<RISK_REPORT)) {
-        if (start_time_risk != 0) {
-            if (isDelayTimeout(start_time_risk,10*1000UL)) {
-                TcpRiskAlarm();
-            }
-        }
     }
 }
 
@@ -986,12 +762,12 @@ void ReportLockerUnlocked(void)
 
 u8 IsApnChangeWait(void)
 {
-    return gs_net_sta;
+    return gs_change_apn;
 }
 
 void ResetApnChange(void)
 {
-    gs_net_sta = 0;
+    gs_change_apn = 0;
 }
 
 void ProcessTcpSvrCmds(void)
@@ -1072,7 +848,7 @@ void ProtocolParamsInit(void)
 
     // Write params into flash when the first time boot
     FlashRead_SysParams(PARAM_ID_1ST_BOOT, params_dat, 64);
-    if (strncmp(params_dat, "1", 1) != 0) {
+    if (strncmp((const char*)params_dat, (const char*)"1", 1) != 0) {
         FlashWrite_SysParams(PARAM_ID_ALM_ON, (u8*)"1", 1);
         FlashWrite_SysParams(PARAM_ID_BEEP_ON, (u8*)"1", 1);
         FlashWrite_SysParams(PARAM_ID_BEEP_LEVEL, (u8*)"18", 2);
@@ -1080,19 +856,242 @@ void ProtocolParamsInit(void)
 
     memset(params_dat, 0, LEN_BYTE_SZ64);
     FlashRead_SysParams(PARAM_ID_ALM_ON, params_dat, 64);
-    if (strspn(params_dat, "0123456789") == strlen(params_dat)) {
-        gs_alarm_on = atoi(params_dat);
+    if (strspn((const char*)params_dat, (const char*)"0123456789") == strlen((const char*)params_dat)) {
+        strncpy((char*)gs_alarm_on, (const char*)params_dat, LEN_COMMON_USE);
     }
 
     memset(params_dat, 0, LEN_BYTE_SZ64);
     FlashRead_SysParams(PARAM_ID_BEEP_ON, params_dat, 64);
-    if (strspn(params_dat, "0123456789") == strlen(params_dat)) {
-        gs_beep_on = atoi(params_dat);
+    if (strspn((const char*)params_dat, (const char*)"0123456789") == strlen((const char*)params_dat)) {
+        strncpy((char*)gs_beep_on, (const char*)params_dat, LEN_COMMON_USE);
     }
 
     memset(params_dat, 0, LEN_BYTE_SZ64);
-    FlashRead_SysParams(PARAM_ID_BEEP_LEVEL, params, 64);
-    if (strspn(params_dat, "0123456789") == strlen(params_dat)) {
-        gs_alarm_level = atoi(params_dat);
+    FlashRead_SysParams(PARAM_ID_BEEP_LEVEL, params_dat, 64);
+    if (strspn((const char*)params_dat, (const char*)"0123456789") == strlen((const char*)params_dat)) {
+        strncpy((char*)gs_alarm_level, (const char*)params_dat, LEN_COMMON_USE);
     }
 }
+
+void ProcessIapRequest(void)
+{
+    if (gs_iap_waiting != 1) {
+        return;
+    }
+
+    u16 i = 0;
+    u8 ftp_sta = 0;
+    u16 got_size = 0;
+    u32 ftp_len_per = 512;
+    u32 iap_total_size = 0;
+
+    u8 iap_buf[LEN_BYTE_SZ1024] = "";
+
+    ftp_sta = GetFtpStatus();
+
+    // ----------------
+    // --------
+    // Erase BAK partition & Initialize MD5
+    if (0 == gs_is_erased) {
+        gs_is_erased = 1;
+        GAgent_MD5Init(&g_ftp_md5_ctx);
+
+        FlashErase_LargePage(FLASH_PAGE_BAK, FLASH_BASE_BAK);// SIZE: 0xE000
+        FlashErase_LargePage(FLASH_PAGE_BAK+1, 0);// SIZE: 0x10000
+    }
+
+    // ----------------
+    // --------
+    // Start first Connect or Re-Connect
+    if (0 == ftp_sta) {
+        ConnectToFtpServer(gs_iap_file, gs_ftp_ip, gs_ftp_port);
+    }
+
+    iap_total_size = GetFTPFileSize(gs_iap_file);
+
+    memset(iap_buf, 0, LEN_BYTE_SZ1024);
+    if (0x81 == ftp_sta) {
+        got_size = BG96FtpGetData(gs_ftp_offset, ftp_len_per, iap_buf);
+
+        if (got_size > 0) {
+            u16 flash_page = FLASH_PAGE_BAK;// 0x2,2000
+            u32 flash_offset = FLASH_BASE_BAK;
+
+            OneInstruction_t dat[1024];
+
+            gs_ftp_offset += got_size;
+            printf("gs_ftp_offset = %ld\n", gs_ftp_offset);
+
+            GAgent_MD5Update(&g_ftp_md5_ctx, iap_buf, got_size);
+
+            //for (i=0; i<got_size/4; i++) {
+            //    printf("=%.2X-%.2X-%.2X-%.2X\n", (u8)iap_buf[4*i], (u8)iap_buf[4*i+1], (u8)iap_buf[4*i+2], (u8)iap_buf[4*i+3]);
+            //}
+
+            for(i=0;i<(got_size/4);i++)
+            {
+                if ((i*4+2) >= got_size) {
+                    break;
+                }
+                dat[i].HighLowUINT16s.HighWord = (u8)iap_buf[i*4+2];
+                if ((i*4+1) >= got_size) {
+                    break;
+                }
+                dat[i].HighLowUINT16s.LowWord = (u8)iap_buf[i*4+1] << 8;
+                if ((i*4+0) >= got_size) {
+                    break;
+                }
+                dat[i].HighLowUINT16s.LowWord += (u8)iap_buf[i*4+0];
+            }
+
+            if ((0==gs_ftp_offset) && (0x200==got_size)) {
+                flash_offset = 0;
+                flash_page = FLASH_PAGE_BAK;
+            } else {
+                flash_offset = FLASH_BASE_BAK;
+                flash_offset += gs_ftp_sum_got / 2;
+                flash_offset -= 0x100;
+                flash_page = FLASH_PAGE_BAK + (flash_offset / 0x10000);
+            }
+
+            // printf("flash_offset = %.8lX, %ld\n", flash_offset, flash_offset);
+            printf("WR flash_address = 0x%X-%.8lX\n", flash_page, flash_offset);
+            FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 128);
+
+            gs_ftp_sum_got += got_size;
+        }
+
+        if (gs_ftp_offset >= iap_total_size) {
+            gs_iap_waiting = 0;
+            GAgent_MD5Final(&g_ftp_md5_ctx, gs_ftp_res_md5);
+
+            printf("FTP MD5 = ");
+            for (i=0; i<16; i++) {
+                printf("%.2X", gs_ftp_res_md5[i]);
+            }
+            printf("\r\n");
+
+            printf("FTP DW Finished...\n");
+
+            FlashWrite_SysParams(PARAM_ID_IAP_FLAG, (u8*)IAP_REQ_ON, 4);
+            FlashWrite_SysParams(PARAM_ID_RSVD_U1, (u8*)BIN_SIZE_STR, 6);
+
+            printf("Before APP Reset...\n");
+            asm("reset");
+        }
+    }
+}
+
+void ProcessTcpServerCommand(void)
+{
+    // during download mode, skip other operations
+    // till download success or failed
+    if (gs_iap_waiting != 0) {
+        DoFtpIAP();
+
+        // try twice NG, skip this request
+        if (gs_iap_waiting != 0) {
+            gs_iap_waiting = 0;
+
+            memset(gs_iap_md5, 0, LEN_DW_MD5);
+            memset(gs_iap_file, 0, LEN_DW_URL);
+
+            gs_dw_size_total = 0;
+            gs_dw_recved_sum = 0;
+        }
+
+        return;
+    }
+
+    unsigned long temp = 1;
+
+    if (gs_need_ack & (temp<<QUERY_PARAMS)) {
+        gs_need_ack &= ~(temp<<QUERY_PARAMS);
+        TcpReQueryParams();
+    } else if (gs_need_ack & (temp<<QUERY_GPS)) {
+        gs_need_ack &= ~(temp<<QUERY_GPS);
+        TcpReQueryGPS();
+    } else if (gs_need_ack & (temp<<QUERY_NFC)) {
+        gs_need_ack &= ~(temp<<QUERY_NFC);
+        TcpReQueryNFCs();
+    } else if (gs_need_ack & (temp<<QUERY_ALARM)) {
+        gs_need_ack &= ~(temp<<QUERY_ALARM);
+        TcpReQueryAlarm();
+    } else if (gs_need_ack & (temp<<QUERY_ICCID)) {
+        gs_need_ack &= ~(temp<<QUERY_ICCID);
+        TcpReQueryIccid();
+    } else {
+        u8 i = 0;
+        for (i=0 ;i<32; i++) {
+            if (gs_need_ack & (temp<<i)) {
+                if (QUERY_PARAMS == i) {
+                    continue;
+                } else if (QUERY_GPS == i) {
+                    continue;
+                } else if (QUERY_NFC == i) {
+                    continue;
+                } else if (QUERY_ALARM == i) {
+                    continue;
+                } else if (QUERY_ICCID == i) {
+                    continue;
+                } else {
+                    if ((IAP_UPGRADE==i) || (ADD_NFC==i) ||
+                        (MODIFY_ALARM==i) || (RING_ALARM==i)) {
+                        TcpReNormalAck((u8*)(cmd_list[i]), NULL);
+                    } else if ((IAP_UPGRADE==i) || (ADD_NFC==i)) {
+                        // TODO: must check if unlock success
+                        // read the value of PIN connected to the locker position
+                        if (1) {// TODO
+                            TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("1"));
+                        } else {
+                            TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("0"));
+                        }
+                    } else if (DELETE_NFC == i) {
+                        TcpReDeleteNFCs();
+                    } else {
+                        TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("1"));
+                    }
+
+                    if (FACTORY_RST == i) {
+                        TcpFinishFactoryReset();
+                    }
+
+                    gs_need_ack &= ~(temp<<i);
+                }
+            }
+        }
+    }
+
+    // always send till received ACK from server
+    // period: 10s
+    if (gs_till_svr_ack & (temp<<DOOR_LOCKED)) {
+        if (start_time_locked != 0) {
+            if (isDelayTimeout(start_time_locked,10*1000UL)) {
+                TcpLockerLocked();
+            }
+        }
+    } else if (gs_till_svr_ack & (temp<<DOOR_UNLOCKED)) {
+        if (start_time_unlocked != 0) {
+            if (isDelayTimeout(start_time_unlocked,10*1000UL)) {
+                TcpLockerUnlocked();
+                // TODO: delete this test
+                gs_till_svr_ack = 0;
+            }
+        }
+    } else if (gs_till_svr_ack & (temp<<FINISH_ADDNFC)) {
+        if (start_time_finish_addc != 0) {
+            if (isDelayTimeout(start_time_finish_addc,10*1000UL)) {
+                TcpFinishAddNFCCard();
+                // TODO: delete this test
+                gs_till_svr_ack = 0;
+            }
+        }
+    } else if (gs_till_svr_ack & (temp<<RISK_REPORT)) {
+        if (start_time_risk != 0) {
+            if (isDelayTimeout(start_time_risk,10*1000UL)) {
+                TcpRiskAlarm();
+            }
+        }
+    }
+}
+

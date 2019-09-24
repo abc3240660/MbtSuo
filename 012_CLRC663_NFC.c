@@ -18,6 +18,7 @@
 #include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
 #include "013_Protocol.h"
+#include "016_FlashOta.h"
 
 static u8 gs_tmp_card_id[LEN_BYTE_SZ32+1] = {0};
 static u8 gs_tmp_serial_nr[LEN_BYTE_SZ32+1] = {0};
@@ -397,5 +398,5 @@ u8 QueryMobibCard(u8* card_dats)
 
 void CardIDFlashBankInit(void)
 {
-    FlashRead_AllNFCCards(gs_bind_cards);
+    FlashRead_AllNFCCards(&gs_bind_cards[0]);
 }

@@ -15,7 +15,7 @@ u16 FlashWrite_SysParams(PARAM_ID params_id, u8 *data, u16 length);
 void FlashWriteRead_ParamsTest(void);
 void FlashWriteRead_CardIDTest(void);
 
-u16 FlashRead_AllNFCCards(u8 *card_dat);
+u16 FlashRead_AllNFCCards(u8 card_dat[][LEN_BYTE_SZ64]);
 u16 FlashWrite_OneNFCCard(u8 *card_dat);
 u16 FlashWrite_DeleteOneCard(u8 *card_dat);
 

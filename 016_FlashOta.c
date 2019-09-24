@@ -37,7 +37,7 @@ u16 FlashRead_InstructionWordsToByteArray(u16 flash_page, u16 flash_offset, u16 
 // Each CardID = 19B Data = give 8 * InstructionWords = 24B Data
 // Most 64*8 = 512 * InstructionWords = 1024B Address GAP = store MAX 1536B(actual 64*19=1216B)
 // Eevery 8*InstructionWords = 16B Adress GAP = Can Store MAX 24B Data = Actual Store 19B Data
-u16 FlashRead_AllNFCCards(u8 *card_dat)
+u16 FlashRead_AllNFCCards(u8 card_dat[][LEN_BYTE_SZ64])
 {
     int i = 0;
     int j = 0;
@@ -69,8 +69,8 @@ u16 FlashRead_AllNFCCards(u8 *card_dat)
         if ((tmp_card[0]!=0x00) && (tmp_card[0]!=0xFF)) {
             printf("Found CARD ID: %s from 0x1-%.4X\n", (char*)tmp_card, FLASH_BASE_CARD_ID+CNTR_INWORD_PER_CARD*2*i);
 
-            if (card_dat != NULL) {
-                memcpy(card_dat+card_cnt*(LEN_CARD_ID+1), tmp_card, LEN_CARD_ID+1);
+            if (card_dat[card_cnt] != NULL) {
+                memcpy(card_dat[card_cnt], tmp_card, LEN_CARD_ID+1);
             }
 
             card_cnt++;

@@ -30,6 +30,8 @@ static char tmpRingbuf[RX_RINGBUF_MAX_LEN] = {0};
 uint8_t Uart3_Buffer[64] = {0};
 int Uart3_Use_Len = 0;
 
+// extern u8 g_ftp_enable;
+
 extern int rx_debug_flag;
 
 // 115200
@@ -239,15 +241,13 @@ void __attribute__((__interrupt__,no_auto_psv)) _U2RXInterrupt(void)
     } while (U2STAbits.URXDA);
 }
 
-extern u8 g_ftp_enable;
-
 void __attribute__((__interrupt__,no_auto_psv)) _U1RXInterrupt(void)
 {
     char temp = 0;
 
     do {
         temp = U1RXREG;
-        g_ftp_enable = 1;
+        // g_ftp_enable = 1;
         // Uart1_Putc(temp);
         _U1RXIF = 0;
         if (U1STAbits.OERR) {

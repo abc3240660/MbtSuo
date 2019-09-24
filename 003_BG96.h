@@ -263,21 +263,6 @@ bool DevPowerDown();
 
 bool DevClock(char *d_clock, Cmd_Status_t status);
 
-// For GNSS
-bool SetGNSSConstellation(GNSS_Constellation_t constellation);
-
-bool SetGNSSEnableNMEASentences(bool enable);
-
-bool SetGNSSAutoRun(bool auto_run);
-
-bool TurnOnGNSS(GNSS_Work_Mode_t mode, Cmd_Status_t status);
-
-bool GetGNSSPositionInformation(char *position);
-
-bool TurnOffGNSS();
-
-bool GetGNSSNMEASentences(NMEA_Type_t type, char *sentences);
-
 // For TCPIP
 bool CloseTcpService(void);
 
@@ -319,6 +304,7 @@ bool BG96TcpSendTail(void);
 bool BG96TcpSendCancel(void);
 bool BG96TcpSendMiddle(char *data_buf);
 bool BG96TcpSendHead(unsigned int socket_index, Socket_Type_t socket);
+u32 GetFTPFileSize(u8* iap_file);
 
 #endif //__BG96_H
 

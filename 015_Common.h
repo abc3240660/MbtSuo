@@ -33,6 +33,7 @@
 #define LEN_BYTE_SZ128   128
 #define LEN_BYTE_SZ256   256
 #define LEN_BYTE_SZ512   512
+#define LEN_BYTE_SZ1024   1024
 
 #define LEN_CARD_ID      19
 #define LEN_SERIAL_NR    16
