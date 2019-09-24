@@ -45,70 +45,68 @@ static void __delay_usx(uint16_t ms)
     }
 }
 
-uint16_t clrc663_SPI_transfer(const uint8_t* tx, uint8_t* rx, uint16_t len)
-{
-    uint16_t tempLen = 0;
-    tempLen = SPI2_Exchange8bitBuffer((uint8_t*)tx, len, rx);
-    // print_block(rx,tempLen);
-    __delay_us(2);
-    return tempLen;
-}
-
-void clrc663_SPI_select()
-{
-    PORTEbits.RE7 = 0;
-}
-
-void clrc663_SPI_unselect()
-{
-    PORTEbits.RE7 = 1;
-}
-
 //      *** *** ***     Print identification numbers     *** *** ***       //
 //      *** *** ***     Card Invalidation     *** *** ***       //
 // Hex print for blocks without printf.
-void print_block(uint8_t * block, uint8_t length){
+void print_block(uint8_t * block, uint8_t length)
+{
   int i = 0;
+
   for (i = 0; i < length; i++){
       if (block[i] < 16){  printf("%02x ",block[i]); }
       else printf("%02x ",block[i]);
   }
+
   printf("\r\n");
 }
 
-void print_block_01(uint8_t* block, uint8_t lower_lim, uint8_t upper_lim){
+void print_block_01(uint8_t* block, uint8_t lower_lim, uint8_t upper_lim)
+{
   int i = 0;
+
   for(i = lower_lim; i < upper_lim; i++){
     if (block[i] < 16){ printf("%02x ",block[i]); }
     else printf("%02x ",block[i]);
   }
+
   printf(" \r\n");
 }
 
-void print_card_ID_block(uint8_t * block, uint8_t length){
-  printf("CardId: ");
-  int i = 0;
-  for (i = 3; i < 12; i++){
-      if (block[i] < 16){printf("%02x ",block[i]); }
-      else  printf("%02x ",block[i]); }
-  printf("%02x ",block[12]>>4);
-  printf(" \r\n");
+void print_card_ID_block(uint8_t * block, uint8_t length)
+{
+    int i = 0;
+
+    printf("CardId: ");
+
+    for (i = 3; i < 12; i++) {
+        if (block[i] < 16) {
+            printf("%02x ",block[i]);
+        } else {
+            printf("%02x ",block[i]);
+        }
+    }
+
+    printf("%02x ",block[12]>>4);
+    printf(" \r\n");
 }
 
 //  Card Blacklist and Card Invalidation
-void check_valid_card(uint8_t * buf){
-  if(buf[40] == 0x62 || buf [41] == 0x83) printf(" ----INVALID CARD: card is locked----");
+void check_valid_card(uint8_t * buf)
+{
+  if (buf[40] == 0x62 || buf [41] == 0x83) printf(" ----INVALID CARD: card is locked----");
   else printf("---- VALID CARD ----");
 }
 
 //  Print Pseudo-Unique PICC Identifier, Type B
-void print_PUPI(uint8_t* block){
+void print_PUPI(uint8_t* block)
+{
   printf("PUPI: ");
   print_block_01(block, 1, 5);
 }
 
 //  Print MOBIB Hardcoded Serial Number
-void print_serial_nr(uint8_t* block){
+void print_serial_nr(uint8_t* block)
+{
   printf("Serial number: ");
   print_block_01(block, 23, 31);
 }
@@ -121,7 +119,8 @@ int bitRead(uint8_t value,int pos)
 }
 
 //  Shift buffer with two bits (to determine MOBIB Original Card ID)
-void shift(uint8_t* buf, uint8_t buf_size){
+void shift(uint8_t* buf, uint8_t buf_size)
+{
     int i = 0;
     buf [3] = buf [3] << 2;
     for(i = 4; i < 13; i++){

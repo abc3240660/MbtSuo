@@ -18,7 +18,7 @@
 static unsigned long MobitTimes = 0UL;// unit: ms
 static unsigned long Timer2Cnt = 0UL;// unit: ms
 
-static char tmpuse_buf[RX_RINGBUF_MAX_LEN] = {0};
+static char tmpuse_buf[RX_RINGBUF_MAX_LEN+1] = {0};
 
 // --
 // ---------------------- global variables -------------------- //
@@ -66,7 +66,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
     if(MobitTimes > 100000UL){
         MobitTimes = 0;
     }
-    
+
     if (GetNetStatus() != 0x81) {
         if (0 == (MobitTimes%21)) {
             GPIOB_SetPin(1, 1);
@@ -165,7 +165,9 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
             }
         }
 
-        tmpuse_buf[tmp_len++] = c;
+        if (tmp_len < (RX_RINGBUF_MAX_LEN-1)) {
+            tmpuse_buf[tmp_len++] = c;
+        }
 
         // "+QQQ"
         // "\r\n+QQQ"
@@ -193,7 +195,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                 }
 
                 //printf("Total XACKs = %s\n", g_at_rbuf.head);
-                
+
                 msg_done = 0;
                 cnt_tail = 0;
                 cnt_tail_exp = 0;
@@ -302,7 +304,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
 void delay_ms(unsigned long val)
 {
     unsigned long start_time = GetTimeStamp();
-    
+
     while (!isDelayTimeout(start_time,val));
 }
 

@@ -14,6 +14,8 @@
 #include "007_Uart.h"
 #include "001_Tick_10ms.h"
 
+uint16_t Uart3ReadPostion = 0;
+
 void __delayx_us(uint16_t ms)
 {
     int i=0,j=0;
@@ -22,7 +24,6 @@ void __delayx_us(uint16_t ms)
     }
 }
 
-uint16_t Uart3ReadPostion = 0;
 void Clrc663_Send(uint8_t byte)
 {
     Uart3_Putc(byte);

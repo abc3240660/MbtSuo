@@ -20,6 +20,11 @@
 #include "007_Uart.h"
 #include "008_RingBuffer.h"
 
+#define UART3_BUFFER_MAX_LEN 32
+
+static uint8_t Uart3Buffer[UART3_BUFFER_MAX_LEN] = {0};
+static uint16_t Uart3Length = 0;
+
 static char Uart2_Send_Buf[UART2_BUFFER_MAX_LEN] = {0};
 
 static ringbuffer_t tmp_rbuf;
@@ -82,9 +87,7 @@ void Uart2_Init(void)
 
     ringbuffer_init(&tmp_rbuf,tmpRingbuf,RX_RINGBUF_MAX_LEN);
 }
-#define UART3_BUFFER_MAX_LEN 32
-static uint8_t Uart3Buffer[UART3_BUFFER_MAX_LEN] = {0};
-static uint16_t Uart3Length = 0;
+
 // 115200
 void Uart3_Init(void)
 {
@@ -111,7 +114,7 @@ void Uart3_Init(void)
 void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
 {
     char temp = 0;
-    
+
     do {
         temp = U3RXREG;
         _U3RXIF = 0;
@@ -122,11 +125,13 @@ void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
         }
     } while (U3STAbits.URXDA);
 }
+
 void Uart3_Clear(void)
 {
     memset(Uart3Buffer,0,UART3_BUFFER_MAX_LEN);
     Uart3Length = 0;
 }
+
 uint8_t Uart3_Read(uint16_t postion)
 {
     if(postion > Uart3Length){
@@ -134,6 +139,7 @@ uint8_t Uart3_Read(uint16_t postion)
     }
     return Uart3Buffer[postion];
 }
+
 uint16_t Uart3_GetSize(void)
 {
     return Uart3Length;
@@ -157,16 +163,13 @@ int Uart1_Putc(char ch)
 
 u8 SCISendDataOnISR(u8 *sendbuf,u16 size)
 {
-//    uint8_t timerCount = 0;    
-  	
-		while(size--)
-		{     
-            Uart1_Putc(*sendbuf);
- 
-			sendbuf++;
-		} 	
- 	
-    return (1) ;  
+    while(size--)
+    {
+        Uart1_Putc(*sendbuf);
+        sendbuf++;
+    }
+
+    return 1;
 }
 
 int Uart2_Putc(char ch)
@@ -259,24 +262,6 @@ void __attribute__((__interrupt__,no_auto_psv)) _U1RXInterrupt(void)
         }
     } while (U1STAbits.URXDA);
 }
-
-#if 0
-void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
-{
-    char temp = 0;
-
-    do {
-        temp = U3RXREG;
-        // printf("%.2X\r\n", (uint8_t)temp);
-        _U3RXIF = 0;
-        if (U3STAbits.OERR) {
-            U3STAbits.OERR = 0;
-        } else {
-            Uart3_Buffer[Uart3_Use_Len++] = temp;
-        }
-    } while (U3STAbits.URXDA);
-}
-#endif
 
 int IsTmpRingBufferAvailable(void)
 {
