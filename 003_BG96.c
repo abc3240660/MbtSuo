@@ -1326,7 +1326,7 @@ bool ConnectToFtpServer(u8* iap_file, u8* ftp_ip, u8* ftp_port)
     return true;
 }
 
-u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf)
+u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf, u8* iap_file)
 {
     u16 i = 0;
     char cmd[LEN_BYTE_SZ64+1] = "";
@@ -1338,7 +1338,7 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf)
 
     static u8 trycnt = 0;
 
-    if (NULL == iap_buf) {
+    if ((NULL==iap_buf) || (NULL==iap_file)) {
         return 0;
     }
 
@@ -1346,7 +1346,7 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf)
 
     strncpy(cmd, FTP_DOWNLOAD_DAT, LEN_BYTE_SZ64);
     // sprintf(buf, "=\"test.mp3\",\"COM:\",%ld,%ld", offset, length);
-    sprintf(buf, "=\"Mbtsuo_0915.bin\",\"COM:\",%ld,%ld", offset, length);
+    sprintf(buf, "=\"%s\",\"COM:\",%ld,%ld", iap_file, offset, length);
     strcat(cmd, buf);
 
     if(!SendAndSearch_multi(cmd, "CONNECT\r\n", RESPONSE_ERROR, 30)){
@@ -1541,7 +1541,7 @@ static u32 ParseFTPFileSize(void)
             size_got += size_str[i] - '0';
         }
     }
-    
+
     printf("iap_size2 = %ld\n", size_got);
 
     return size_got;

@@ -88,7 +88,7 @@ enum CMD_TYPE {
     UNKNOWN_CMD
 };
 
-void CalcFirstMd5(void);
+void CalcRegisterKey(void);
 void ParseMobitMsg(char* msg);
 void ProcessTcpSvrCmds(void);
 
@@ -129,7 +129,7 @@ bool DoQueryNFCFast(void);
 bool DoAddNFCFast(void);
 bool DoHttpIAP(void);
 
-void ReportFinishAddNFC(void);
+void ReportFinishAddNFC(u8 gs_bind_cards[][LEN_BYTE_SZ64], u8* index_array);
 void ReportLockerUnlocked(void);
 u16 GetHeartBeatGap(void);
 u8 IsDuringBind(void);

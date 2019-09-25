@@ -152,7 +152,7 @@ typedef enum {
     PARAM_ID_IAP_STA,
     PARAM_ID_IAP_CNT,
     PARAM_ID_RSVD_U1,
-    PARAM_ID_RSVD_U2,
+    PARAM_ID_RSVD_U2,// FactoryRstReq
     PARAM_ID_RSVD_U3,
     PARAM_ID_RSVD_U4,
     PARAM_ID_RSVD_U5,

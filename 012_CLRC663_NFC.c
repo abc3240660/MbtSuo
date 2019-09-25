@@ -23,6 +23,7 @@
 static u8 gs_tmp_card_id[LEN_BYTE_SZ32+1] = {0};
 static u8 gs_tmp_serial_nr[LEN_BYTE_SZ32+1] = {0};
 static u8 gs_bind_cards[CNTR_MAX_CARD][LEN_BYTE_SZ64] = {{0}};
+static u8 gs_bind_index[CNTR_MAX_CARD] = {0};
 
 static u32 gs_start_time_nfc = 0;
 
@@ -231,7 +232,10 @@ u8 read_iso14443B_nfc_card(u8* card_id, u8* serial_nr)
 u8 ReadMobibNFCCard(void)
 {
     u8 i = 0;
+    u8 index = 0;
     u8 tmp_len = 0;
+
+    static u8 j = 0;
 
     memset(gs_tmp_card_id, 0, LEN_BYTE_SZ16);
     memset(gs_tmp_serial_nr, 0, LEN_BYTE_SZ16);
@@ -246,6 +250,8 @@ u8 ReadMobibNFCCard(void)
                 }
                 __delay_usx(25UL);
             }
+
+            j = 0;
             gs_start_time_nfc = GetTimeStamp();
         }
     } else {
@@ -273,7 +279,10 @@ u8 ReadMobibNFCCard(void)
 
         if (IsDuringBind()) {
             gs_start_time_nfc = GetTimeStamp();
-            AddNewMobibCard(gs_tmp_card_id, gs_tmp_serial_nr);
+            index = AddNewMobibCard(gs_tmp_card_id, gs_tmp_serial_nr);
+            if (index != 88) {
+                gs_bind_index[j++] = index;
+            }
         } else {
             for (i=0; i<CNTR_MAX_CARD; i++) {
                 if (0 == strncmp((const char*)gs_bind_cards[i], (const char*)gs_tmp_card_id, LEN_CARD_ID)) {
@@ -303,7 +312,7 @@ u8 ReadMobibNFCCard(void)
                     }
                     __delay_usx(25UL);
                 }
-                ReportFinishAddNFC();
+                ReportFinishAddNFC(&gs_bind_cards[0], gs_bind_index);
             }
         }
     }
@@ -311,9 +320,10 @@ u8 ReadMobibNFCCard(void)
     return 1;
 }
 
-void AddNewMobibCard(u8* card_id, u8* serial_nr)
+u8 AddNewMobibCard(u8* card_id, u8* serial_nr)
 {
     u8 i = 0;
+    u8 index = 88;
 
     if (NULL == card_id) {
         return;
@@ -331,6 +341,7 @@ void AddNewMobibCard(u8* card_id, u8* serial_nr)
         if (0 == strlen((const char*)gs_bind_cards[i])) {
             memcpy(gs_bind_cards[i], card_id, LEN_BYTE_SZ32);
             memcpy(gs_bind_cards[i]+32, serial_nr, LEN_BYTE_SZ32);
+            index = i;
             break;
         }
     }
@@ -340,6 +351,8 @@ void AddNewMobibCard(u8* card_id, u8* serial_nr)
             printf("Binded CardId[%d]: %s\n", i, gs_bind_cards[i]);
         }
     }
+
+    return index;
 }
 
 void DeleteMobibCard(u8* card_id, u8* serial_nr)
