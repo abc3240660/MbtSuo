@@ -187,3 +187,67 @@ void LEDs_Ctrl(LED_INDEX led_id,LED_STA led_sta)
         LATD &= (~1<<led_id);
     }
 }
+
+
+void InOutPurpose_Init(void)
+{
+    // IN:  RB0  for Voltage Mesurement(using ADC)
+    // OUT: RB1  for CLRC663 IF3: output 1
+    // OUT: RB2  for CLRC663 TX(config in later UARTx_Init)
+    // IN:  RB3  for BG96: 1-power on finished
+    // XX:  RB4  for CLRC663 IF1: unused
+    // IN:  RB5  for CLRC663 RX(config in later UARTx_Init)
+    // XX:  RB6  for ICSP use
+    // XX:  RB7  for ICSP use
+    // OUT: RB8  for BG96: to detect if host is active or sleep
+    // OUT: RB9  for BG96: to power up BG96
+    // OUT: RB10 for BG96: 1-normal mode, 0-airplane mode
+    // OUT: RB11 for BG96: reset
+    // IN:  RB12 for BG96: 1-normal mode, 0-PSM mode
+    // OUT: RB13 for BUZZER
+    // OUT: RB14 for BG96 TX(config in later UARTx_Init)
+    // IN:  RB15 for TouchPad IRQ
+    TRISB &= 0xFF81;// Direction:0-OUT 1-IN
+
+    // OUT: RB13 for BNO055: reset
+    // OUT: RB14 for BNO055: 1-normal mode, 0-IAP
+    // XX:  Other for unused
+    TRISC &= 0xFF81;// Direction:0-OUT 1-IN
+
+    // IN:  RD0 for BNO055 IRQ
+    // OUT: RD1/2/3/4/5/6 for LEDs
+    // XX:  RD7 for unused
+    // OUT: RD8/9 for Motor
+    // IN:  RD10 for BNO055 RX(config in later UARTx_Init)
+    // OUT: RD11 for BNO055 TX(config in later UARTx_Init)
+    // XX:  RD12~RD15 for unused
+    TRISD &= 0xFF81;// Direction:0-OUT 1-IN
+
+    // IN:  RE0 for BG96 UART DCD
+    // OUT: RE1 for BG96 UART RTS
+    // IN:  RE2 for BG96 URC IRQ
+    // IN:  RE3 for CLRC663 IRQ
+    // IN:  RE4 for SW1 IRQ
+    // OUT: RE5/6/7 for CLRC663
+    // XX:  RE8~RD15 for unused
+    TRISE &= 0xFF81;// Direction:0-OUT 1-IN
+
+    // IN:  RF0 for BG96 UART CTS
+    // OUT: RF1 for BG96 UART DTR
+    // IN:  RF2 for Charge Status(need internally pull-up): 0-during charging, 1-normal mode
+    // XX:  RF3 for unused
+    // OUT: RF4 for TouchPad: 0-low power mode, 1-normal mode
+    // IN:  RF5 for SW2 IRQ
+    // XX:  RF6~RD15 for unused
+    TRISF &= 0xFF81;// Direction:0-OUT 1-IN
+
+    // XX:  RG0~RG2 for unused
+    // OUT: RG3 for Charge Enable: 1-disable charge, 0-allow charge
+    // XX:  RG4~RG5 for unused
+    // OUT: RG6 for BG96 RX(config in later UARTx_Init)
+    // IN:  RG7 for BG96_GPS RX(config in later UARTx_Init)
+    // OUT: RG8 for BG96_GPS TX(config in later UARTx_Init)
+    // OUT: RG9 for TouchPad: sensitivity PWM
+    // XX:  RG10~RG15 for unused
+    TRISG &= 0xFF81;// Direction:0-OUT 1-IN
+}

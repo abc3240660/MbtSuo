@@ -30,11 +30,13 @@
 #include "017_InnerFlash.h"
 
 // static u8 is_mode_nb = 0;
-static unsigned long start_time_hbeat = 0;
+static u32 start_time_hbeat = 0;
 
-u8 g_svr_ip[LEN_NET_TCP]  = "122.4.233.119";
-u8 g_svr_port[LEN_NET_TCP] = "10211";
-u8 g_svr_apn[LEN_NET_TCP] = "CMNET";
+static u8 gs_charge_sta = 0;
+
+u8 g_svr_ip[LEN_NET_TCP+1]  = "122.4.233.119";
+u8 g_svr_port[LEN_NET_TCP+1] = "10211";
+u8 g_svr_apn[LEN_NET_TCP+1] = "CMNET";
 
 int main(void)
 {
@@ -91,8 +93,26 @@ int main(void)
     ProtocolParamsInit();
     CardIDFlashBankInit();
 
+    gs_charge_sta = GPIOx_Input(BANKG, 3);
+
     while(1)
     {
+        if (IsDuringShip()) {
+            if (GPIOx_Input(BANKE, 4)) {// locked status mean to quit shiping mode
+                PowerOnMainSupply();
+                ClearShipStatus();
+            }
+
+            delay_ms(1000);
+
+            continue;
+        }
+
+        // If detect uncharge->charge, do reset once
+        if ((0==gs_charge_sta) && (1==GPIOx_Input(BANKG, 3))) {
+            asm("reset");
+        }
+
         hbeat_gap = GetHeartBeatGap();
         net_sta = GetNetStatus();
 

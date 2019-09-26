@@ -59,16 +59,14 @@ static const char* cmd_list[] = {
 static u32 gs_need_ack = 0;
 static u32 gs_till_svr_ack = 0;
 
-static u8 gs_swap_passwd[LEN_SYS_TIME+1] = "";
-
-// static u8 gs_msg_md5[LEN_DW_MD5+1] = "";
+static u8 gs_msg_md5[LEN_MD5_HEXSTR+1] = "";
 
 static u8 gs_alarm_on[LEN_COMMON_USE+1] = "1";
 static u8 gs_beep_on[LEN_COMMON_USE+1] = "1";
 static u8 gs_alarm_level[LEN_COMMON_USE+1] = "80";
 
 static u8 gs_iap_waiting = 1;
-static u8 gs_iap_md5[LEN_DW_MD5+1] = "";
+static u8 gs_iap_md5[LEN_MD5_HEXSTR+1] = "";
 static u8 gs_iap_file[LEN_DW_URL+1] = "Mbtsuo_0915.bin";
 
 static u16 gs_hbeat_gap = DEFAULT_HBEAT_GAP;
@@ -79,9 +77,9 @@ static unsigned long start_time_locked = 0;
 static unsigned long start_time_unlocked = 0;
 static unsigned long start_time_finish_addc = 0;
 
-static u8 gs_communit_key[LEN_COMMON_USE+1] = "";
+static u8 gs_communit_key[LEN_MD5_HEXSTR+1] = "";
 
-static char gs_send_md5[LEN_DW_MD5+1] = "e10adc3949ba59abbe56e057f20f883e";
+static char gs_send_md5[LEN_MD5_HEXSTR+1] = "e10adc3949ba59abbe56e057f20f883e";
 
 static unsigned long gs_dw_size_total = 0;
 static unsigned long gs_dw_recved_sum = 0;
@@ -106,6 +104,8 @@ static u8 gs_is_erased = 0;
 
 static u8 gs_change_apn = 0;
 
+static u8 gs_during_ship = 0;
+
 static MD5_CTX g_ftp_md5_ctx;
 static u8 gs_ftp_res_md5[LEN_COMMON_USE+1] = "";
 
@@ -122,24 +122,23 @@ extern u8 g_iccid_str[LEN_COMMON_USE+1];
 extern u8 g_devtime_str[LEN_COMMON_USE+1];
 extern u8 g_devzone_str[LEN_COMMON_USE+1];
 
-extern u8 g_svr_ip[LEN_NET_TCP];
-extern u8 g_svr_port[LEN_NET_TCP];
-extern u8 g_svr_apn[LEN_NET_TCP];
+extern u8 g_svr_ip[LEN_NET_TCP+1];
+extern u8 g_svr_port[LEN_NET_TCP+1];
+extern u8 g_svr_apn[LEN_NET_TCP+1];
 
 void CalcRegisterKey(void)
 {
     u8 i = 0;
     MD5_CTX reg_md5_ctx;
-    u8 reg_md5_hex[LEN_BYTE_SZ16+1] = "";
+    u8 reg_md5_hex[LEN_MD5_HEX+1] = "";
 
     GAgent_MD5Init(&reg_md5_ctx);
     GAgent_MD5Update(&reg_md5_ctx, g_imei_str, strlen((char*)g_imei_str));
     GAgent_MD5Update(&reg_md5_ctx, g_iccid_str, strlen((char*)g_iccid_str));
     GAgent_MD5Final(&reg_md5_ctx, reg_md5_hex);
 
-    for (i=0; i<LEN_BYTE_SZ16; i++) {
-        sprintf(gs_communit_key+2, "%.2X", reg_md5_hex[i]);
-        printf("%.2X", gs_communit_key[i]);
+    for (i=0; i<LEN_MD5_HEX; i++) {
+        sprintf(gs_communit_key+2*i, "%.2X", reg_md5_hex[i]);
     }
 
     printf("MD5 = %s\n", gs_communit_key);
@@ -149,7 +148,7 @@ static void EncodeTcpPacket(u8* in_dat)
 {
     u8 i = 0;
     MD5_CTX encode_md5_ctx;
-    u8 encoded_md5_hex[LEN_BYTE_SZ16+1] = "";
+    u8 encoded_md5_hex[LEN_MD5_HEX+1] = "";
 
     if (NULL == in_dat) {
         return;
@@ -159,8 +158,8 @@ static void EncodeTcpPacket(u8* in_dat)
     GAgent_MD5Update(&encode_md5_ctx, in_dat, strlen((char*)in_dat));
     GAgent_MD5Final(&encode_md5_ctx, encoded_md5_hex);
 
-    for (i=0; i<LEN_BYTE_SZ16; i++) {
-        sprintf(gs_send_md5+2, "%.2X", encoded_md5_hex[i]);
+    for (i=0; i<LEN_MD5_HEX; i++) {
+        sprintf(gs_send_md5+2*i, "%.2X", encoded_md5_hex[i]);
     }
 
     printf("MD5 = %s\n", gs_send_md5);
@@ -202,6 +201,54 @@ u8 is_supported_mobit_cmd(u8 pos, char* str)
     return i;
 }
 
+static bool ValidateTcpMsg(char* msg)
+{
+    u16 i = 0;
+    u16 end_pos = 0;
+    MD5_CTX msg_md5_ctx;
+    u8 msg_md5_hex[LEN_MD5_HEX+1] = "";
+    u8 calc_msg_md5[LEN_MD5_HEXSTR+1] = "";
+
+    if (NULL == msg) {
+        return false;
+    }
+
+    // MD5 Validation
+    memset(gs_msg_md5, 0, LEN_MD5_HEXSTR);
+    memcpy(gs_msg_md5, msg+strlen(msg)-LEN_MD5_HEXSTR, LEN_MD5_HEXSTR);
+    printf("gs_msg_md5 = %s\n", gs_msg_md5);
+
+    for (i=0; i<strlen(msg); i++) {
+        if (',' == msg[i]) {
+            end_pos = i;
+        }
+    }
+
+    if (0 == end_pos) {
+        return false;
+    }
+
+    msg[end_pos] = '$';
+
+    GAgent_MD5Init(&msg_md5_ctx);
+    GAgent_MD5Update(&msg_md5_ctx, msg, end_pos+1);
+    GAgent_MD5Final(&msg_md5_ctx, msg_md5_hex);
+
+    for (i=0; i<LEN_MD5_HEX; i++) {
+        sprintf(calc_msg_md5+2*i, "%.2X", msg_md5_hex[i]);
+    }
+
+    printf("MD5 = %s\n", calc_msg_md5);
+
+    msg[end_pos] = ',';
+
+    if (0 == strncmp(gs_msg_md5, calc_msg_md5, LEN_MD5_HEXSTR)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 void ParseMobitMsg(char* msg)
 {
     u8 k = 0;
@@ -214,16 +261,19 @@ void ParseMobitMsg(char* msg)
 
     enum CMD_TYPE cmd_type = UNKNOWN_CMD;
 
+    if (NULL == msg) {
+        return;
+    }
+
+    if (strln(msg) < 6) {
+        return;
+    }
+
 #ifdef DEBUG_USE
     //printf("Support %d CMDs\n", cmd_count);
 #endif
 
-    // MD5 Validation
-    // memcpy(gs_msg_md5, msg+strlen(msg)-32, LEN_DW_MD5);
-    // gs_msg_md5[LEN_DW_MD5] = '\0';
-    // printf("gs_msg_md5 = %s\n", gs_msg_md5);
-
-    if (0) {// MD5 is invalid
+    if (false == ValidateTcpMsg(msg)) {// MD5 is invalid
         return;
     }
 
@@ -313,9 +363,9 @@ void ParseMobitMsg(char* msg)
                         printf("change gs_hbeat_gap = %d\n", gs_hbeat_gap);
                     }
                 } else if (4 == index) {
-                    strncpy((char*)gs_swap_passwd, split_str, LEN_SYS_TIME);
-                    gs_swap_passwd[LEN_SYS_TIME] = '\0';
-                    printf("gs_swap_passwd = %s\n", gs_swap_passwd);
+                    memset(gs_communit_key, 0, LEN_MD5_HEXSTR);
+                    strncpy((char*)gs_communit_key, split_str, LEN_MD5_HEXSTR);
+                    printf("gs_communit_key = %s\n", gs_communit_key);
                 }
             // below is all SVR CMDs with params
             } else if (IAP_UPGRADE == cmd_type) {
@@ -832,7 +882,14 @@ bool DoFactoryResetFast(void)
 {
     printf("DoFactoryResetFast...\n");
 
-    DeleteAllMobibCard();
+    // DeleteAllMobibCard();
+
+    // One Page for params
+    FlashErase_OnePage(FLASH_PAGE_PARAMS, FLASH_BASE_PARAMS);
+
+    // Two Page for CardIDs
+    FlashErase_OnePage(FLASH_PAGE_CARD_ID, FLASH_BASE_CARD_ID);
+    FlashErase_OnePage(FLASH_PAGE_CARD_ID, FLASH_BASE_CARD_ID+BYTE_ADDR_PER_PAGE_SML);
 
     FlashWrite_SysParams(PARAM_ID_RSVD_U2, (u8*)"1", 1);
 
@@ -845,8 +902,7 @@ bool DoEnterSleepFast(void)
 {
     printf("DoEnterSleepFast...\n");
 
-    // TODO: must check if unlock success
-    // read the value of PIN connected to the locker position
+    LB1938_MotorCtrl(MOTOR_LEFT, MOTOR_HOLD_TIME);
 
     return true;
 }
@@ -1213,7 +1269,7 @@ void ProcessTcpServerCommand(void)
         if (gs_iap_waiting != 0) {
             gs_iap_waiting = 0;
 
-            memset(gs_iap_md5, 0, LEN_DW_MD5);
+            memset(gs_iap_md5, 0, LEN_MD5_HEXSTR);
             memset(gs_iap_file, 0, LEN_DW_URL);
 
             gs_dw_size_total = 0;
@@ -1271,9 +1327,17 @@ void ProcessTcpServerCommand(void)
                     } else {
                         u8 run_ret = 1;// default success
 
-                        // TODO: must check if unlock success
+                        // must check if unlock success
                         // read the value of PIN connected to the locker position
                         if (UNLOCK_DOOR == i) {
+                            if (GPIOx_Input(BANKE, 4)) {// unlock NG: maybe get stuck
+                                run_ret = 0;
+                            }
+                        }
+
+                        // must check if unlock success
+                        // read the value of PIN connected to the locker position
+                        if (ENTER_SLEEP == i) {
                             if (GPIOx_Input(BANKE, 4)) {// unlock NG: maybe get stuck
                                 run_ret = 0;
                             }
@@ -1283,6 +1347,13 @@ void ProcessTcpServerCommand(void)
                             TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("1"));
                         } else {
                             TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("0"));
+                        }
+
+                        if (ENTER_SLEEP == i) {
+                            if (run_ret) {
+                                PowerOffMainSupply();
+                                gs_during_ship = 1;
+                            }
                         }
                     }
 
@@ -1327,4 +1398,34 @@ void ProcessTcpServerCommand(void)
             }
         }
     }
+}
+
+u8 IsDuringShip(void)
+{
+    return gs_during_ship;
+}
+
+void ClearShipStatus(void)
+{
+    gs_during_ship = 0;
+}
+
+void PowerOffMainSupply(void)
+{
+    // close connectiton
+    CloseTcpService();
+    CloseFtpService();
+
+    // clear flags into default
+
+    // turn off power supply
+    // or enter into low power consume mode
+}
+
+void PowerOnMainSupply(void)
+{
+    // turn on power supply
+    // or quit from low power consume mode
+
+    // wait some time for power sequence...
 }

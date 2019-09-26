@@ -15,25 +15,24 @@ RD4 -> LED_BLUE
 Battery Charge:
 RF2 <- CHARGE_STAT(IN)
 RG3 -> nEN_CHARGE:
-	is always enabled with an internal
-	pull-down resistor. Pulling the CE pin high will enter
-	Standby mode.
+    Charge Enable pin: Pull the pin to high to disable the device,it is internally pulled down.
+    Leave the pin float if not used
 	
 Switch1/2:
 RE4 <- SWITCH1
 	detect the position of the locking pin
-RE5 <- SWITCH2
+RF5 <- SWITCH2
 	detect the rotation of the motor
 
 CLRC663(XTAL: 27.12MHz): (the same with demoboard)
-RE6 ->  IFSEL0
-RE7 ->  IFSEL1
-RB5 ->  IF0
-RB4 ->  IF1(Old:RG6)	->	SPI SDI
-RB2 <-> IF2(Old:RG7)	->	SPI SDO
-RB1 <-> IF3(Old:RG8)	->	SPI SCK
+RE6 ->  IFSEL0: 0
+RE7 ->  IFSEL1: 0
+RB5 ->  IF0: RX
+RB4 ->  IF1: unused
+RB2 <-> IF2: TX
+RB1 <-> IF3: 1
 RE5 ->  nCLRC_RST
-RE3	<-  nCLRC_IRQ(IN)
+RE3 <-  nCLRC_IRQ(IN)
 
 TouchPad:
 RF4  -> SENS_MTPM
@@ -91,6 +90,8 @@ RB11 -> PIC_RESET(default HIGH)
 	low level voltage for time between 150ms and 460ms.
 	Use RESET_N only when turning off the module by AT+QPOWD command and PWRKEY pin both failed.
 RB12 <- PIC_PSM_IND(IN)
+    This pin outputs a high level voltage when the module is in normal operation state, and outputs a low
+    level voltage when the module enters into PSM.
 RB14 -> PIC_TX
 RG6  <- PIC_RX(IN)
 	BG96 UART1:It is used for data transmission and AT command communication.

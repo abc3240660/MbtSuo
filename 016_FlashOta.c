@@ -6,9 +6,9 @@
 #include "015_Common.h"
 #include "016_FlashOta.h"
 
-extern u8 g_svr_ip[LEN_NET_TCP];
-extern u8 g_svr_port[LEN_NET_TCP];
-extern u8 g_svr_apn[LEN_NET_TCP];
+extern u8 g_svr_ip[LEN_NET_TCP+1];
+extern u8 g_svr_port[LEN_NET_TCP+1];
+extern u8 g_svr_apn[LEN_NET_TCP+1];
 
 // NOTE: all address in this file = Actual Flash Address in datasheet
 //                                = InstructionWords Address Gap

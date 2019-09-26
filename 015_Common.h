@@ -33,12 +33,14 @@
 #define LEN_BYTE_SZ128   128
 #define LEN_BYTE_SZ256   256
 #define LEN_BYTE_SZ512   512
-#define LEN_BYTE_SZ1024   1024
+#define LEN_BYTE_SZ1024  1024
 
 #define LEN_CARD_ID      19
 #define LEN_SERIAL_NR    16
 
 #define LEN_COMMON_USE  LEN_BYTE_SZ32
+#define LEN_MD5_HEXSTR  LEN_BYTE_SZ32
+#define LEN_MD5_HEX     LEN_BYTE_SZ16
 
 // if store too more, TCP send buffer will be
 // not enough, currently LEN_MAX_SEND = 512
@@ -131,6 +133,14 @@
 #define FLASH_BASE_RSVD_U8  (FLASH_BASE_PARAMS + (CNTR_INWORD_PER_COMM*2 + CNTR_INWORD_PER_BIG*2 + CNTR_INWORD_PER_SMALL*15)*2)
 #define FLASH_SIZE_RSVD_U8  CNTR_INWORD_PER_SMALL
 
+#define CNTR_INWD_PER_PAGE  1024
+#define BYTE_ADDR_PER_INWD  2
+#define BYTE_DATA_PER_INWD  3
+#define CNTR_INWD_PER_BLK   128
+
+#define BYTE_ADDR_PER_PAGE_SML  0x800   // One Page
+#define BYTE_ADDR_PER_PAGE_LRG  0x10000 // One Large Page
+
 typedef unsigned char bool;
 
 // For Common
@@ -151,7 +161,7 @@ typedef enum {
     PARAM_ID_IAP_FLAG,
     PARAM_ID_IAP_STA,
     PARAM_ID_IAP_CNT,
-    PARAM_ID_RSVD_U1,
+    PARAM_ID_RSVD_U1,// IAP BIN SIZE
     PARAM_ID_RSVD_U2,// FactoryRstReq
     PARAM_ID_RSVD_U3,
     PARAM_ID_RSVD_U4,

@@ -138,4 +138,7 @@ u8 IsApnChangeWait(void);
 void ResetApnChange(void);
 void ProtocolParamsInit(void);
 
+u8 IsDuringShip(void);
+void ClearShipStatus(void);
+
 #endif

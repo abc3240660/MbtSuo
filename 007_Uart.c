@@ -39,7 +39,7 @@ int Uart3_Use_Len = 0;
 
 extern int rx_debug_flag;
 
-// 115200
+// 115200 for Debug
 void Uart1_Init(void)
 {
     _RP22R = 3;// RD3
@@ -65,7 +65,7 @@ void Uart1_Init(void)
     _U1RXIE = 1;
 }
 
-// 115200
+// 115200 for BG96
 void Uart2_Init(void)
 {
     _RP17R = 5;// RF5
@@ -88,7 +88,7 @@ void Uart2_Init(void)
     ringbuffer_init(&tmp_rbuf,tmpRingbuf,RX_RINGBUF_MAX_LEN);
 }
 
-// 115200
+// 115200 for CLRC663
 void Uart3_Init(void)
 {
     // PIC24FJ256 is 28
