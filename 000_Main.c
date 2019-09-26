@@ -110,6 +110,7 @@ int main(void)
 
         // If detect uncharge->charge, do reset once
         if ((0==gs_charge_sta) && (1==GPIOx_Input(BANKG, 3))) {
+            printf("Charge Reset...\n");
             asm("reset");
         }
 
@@ -139,7 +140,7 @@ int main(void)
         // if net-register failed or lost connection
         if (0 == (task_cnt++%200)) {
             if (0 == net_sta) {
-                // Configure_BG96();
+                Configure_BG96();
             }
 
             net_sta = GetNetStatus();

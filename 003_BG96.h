@@ -290,8 +290,10 @@ void InitRingBuffers(void);
 
 bool BG96ATInitialize(void);
 bool ConnectToTcpServer(u8* svr_ip, u8* svr_port, u8* svr_apn);
+bool ConnectToFtpServer(u8* iap_file, u8* ftp_ip, u8* ftp_port);
 u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf, u8* iap_file);
 bool BG96TcpSend(char* send_buf);
+bool CloseFtpService(void);
 
 u8 GetNetStatus(void);
 void SetNetStatus(u8 sta);

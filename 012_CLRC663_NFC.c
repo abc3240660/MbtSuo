@@ -326,12 +326,12 @@ u8 AddNewMobibCard(u8* card_id, u8* serial_nr)
     u8 index = 88;
 
     if (NULL == card_id) {
-        return;
+        return 0;
     }
 
     for (i=0; i<CNTR_MAX_CARD; i++) {
         if (0 == strncmp((const char*)gs_bind_cards[i], (const char*)card_id, strlen((const char*)card_id))) {
-            return;
+            return 0;
         }
     }
 

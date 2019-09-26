@@ -32,7 +32,7 @@ u8 read_iso14443B_nfc_card(u8* card_id, u8* serial_nr);
 uint16_t clrc663_SPI_transfer(const uint8_t* tx, uint8_t* rx, uint16_t len);
 
 u8 QueryMobibCard(u8* card_dats);
-void AddNewMobibCard(u8* card_id, u8* serial_nr);
+u8 AddNewMobibCard(u8* card_id, u8* serial_nr);
 void DeleteMobibCard(u8* card_id, u8* serial_nr);
 void DeleteAllMobibCard(void);
 u8 ReadMobibNFCCard(void);

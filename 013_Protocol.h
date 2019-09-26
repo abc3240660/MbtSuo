@@ -140,5 +140,6 @@ void ProtocolParamsInit(void);
 
 u8 IsDuringShip(void);
 void ClearShipStatus(void);
+void PowerOnMainSupply(void);
 
 #endif
