@@ -43,12 +43,21 @@ extern int rx_debug_flag;
 void Uart1_Init(void)
 {
 #ifndef OSC_20M_USE
+#if 0
     _RP22R = 3;// RD3
     _U1RXR = 23;// RD2
 
     _LATD3 = 1;
     _TRISD2 = 1;
     _TRISD3 = 0;
+#else
+    _RP22R = 3;// RD3
+    _U1RXR = 24;// RD1
+
+    _LATD3 = 1;
+    _TRISD1 = 1;
+    _TRISD3 = 0;
+#endif
 
     U1MODE = 0X8808;
     U1STA = 0X2400;
@@ -80,6 +89,7 @@ void Uart1_Init(void)
 void Uart2_Init(void)
 {
 #ifndef OSC_20M_USE
+#if 0
     _RP17R = 5;// RF5
     _U2RXR = 10;// RF4
 
@@ -89,6 +99,14 @@ void Uart2_Init(void)
     U2MODE = 0X8808;
     U2STA = 0X2400;
     U2BRG = 34;
+#else
+    _RP14R = 5;// RB14
+    _U2RXR = 21;// RG6
+
+    _LATB14 = 1;
+    _TRISG6 = 1;
+    _TRISB14 = 0;
+#endif
 #else
 #if 0
     _RP17R = 5;// RF5
@@ -127,15 +145,42 @@ void Uart3_Init(void)
 {
     // PIC24FJ256 is 28
     // PIC24FJ1024 is 19
+#ifndef OSC_20M_USE
+#if 0
     _RP3R = 19;     //RP3(RD10) = U3TX
     _U3RXR = 4;     //U3RXR     = RP4(RD9)
 
     _LATD10 = 1;
     _TRISD9 = 1;
     _TRISD10 = 0;
+#else
+    _RP18R = 19;     //RB5 = U3TX
+    _U3RXR = 13;     //RB2 = U3RXR
+
+    _LATB5 = 1;
+    _TRISB2 = 1;
+    _TRISB5 = 0;
+    
+    _ANSB2 = 0;
+#endif
+
     U3MODE = 0X8808;
     U3STA = 0X2400;
     U3BRG = 34;
+#else
+    _RP18R = 19;     //RB5 = U3TX
+    _U3RXR = 13;     //RB2 = U3RXR
+
+    _LATB5 = 1;
+    _TRISB2 = 1;
+    _TRISB5 = 0;
+    
+    _ANSB2 = 0;
+
+    U3MODE = 0X8808;
+    U3STA = 0X2400;
+    U3BRG = 0x15;
+#endif
 
     _U3TXIP = 1;
     _U3RXIP = 2;
@@ -145,12 +190,15 @@ void Uart3_Init(void)
     _U3RXIE = 1;
 }
 
+int Uart1_Putc(char ch);
+
 void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
 {
     char temp = 0;
 
     do {
         temp = U3RXREG;
+        printf("%.2X", temp);
         _U3RXIF = 0;
         if (U3STAbits.OERR) {
             U3STAbits.OERR = 0;

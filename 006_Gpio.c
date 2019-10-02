@@ -17,7 +17,7 @@
 
 void GPIOB_Init(void)
 {
-#ifndef OSC_20M_USE
+#ifdef DEMO_BOARD
     CM2CON = 0;
     ODCB &= 0xFFF0;// Open-Drain Control
     // AD1PCFGL |= 0x000F;
@@ -34,7 +34,7 @@ void GPIOB_Init(void)
 
 void GPIOB_SetPin(short pin,char value)
 {
-#ifndef OSC_20M_USE
+#ifdef DEMO_BOARD
     // BANKB: for read
     // LATB: for read -> modify -> write
     if(value){
@@ -250,9 +250,12 @@ void InOutPurpose_Init(void)
     // OUT: RE1 for BG96 UART RTS
     // IN:  RE2 for BG96 URC IRQ
     // IN:  RE3 for CLRC663 IRQ
+    // = D
     // IN:  RE4 for SW1 IRQ
     // OUT: RE5/6/7 for CLRC663
-    // XX:  RE8~RD15 for unused
+    // = 1
+    // XX:  RE8~RE15 for unused
+    // FF
     TRISE &= 0xFF81;// Direction:0-OUT 1-IN
 
     // IN:  RF0 for BG96 UART CTS
