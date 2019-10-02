@@ -700,6 +700,8 @@ void clrc663_MF_example_dump();
 
 uint8_t Clrc663_Recv(void);
 
+void Clrc663_Clear(void);
+
 #ifdef __cplusplus
 }
 #endif

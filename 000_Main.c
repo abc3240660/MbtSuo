@@ -97,7 +97,7 @@ int main(void)
     gs_charge_sta = GPIOx_Input(BANKG, 3);
 #endif
 
-    Uart3_Init();
+//    Uart3_Init();
     InitRingBuffers();
     printf("Application running...\r\n");
 
@@ -163,21 +163,27 @@ int main(void)
     GPIOx_Output(BANKB, 9, 1);// PWRKEY High
     printf("test004...\n");
 
+    Uart3_Init();
+
     // CLRC663 IO Configuration
     TRISE = 0xFF1D;// Direction:0-OUT 1-IN
+    TRISB &= 0xFFFD;// Direction:0-OUT 1-IN
     GPIOx_Output(BANKE, 5, 0);// PDOWN Low -> Power UP Mode
     GPIOx_Output(BANKE, 6, 0);// IFSEL0 Low
     GPIOx_Output(BANKE, 7, 0);// IFSEL1 Low
-    GPIOx_Output(BANKB, 1, 0);// IF3 low
-
-    Uart3_Init();
+    GPIOx_Output(BANKB, 1, 1);// IF3 HIGH
 #endif
+    printf("test005...\n");
+
+    // Read CLRC663 Version
+    // Uart3_Putc(0xFF);
 
     delay_ms(5000);
     printf("After BG96 PowerOn...\r\n");
 
     while(1)
     {
+//        Uart3_Putc(0xFF);
         ReadMobibNFCCard();
 
         delay_ms(5000);

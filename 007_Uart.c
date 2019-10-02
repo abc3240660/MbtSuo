@@ -198,7 +198,7 @@ void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
 
     do {
         temp = U3RXREG;
-        printf("%.2X", temp);
+        printf("-%.2X", (u8)temp);
         _U3RXIF = 0;
         if (U3STAbits.OERR) {
             U3STAbits.OERR = 0;

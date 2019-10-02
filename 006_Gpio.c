@@ -27,7 +27,7 @@ void GPIOB_Init(void)
     CM2CON = 0;
     ODCD &= 0xFFF0;// Open-Drain Control
     // AD1PCFGL |= 0x000F;
-    LATD |= 0XFFFF;// Output Value:0-OFF 1-ON
+    LATD |= 0X0000;// Output Value:0-OFF 1-ON
     TRISD &= 0X0000;// Direction:0-OUT 1-IN
 #endif
 }

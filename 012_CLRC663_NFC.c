@@ -239,6 +239,12 @@ u8 ReadMobibNFCCard(void)
 
     memset(gs_tmp_card_id, 0, LEN_BYTE_SZ16);
     memset(gs_tmp_serial_nr, 0, LEN_BYTE_SZ16);
+    
+    u8 version = clrc663_read_reg(CLRC630_REG_VERSION);
+    
+    printf("\nCLRC663 VerReg = %.2X\n", version);
+
+    Clrc663_Clear();
 
     if (IsDuringBind()) {
         if (0 == gs_start_time_nfc) {
