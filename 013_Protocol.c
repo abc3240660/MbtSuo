@@ -66,7 +66,7 @@ static u8 gs_alarm_on[LEN_COMMON_USE+1] = "1";
 static u8 gs_beep_on[LEN_COMMON_USE+1] = "1";
 static u8 gs_alarm_level[LEN_COMMON_USE+1] = "80";
 
-static u8 gs_iap_waiting = 1;
+static u8 gs_iap_waiting = 0;
 static u8 gs_iap_md5[LEN_MD5_HEXSTR+1] = "";
 static u8 gs_iap_file[LEN_DW_URL+1] = "Mbtsuo_0915.bin";
 

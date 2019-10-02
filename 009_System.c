@@ -10,6 +10,7 @@
  * @Create time  : 03/11/2019
 ******************************************************************************/
 // Add Support for PIC24FJ1024GA606
+#include "015_Common.h"
 
 // FSEC
 #pragma config BWRP = OFF               // Boot Segment Write-Protect bit (Boot Segment may be written)
@@ -26,6 +27,7 @@
 
 // FSIGN
 
+#ifndef OSC_20M_USE
 // FOSCSEL
 #pragma config FNOSC = PRIPLL           // Oscillator Source Selection (Primary Oscillator with PLL module (XT + PLL, HS + PLL, EC + PLL))
 #pragma config PLLMODE = PLL8X          // PLL Mode Selection (8x PLL selected)
@@ -38,6 +40,20 @@
 #pragma config PLLSS = PLL_PRI          // PLL Secondary Selection Configuration bit (PLL is fed by the Primary oscillator)
 #pragma config IOL1WAY = ON             // Peripheral pin select configuration bit (Allow only one reconfiguration)
 #pragma config FCKSM = CSDCMD           // Clock Switching Mode bits (Both Clock switching and Fail-safe Clock Monitor are disabled)
+#else
+// FOSCSEL
+#pragma config FNOSC = PRI    //Oscillator Source Selection->Primary Oscillator (XT, HS, EC)
+#pragma config PLLMODE = DISABLED    //PLL Mode Selection->No PLL used; PLLEN bit is not available
+#pragma config IESO = OFF    //Two-speed Oscillator Start-up Enable bit->Start up with user-selected oscillator source
+
+// FOSC
+#pragma config POSCMD = HS    //Primary Oscillator Mode Select bits->HS Crystal Oscillator Mode
+#pragma config OSCIOFCN = ON    //OSC2 Pin Function bit->OSC2 is general purpose digital I/O pin
+#pragma config SOSCSEL = OFF    //SOSC Power Selection Configuration bits->Digital (SCLKI) mode
+#pragma config PLLSS = PLL_PRI    //PLL Secondary Selection Configuration bit->PLL is fed by the Primary oscillator
+#pragma config IOL1WAY = ON    //Peripheral pin select configuration bit->Allow only one reconfiguration
+#pragma config FCKSM = CSECMD    //Clock Switching Mode bits->Clock switching is enabled,Fail-safe Clock Monitor is disabled
+#endif
 
 // FWDT
 #pragma config WDTPS = PS32768          // Watchdog Timer Postscaler bits (1:32,768)
@@ -73,7 +89,45 @@
 
 void System_Config(void)
 {
+#if 1//ndef OSC_20M_USE
     CLKDIV = 0;
     RCON &= 0xFFEF;
     //RCONbits.SWDTEN = 0;
+#else
+        // CPDIV 1:1; PLLEN disabled; DOZE 1:8; RCDIV FRC; DOZEN disabled; ROI disabled; 
+    CLKDIV = 0x3000;
+    // STOR disabled; STORPOL Interrupt when STOR is 1; STSIDL disabled; STLPOL Interrupt when STLOCK is 1; STLOCK disabled; STSRC SOSC; STEN disabled; TUN Center frequency; 
+    OSCTUN = 0x00;
+    // ROEN disabled; ROSWEN disabled; ROSEL FOSC; ROOUT disabled; ROSIDL disabled; ROSLP disabled; 
+    REFOCONL = 0x00;
+    // RODIV 0; 
+    REFOCONH = 0x00;
+    // DCOTUN 0; 
+    DCOTUN = 0x00;
+    // DCOFSEL 8; DCOEN disabled; 
+    DCOCON = 0x700;
+    // DIV 0; 
+    OSCDIV = 0x00;
+    // TRIM 0; 
+    OSCFDIV = 0x00;
+    // AD1MD enabled; T3MD enabled; T4MD enabled; T1MD enabled; U2MD enabled; T2MD enabled; U1MD enabled; SPI2MD enabled; SPI1MD enabled; T5MD enabled; I2C1MD enabled; 
+    PMD1 = 0x00;
+    // OC5MD enabled; OC6MD enabled; OC7MD enabled; OC8MD enabled; OC1MD enabled; IC2MD enabled; OC2MD enabled; IC1MD enabled; OC3MD enabled; OC4MD enabled; IC6MD enabled; IC7MD enabled; IC5MD enabled; IC8MD enabled; IC4MD enabled; IC3MD enabled; 
+    PMD2 = 0x00;
+    // I2C3MD enabled; PMPMD enabled; U3MD enabled; RTCCMD enabled; CMPMD enabled; CRCMD enabled; I2C2MD enabled; 
+    PMD3 = 0x00;
+    // U4MD enabled; USB1MD enabled; CTMUMD enabled; REFOMD enabled; LVDMD enabled; 
+    PMD4 = 0x00;
+    // IC9MD enabled; OC9MD enabled; 
+    PMD5 = 0x00;
+    // SPI3MD enabled; 
+    PMD6 = 0x00;
+    // DMA1MD enabled; DMA0MD enabled; 
+    PMD7 = 0x00;
+    // U5MD enabled; CLC3MD enabled; CLC4MD enabled; CLC1MD enabled; CLC2MD enabled; U6MD enabled; 
+    PMD8 = 0x00;
+    // CF no clock failure; NOSC PRI; SOSCEN disabled; POSCEN disabled; CLKLOCK unlocked; OSWEN Switch is Complete; IOLOCK not-active; 
+    __builtin_write_OSCCONH((uint8_t) (0x02));
+    __builtin_write_OSCCONL((uint8_t) (0x00));
+#endif
 }

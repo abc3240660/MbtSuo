@@ -213,6 +213,8 @@ typedef struct {
 
 #define FOR_DEBUG_USE 0
 
+#define OSC_20M_USE 1
+
 #define BIN_SIZE_INT   132664
 #define BIN_SIZE_STR  "132664"
 

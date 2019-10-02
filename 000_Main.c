@@ -34,9 +34,9 @@ static u32 start_time_hbeat = 0;
 
 static u8 gs_charge_sta = 0;
 
-u8 g_svr_ip[LEN_NET_TCP+1]  = "122.4.233.119";
+u8 g_svr_ip[LEN_NET_TCP+1]  = "192.168.1.105";
 u8 g_svr_port[LEN_NET_TCP+1] = "10211";
-u8 g_svr_apn[LEN_NET_TCP+1] = "CMNET";
+u8 g_svr_apn[LEN_NET_TCP+1] = "sentinel.m2mmobi.be";
 
 int main(void)
 {
@@ -55,6 +55,7 @@ int main(void)
     Configure_Tick2_10ms();
     Uart1_Init();
     Uart2_Init();
+#if 0
 //    Uart3_Init();
 //    LB1938_Init();
 //    SPI2_Init();
@@ -94,6 +95,74 @@ int main(void)
     CardIDFlashBankInit();
 
     gs_charge_sta = GPIOx_Input(BANKG, 3);
+#endif
+
+    InitRingBuffers();
+    printf("Application running...\r\n");
+
+#if 0
+    while(1) {
+        if ((task_cnt%8) < 4) {
+            GPIOB_SetPin(task_cnt%4, 1);
+        } else {
+            GPIOB_SetPin(task_cnt%4, 0);
+        }
+        
+        Uart1_Putc('3');
+        Uart1_Putc('4');
+        Uart1_Putc('5');
+        Uart1_Putc('6');
+
+        if (0 == task_cnt) {
+            TRISB &= 0x90F9;// Direction:0-OUT 1-IN
+
+            if (0 == GPIOx_Input(BANKB, 3)) {
+                printf("PB3 is Low\n");
+            } else {
+                printf("PB3 is High\n");
+            }
+
+            GPIOx_Output(BANKB, 9, 0);// PWRKEY low
+            delay_ms(50);
+            GPIOx_Output(BANKB, 9, 1);// PWRKEY High
+            delay_ms(1000);
+            GPIOx_Output(BANKB, 9, 0);// PWRKEY low
+
+            delay_ms(10000);
+
+            if (0 == GPIOx_Input(BANKB, 3)) {
+                printf("PB3 is Low\n");
+            } else {
+                printf("PB3 is High\n");
+            }
+
+//            GPIOx_Output(BANKB, 10, 1);// not airplane mode
+//            GPIOx_Output(BANKB, 11, 1);// RST(default HIGH))
+
+            Configure_BG96();
+        }
+
+        task_cnt++;
+
+        delay_ms(1000);
+    }
+#endif
+
+    TRISB &= 0x90F9;// Direction:0-OUT 1-IN
+    GPIOx_Output(BANKB, 9, 0);// PWRKEY low
+    printf("test001...\n");
+    delay_ms(50);
+    GPIOx_Output(BANKB, 9, 1);// PWRKEY High
+    printf("test002...\n");
+    delay_ms(5000);
+    GPIOx_Output(BANKB, 9, 0);// PWRKEY low
+    printf("test003...\n");
+    delay_ms(2000);
+    GPIOx_Output(BANKB, 9, 1);// PWRKEY High
+    printf("test004...\n");
+
+    delay_ms(5000);
+    printf("After BG96 PowerOn...\r\n");
 
     while(1)
     {

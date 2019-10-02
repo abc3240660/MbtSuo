@@ -42,6 +42,7 @@ extern int rx_debug_flag;
 // 115200 for Debug
 void Uart1_Init(void)
 {
+#ifndef OSC_20M_USE
     _RP22R = 3;// RD3
     _U1RXR = 23;// RD2
 
@@ -49,13 +50,23 @@ void Uart1_Init(void)
     _TRISD2 = 1;
     _TRISD3 = 0;
 
-    _LATD6 = 0;
-    _TRISD6 = 0;
-
     U1MODE = 0X8808;
     U1STA = 0X2400;
     // 4M/(34+1) = 114285
     U1BRG = 34;
+#else
+    _RP22R = 3;// RD3
+    _U1RXR = 24;// RD1
+
+    _LATD3 = 1;
+    _TRISD1 = 1;
+    _TRISD3 = 0;
+
+    U1MODE = 0X8808;
+    U1STA = 0X2400;
+    // 4M/(34+1) = 114285
+    U1BRG = 0x15;
+#endif
 
     _U1TXIP = 3;
     _U1RXIP = 7;
@@ -68,6 +79,7 @@ void Uart1_Init(void)
 // 115200 for BG96
 void Uart2_Init(void)
 {
+#ifndef OSC_20M_USE
     _RP17R = 5;// RF5
     _U2RXR = 10;// RF4
 
@@ -77,6 +89,28 @@ void Uart2_Init(void)
     U2MODE = 0X8808;
     U2STA = 0X2400;
     U2BRG = 34;
+#else
+#if 0
+    _RP17R = 5;// RF5
+    _U2RXR = 10;// RF4
+
+    _LATF5 = 1;
+    _TRISF4 = 1;
+    _TRISF5 = 0;
+#else
+    _RP14R = 5;// RB14
+    _U2RXR = 21;// RG6
+
+    _LATB14 = 1;
+    _TRISG6 = 1;
+    _TRISB14 = 0;
+    
+    _ANSG6 = 0;
+#endif
+    U2MODE = 0X8808;
+    U2STA = 0X2400;
+    U2BRG = 0x15;
+#endif
 
     _U2TXIP = 1;
     _U2RXIP = 2;
@@ -235,6 +269,7 @@ void __attribute__((__interrupt__,no_auto_psv)) _U2RXInterrupt(void)
         //if (rx_debug_flag) {
         //    printf("%.2X-%c\n", temp, temp);
         //}
+        //Uart1_Putc(temp);
         _U2RXIF = 0;
         if (U2STAbits.OERR) {
             U2STAbits.OERR = 0;

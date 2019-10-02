@@ -1072,7 +1072,6 @@ static bool QueryNetStatus(void)
     return false;
 }
 
-
 static bool SetDevCommandEcho(bool echo)
 {
     const char *cmd;
@@ -1082,10 +1081,61 @@ static bool SetDevCommandEcho(bool echo)
     } else {
         cmd = "E0";
     }
-    if (SUCCESS_RESPONSE == SendAndSearch(cmd, RESPONSE_OK, 2)) {
+    if (SUCCESS_RESPONSE == SendAndSearch(cmd, RESPONSE_OK, 10)) {
         return true;
     }
     return false;
+}
+
+static bool SetAutoNetMode(void)
+{
+    const char *cmd;
+
+    cmd = "+QSIMDET=0,1";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+
+    cmd = "+QCFG=\"BAND\",F,400A0E189F,A0E189F,1";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+
+    cmd = "+QCFG=\"NWSCANSEQ\",030201";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+    
+   cmd = "+QCFG=\"NWSCANMODE\",0,1";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+
+    cmd = "+QICSGP=1,1,\"sentinel.m2mmobi.be\",\"\",\"\",1";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+
+    cmd = "+QNWINFO";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+    
+    GetDevSimICCID();
+
+    cmd = "+QINISTAT";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+
+    return true;
 }
 
 bool BG96ATInitialize(void)
@@ -1105,6 +1155,8 @@ bool BG96ATInitialize(void)
     }
 
     SwithToGSM();
+
+    SetAutoNetMode();
 
     trycnt = 10;
     while(trycnt--) {

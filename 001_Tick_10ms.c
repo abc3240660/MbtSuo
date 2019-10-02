@@ -14,6 +14,7 @@
 #include "006_Gpio.h"
 #include "007_Uart.h"
 #include "008_RingBuffer.h"
+#include "015_Common.h"
 
 static unsigned long MobitTimes = 0UL;// unit: ms
 static unsigned long Timer2Cnt = 0UL;// unit: ms
@@ -32,6 +33,7 @@ extern ringbuffer_t g_net_rbuf;
 //******************************************************************************
 void Configure_Tick_10ms(void)
 {
+#if 0//ndef OSC_20M_USE
     T1CONbits.TCKPS = 2;  // Select 1:64 Prescaler
     TMR1 = 0x00;          // Clear timer register
     PR1 = 2500;           // Load the period value
@@ -39,6 +41,13 @@ void Configure_Tick_10ms(void)
     IFS0bits.T1IF = 0;    // Clear Timer 1 Interrupt Flag
     IEC0bits.T1IE = 1;    // Enable Timer1 interrupt
     T1CONbits.TON = 1;    // Start Timer
+#else
+    TMR1 = 0x00;                // Clear timer register
+    PR1 = 0x186;                //Period = 0.0100096 s; Frequency = 10000000 Hz; PR1 390;
+    T1CON = 0x8030;             //TCKPS 1:256; TON enabled; TSIDL disabled; TCS FOSC/2; TECS SOSC; TSYNC disabled; TGATE disabled;
+    IFS0bits.T1IF = false;
+    IEC0bits.T1IE = true;
+#endif
 }
 
 //******************************************************************************
@@ -47,6 +56,7 @@ void Configure_Tick_10ms(void)
 //******************************************************************************
 void Configure_Tick2_10ms(void)
 {
+#if 1//ndef OSC_20M_USE
     T2CONbits.T32 = 0;
     T2CONbits.TCKPS = 2;  // Select 1:64 Prescaler
     TMR2 = 0x00;          // Clear timer register
@@ -55,6 +65,13 @@ void Configure_Tick2_10ms(void)
     IFS0bits.T2IF = 0;    // Clear Timer 2 Interrupt Flag
     IEC0bits.T2IE = 1;    // Enable Timer2 interrupt
     T2CONbits.TON = 1;    // Start Timer
+#else
+    TMR2 = 0x00;                // Clear timer register
+    PR2 = 0x186;                //Period = 0.0100096 s; Frequency = 10000000 Hz; PR1 390;
+    T2CON = 0x8030;             //TCKPS 1:256; TON enabled; TSIDL disabled; TCS FOSC/2; TECS SOSC; TSYNC disabled; TGATE disabled;
+    IFS0bits.T2IF = false;
+    IEC0bits.T2IE = true;
+#endif
 }
 
 //******************************************************************************
@@ -67,6 +84,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
         MobitTimes = 0;
     }
 
+#if 0
     if (GetNetStatus() != 0x81) {
         if (0 == (MobitTimes%21)) {
             GPIOB_SetPin(1, 1);
@@ -76,6 +94,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
             GPIOB_SetPin(1, 0);
         }
     }
+#endif
 
     IFS0bits.T1IF = 0;// Clear Timer1 interrupt flag
 }
@@ -267,11 +286,12 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                         }
                     } else {
                         if (tmp_len < 100) {
-                            printf("Receive XACKs(%dB): %s<<<\n", tmp_len, tmpuse_buf);
+                            printf("Receive2 XACKs(%dB): %s<<<\n", tmp_len, tmpuse_buf);
                         }
 
                         for (i=0; i<tmp_len; i++) {
                             ringbuffer_write_byte(&g_at_rbuf,tmpuse_buf[i]);
+                            // printf("ringbuffer->writepos=%d\n", g_at_rbuf.writepos);
                         }
 
                         //printf("Total XACKs = %s\n", g_at_rbuf.head);

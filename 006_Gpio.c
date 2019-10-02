@@ -17,15 +17,24 @@
 
 void GPIOB_Init(void)
 {
+#ifndef OSC_20M_USE
     CM2CON = 0;
     ODCB &= 0xFFF0;// Open-Drain Control
     // AD1PCFGL |= 0x000F;
     LATB |= 0X0000;// Output Value:0-OFF 1-ON
     TRISB &= 0XFF00;// Direction:0-OUT 1-IN
+#else
+    CM2CON = 0;
+    ODCD &= 0xFFF0;// Open-Drain Control
+    // AD1PCFGL |= 0x000F;
+    LATD |= 0XFFFF;// Output Value:0-OFF 1-ON
+    TRISD &= 0X0000;// Direction:0-OUT 1-IN
+#endif
 }
 
 void GPIOB_SetPin(short pin,char value)
 {
+#ifndef OSC_20M_USE
     // BANKB: for read
     // LATB: for read -> modify -> write
     if(value){
@@ -33,6 +42,13 @@ void GPIOB_SetPin(short pin,char value)
     }else{
         LATB &= ~(1<<pin);
     }
+#else
+    if(value){
+        LATD |= (1<<pin);
+    }else{
+        LATD &= ~(1<<pin);
+    }
+#endif
 }
 
 void GPIOx_Config(GPIO_BANKx port, u8 pin, GPIO_DIR dir)
@@ -195,19 +211,26 @@ void InOutPurpose_Init(void)
     // OUT: RB1  for CLRC663 IF3: output 1
     // OUT: RB2  for CLRC663 TX(config in later UARTx_Init)
     // IN:  RB3  for BG96: 1-power on finished
+    // = 9
     // XX:  RB4  for CLRC663 IF1: unused
     // IN:  RB5  for CLRC663 RX(config in later UARTx_Init)
     // XX:  RB6  for ICSP use
     // XX:  RB7  for ICSP use
+    // = F
+
     // OUT: RB8  for BG96: to detect if host is active or sleep
     // OUT: RB9  for BG96: to power up BG96
     // OUT: RB10 for BG96: 1-normal mode, 0-airplane mode
     // OUT: RB11 for BG96: reset
+    // = 0
+
     // IN:  RB12 for BG96: 1-normal mode, 0-PSM mode
     // OUT: RB13 for BUZZER
     // OUT: RB14 for BG96 TX(config in later UARTx_Init)
     // IN:  RB15 for TouchPad IRQ
-    TRISB &= 0xFF81;// Direction:0-OUT 1-IN
+    // = 9
+
+    TRISB &= 0x90F9;// Direction:0-OUT 1-IN
 
     // OUT: RB13 for BNO055: reset
     // OUT: RB14 for BNO055: 1-normal mode, 0-IAP
