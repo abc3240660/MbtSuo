@@ -16,6 +16,7 @@
 
 #include "001_Tick_10ms.h"
 #include "003_BG96.h"
+#include "006_Gpio.h"
 #include "007_Uart.h"
 #include "008_RingBuffer.h"
 #include "013_Protocol.h"
@@ -1081,7 +1082,7 @@ static bool SetDevCommandEcho(bool echo)
     } else {
         cmd = "E0";
     }
-    if (SUCCESS_RESPONSE == SendAndSearch(cmd, RESPONSE_OK, 10)) {
+    if (SUCCESS_RESPONSE == SendAndSearch(cmd, RESPONSE_OK, 2)) {
         return true;
     }
     return false;
@@ -1090,13 +1091,42 @@ static bool SetDevCommandEcho(bool echo)
 static bool SetAutoNetMode(void)
 {
     const char *cmd;
+#if 0
+    cmd = "+CGMM";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+
+    cmd = "+CGMR";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+
+    cmd = "+QCFG=\"bip/auth\",1";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        // return false;
+    }
+
+    cmd = "+QNVFW=\"/nv/item_files/modem/uim/gstk/proactive_feature_enable_cfg\",7FFFFF7F";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+    cmd = "+QNVW=6253,0,\"01\"";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
 
     cmd = "+QSIMDET=0,1";
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
         return false;
     }
-
+#endif
     cmd = "+QCFG=\"BAND\",F,400A0E189F,A0E189F,1";
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
@@ -1511,29 +1541,27 @@ void GetGPSInfo(char* gnss_part)
 /////////////////////////////////// BG96 Common ///////////////////////////////////
 static bool InitModule()
 {
-    SetPinDir(RESET_PIN, OUTPUT);
-    SetPinVal(RESET_PIN, LOW);
-    SetPinDir(POWKEY_PIN, OUTPUT);
-    DelayMs(100);
-    SetPinVal(POWKEY_PIN, HIGH);
-    DelayMs(200);
-    SetPinVal(POWKEY_PIN, LOW);
-    if (ReadResponseToBuffer(5)) {
-        if (SearchStrBuffer(RESPONSE_READY)) {
-            return true;
-        }
-    }
-    DelayMs(1000);
-    SetPinVal(POWKEY_PIN, HIGH);
-    DelayMs(2000);
-    SetPinVal(POWKEY_PIN, LOW);
-    if (ReadResponseToBuffer(5)) {
-        if (SearchStrBuffer(RESPONSE_POWER_DOWN)) {
-            DelayMs(10000);
-        }
-    }
+//    GPIOx_Config(BANKB, 11, OUTPUT_DIR);// RESET
+//    GPIOx_Output(BANKB, 11, 0);
+//    delay_ms(300);
+//    GPIOx_Output(BANKB, 11, 1);
 
-    return false;
+    GPIOx_Config(BANKB, 8, OUTPUT_DIR);// AP_READY
+    GPIOx_Output(BANKB, 8, 0);
+
+    GPIOx_Config(BANKB, 9, OUTPUT_DIR);// PWRKEY
+    GPIOx_Output(BANKB, 9, 0);
+    delay_ms(2000);
+    GPIOx_Output(BANKB, 9, 1);
+    
+    printf("TRISB=%.4X\n", TRISB);
+
+    return true;
+}
+
+void BG96_PowerUp(void)
+{
+    InitModule();
 }
 
 //******************************************************************************
@@ -1545,12 +1573,12 @@ void Configure_BG96(void)
 //    bool resultBool = false;
 
     while(trycnt--) {
-//    resultBool = InitModule();
-//    if(resultBool){
-//        printf("init bg96 success!\r\n");
-//    }else{
-//        printf("init bg96 failure!\r\n");
-//    }
+//        resultBool = InitModule();
+//        if(resultBool){
+//            printf("init bg96 success!\r\n");
+//        }else{
+//            printf("init bg96 failure!\r\n");
+//        }
 
         if (BG96ATInitialize()) {
             break;

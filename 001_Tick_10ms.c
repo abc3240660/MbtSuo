@@ -95,6 +95,10 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
         }
     }
 #endif
+    
+    if (0 == MobitTimes%1000) {
+        printf("1000 count...\n");
+    }
 
     IFS0bits.T1IF = 0;// Clear Timer1 interrupt flag
 }

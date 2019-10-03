@@ -42,10 +42,15 @@ int IsTmpRingBufferAvailable(void);
 char ReadByteFromTmpRingBuffer(void);
 bool WaitUartTmpRxIdle(void);
 
-// for BNO055
+// for CLRC663
 void Uart3_Init(void);
 int Uart3_Putc(char ch);
 void Uart3_Clear(void);
+
+// for BNO055
+void Uart4_Init(void);
+void Uart4_Putc(char ch);
+// void Uart4_Clear(void);
 
 #ifdef __cplusplus
 }

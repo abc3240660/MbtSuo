@@ -14,6 +14,7 @@
 
 #include "001_Tick_10ms.h"
 #include "004_LB1938.h"
+#include "006_Gpio.h"
 #include "007_Uart.h"
 #include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
@@ -163,6 +164,36 @@ void print_card_ID(uint8_t* buf, uint8_t bufsize, u8* card_id, u8* serial_nr)
 
     printf("CardId = %s\n", card_id);
  //   print_card_ID_block(buf, bufsize);
+}
+
+void read_iso14443A_nfc_card(){ 
+  CLRC663_configure_communication_protocol(CLRC630_PROTO_ISO14443A_106_MILLER_MANCHESTER); // Configure CLRC663
+
+    //  WUPA
+  uint8_t wupa_buffer [] = {CLRC630_ISO14443_CMD_WUPA};
+  uint8_t atqa_buffer [2] = {0};
+  uint8_t atqa_length;
+  atqa_length = clrc663_communicate(wupa_buffer, sizeof(wupa_buffer), atqa_buffer);
+
+  if(atqa_length != 0) { 
+    printf("\n  *** TYPE A TAG detected ***  \n"); 
+    
+    uint8_t sak;
+    uint8_t uid[10] = {0};  // uids are maximum of 10 bytes long.
+    
+    // Select the card and discover its uid.
+    uint8_t uid_len = clrc663_iso14443a_select(uid, &sak);
+    
+    if (uid_len != 0) {  // did we get an UID?
+      printf("UID of ");
+      printf(uid_len);
+      printf(" bytes (SAK: ");
+      printf(sak);
+      printf("): ");
+      print_block(uid, uid_len);
+      printf("\n");
+    }
+  }
 }
 
 u8 read_iso14443B_nfc_card(u8* card_id, u8* serial_nr)
@@ -417,4 +448,15 @@ u8 QueryMobibCard(u8* card_dats)
 void CardIDFlashBankInit(void)
 {
     FlashRead_AllNFCCards(&gs_bind_cards[0]);
+}
+
+void CLRC663_PowerUp(void)
+{
+    // CLRC663 IO Configuration
+    TRISE = 0xFF1D;// Direction:0-OUT 1-IN
+    TRISB &= 0xFFFD;// Direction:0-OUT 1-IN
+    GPIOx_Output(BANKE, 5, 0);// PDOWN Low -> Power UP Mode
+    GPIOx_Output(BANKE, 6, 0);// IFSEL0 Low
+    GPIOx_Output(BANKE, 7, 0);// IFSEL1 Low
+    GPIOx_Output(BANKB, 1, 1);// IF3 HIGH
 }

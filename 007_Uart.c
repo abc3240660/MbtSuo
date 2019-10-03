@@ -25,6 +25,9 @@
 static uint8_t Uart3Buffer[UART3_BUFFER_MAX_LEN] = {0};
 static uint16_t Uart3Length = 0;
 
+uint8_t Uart4_Buffer[UART3_BUFFER_MAX_LEN] = {0};
+uint16_t Uart4_Use_Len = 0;
+
 static char Uart2_Send_Buf[UART2_BUFFER_MAX_LEN] = {0};
 
 static ringbuffer_t tmp_rbuf;
@@ -385,4 +388,47 @@ bool WaitUartTmpRxIdle(void)
     }
 
     return true;
+}
+
+void Uart4_Init(void)
+{
+    RPOR6bits.RP12R = 0x0015;    //RD11->UART4:U4TX
+    RPINR27bits.U4RXR = 0x0003;    //RD10->UART4:U4RX
+    
+    _LATD11 = 1;
+    _TRISD10 = 1;
+    _TRISD11 = 0;
+    
+//    _ANSD10 = 0;
+    
+    U4MODE=0X8808;
+    U4STA = 0X2400;
+    U4BRG = 0x15;//34;
+
+    IPC22bits.U4TXIP = 0;
+    IPC22bits.U4RXIP = 1;
+    IEC5bits.U4RXIE = 1;
+}
+
+void Uart4_Putc(char ch)
+{
+    U4TXREG = ch;
+    while(_U4TXIF == 0);
+    _U4TXIF = 0;
+}
+
+void __attribute__((__interrupt__,no_auto_psv)) _U4RXInterrupt(void)
+{
+    char temp = 0;
+
+    do {
+        temp = U4RXREG;
+        printf("+%.2X", (u8)temp);
+        _U4RXIF = 0;
+        if (U4STAbits.OERR) {
+            U4STAbits.OERR = 0;
+        } else {
+            Uart4_Buffer[Uart4_Use_Len++] = temp;
+        }
+    } while (U4STAbits.URXDA);
 }

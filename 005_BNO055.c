@@ -15,28 +15,28 @@
 #include "005_BNO055.h"
 #include "007_Uart.h"
 
-#if 0
+#if 1
 extern void delay_ms(unsigned long val);
 
-extern uint8_t Uart3_Buffer[64];
-extern int16_t Uart3_Use_Len;
-uint8_t Uart3_Read_Postion = 0;
+extern uint8_t Uart4_Buffer[64];
+extern int16_t Uart4_Use_Len;
+uint8_t Uart4_Read_Postion = 0;
 
 uint8_t send_buf[64] = "";
 
-void Uart3_Clear(void)
+void Uart4_Clear(void)
 {
-    memset(Uart3_Buffer,0,64);
-    Uart3_Use_Len = 0;
-    Uart3_Read_Postion = 0;
+    memset(Uart4_Buffer,0,64);
+    Uart4_Use_Len = 0;
+    Uart4_Read_Postion = 0;
 }
-uint8_t Uart3_Getc(void)
+uint8_t Uart4_Getc(void)
 {
     uint8_t try_cnt = 20;
     do{
-        if((Uart3_Use_Len>0) && (Uart3_Use_Len>Uart3_Read_Postion)){
-            //printf("%.2X\r\n", Uart3_Buffer[Uart3_Read_Postion]);
-            return Uart3_Buffer[Uart3_Read_Postion++];
+        if((Uart4_Use_Len>0) && (Uart4_Use_Len>Uart4_Read_Postion)){
+            //printf("%.2X\r\n", Uart4_Buffer[Uart4_Read_Postion]);
+            return Uart4_Buffer[Uart4_Read_Postion++];
         }else{
             delay_ms(50);
         }
@@ -49,7 +49,7 @@ static int16_t bno055_write_byte(uint8_t reg_addr, uint8_t reg_data)
 {
     int16_t i = 0;
     uint8_t onebyte = 0;
-    Uart3_Clear();
+    Uart4_Clear();
     memset(send_buf, 0, 64);
 
     send_buf[0] = 0xAA;
@@ -59,17 +59,17 @@ static int16_t bno055_write_byte(uint8_t reg_addr, uint8_t reg_data)
     send_buf[4] = reg_data;
     // send data
     for (i=0; i<5; i++) {
-        Uart3_Putc(send_buf[i]);
+        Uart4_Putc(send_buf[i]);
     }
 
     // wait
     delay_ms(20);
 
-    onebyte = Uart3_Getc();
+    onebyte = Uart4_Getc();
 
     if (0xEE == onebyte) {// NG ack response
         if (reg_addr != BNO055_SYS_TRIGGER) {
-            onebyte = Uart3_Getc();
+            onebyte = Uart4_Getc();
             if (onebyte != 0x01) {// 0x01 - WRITE_SUCCESS
                 printf("write failure code: 0x%X\r\n", onebyte);
                 return -1;
@@ -105,16 +105,16 @@ static int16_t bno055_write_bytes(uint8_t reg_addr, uint8_t *p_in, uint8_t len)
 
     // send data
     for (i=0; i<(len+4); i++) {
-        Uart3_Putc(send_buf[i]);
+        Uart4_Putc(send_buf[i]);
     }
 
     // wait
     delay_ms(100);
 
-    onebyte = Uart3_Getc();
+    onebyte = Uart4_Getc();
 
     if (0xEE == onebyte) {// NG ack response
-        onebyte = Uart3_Getc();
+        onebyte = Uart4_Getc();
 
         if (onebyte != 0x01) {// 0x01 - WRITE_SUCCESS
             printf("write failure code: 0x%X\r\n", onebyte);
@@ -135,7 +135,7 @@ static uint8_t bno055_read_byte(uint8_t reg_addr)
     int16_t i = 0;
     uint8_t onebyte = 0;
 
-    Uart3_Clear();
+    Uart4_Clear();
     memset(send_buf, 0, 64);
 
     send_buf[0] = 0xAA;
@@ -144,29 +144,29 @@ static uint8_t bno055_read_byte(uint8_t reg_addr)
     send_buf[3] = 0x01;// LEN
     // send data
     for (i=0; i<4; i++) {
-        Uart3_Putc(send_buf[i]);
+        Uart4_Putc(send_buf[i]);
     }
 
     // wait
     delay_ms(20);
 
     // recv ack till empty or timeout
-    onebyte = Uart3_Getc();
+    onebyte = Uart4_Getc();
 
     if (0xEE == onebyte) {// NG ack response
-        onebyte = Uart3_Getc();
+        onebyte = Uart4_Getc();
         printf("read failure code: 0x%X\r\n", onebyte);
 
         return -1;
     } else if (0xBB == onebyte) {// OK ack response
-        onebyte = Uart3_Getc();// length
+        onebyte = Uart4_Getc();// length
 
         if (onebyte != 0x01) {// length NG
             printf("receive data lenght is ng\r\n");
             return -1;
         }
 
-        return Uart3_Getc();// data
+        return Uart4_Getc();// data
     } else {// invalid ack
         printf("read invalid ack header: 0x%X\r\n", onebyte);
 
@@ -182,7 +182,7 @@ static int16_t bno055_read_bytes(uint8_t reg_addr, uint8_t len, uint8_t *p_out)
     if ((!p_out) || (len<=0)) {
         return -1;
     }
-    Uart3_Clear();
+    Uart4_Clear();
     memset(send_buf, 0, 64);
 
     send_buf[0] = 0xAA;
@@ -191,22 +191,22 @@ static int16_t bno055_read_bytes(uint8_t reg_addr, uint8_t len, uint8_t *p_out)
     send_buf[3] = len;// LEN
     // send data
     for (i=0; i<4; i++) {
-        Uart3_Putc(send_buf[i]);
+        Uart4_Putc(send_buf[i]);
     }
 
     // wait
     delay_ms(20);
 
     // recv ack till empty or timeout
-    onebyte = Uart3_Getc();
+    onebyte = Uart4_Getc();
 
     if (0xEE == onebyte) {// NG ack response
-        onebyte = Uart3_Getc();
+        onebyte = Uart4_Getc();
         printf("read failure code: 0x%X\r\n", onebyte);
 
         return -1;
     } else if (0xBB == onebyte) {// OK ack response
-        onebyte = Uart3_Getc();// length
+        onebyte = Uart4_Getc();// length
 
         if (onebyte != len) {// length NG
             printf("receive data length is NG(%d-%d)\r\n", len, onebyte);
@@ -214,7 +214,7 @@ static int16_t bno055_read_bytes(uint8_t reg_addr, uint8_t len, uint8_t *p_out)
         }
 
         for (i=0; i<onebyte; i++) {
-            p_out[i] = Uart3_Getc();// length
+            p_out[i] = Uart4_Getc();// length
         }
     } else {// invalid ack
         printf("read invalid ack header: 0x%X\r\n", onebyte);

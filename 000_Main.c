@@ -38,6 +38,14 @@ u8 g_svr_ip[LEN_NET_TCP+1]  = "192.168.1.105";
 u8 g_svr_port[LEN_NET_TCP+1] = "10211";
 u8 g_svr_apn[LEN_NET_TCP+1] = "sentinel.m2mmobi.be";
 
+static void __delay_usx(uint16_t ms)
+{
+    int i=0,j=0;
+    for(i=0;i<ms;i++){
+        for(j=0;j<20;j++);
+    }
+}
+
 int main(void)
 {
     u8 net_sta = 0;
@@ -53,10 +61,18 @@ int main(void)
     GPIOB_Init();
     Configure_Tick_10ms();
     Configure_Tick2_10ms();
+
+#ifndef DEMO_BOARD
+    CLRC663_PowerUp();
+    BG96_PowerUp();
+#endif
+
     Uart1_Init();
     Uart2_Init();
+    Uart3_Init();
+    Uart4_Init();
+
 #if 0
-//    Uart3_Init();
 //    LB1938_Init();
 //    SPI2_Init();
 
@@ -95,99 +111,59 @@ int main(void)
     CardIDFlashBankInit();
 
     gs_charge_sta = GPIOx_Input(BANKG, 3);
+#else
+    InitRingBuffers();
+    printf("XApplication running...\r\n");
 #endif
 
-//    Uart3_Init();
-    InitRingBuffers();
-    printf("Application running...\r\n");
+#if 0// BNO055 Testing
+    GPIOx_Config(BANKC, 13, OUTPUT_DIR);// BNO055
+    GPIOx_Config(BANKC, 14, OUTPUT_DIR);// BNO055
+    GPIOx_Output(BANKC, 13, 1);
+    GPIOx_Output(BANKC, 14, 1);
 
-#if 0
+    delay_ms(2000);
+    Configure_BNO055();
+    printf("After BG96 PowerOn...\r\n");
+    
     while(1) {
-        if ((task_cnt%8) < 4) {
-            GPIOB_SetPin(task_cnt%4, 1);
-        } else {
-            GPIOB_SetPin(task_cnt%4, 0);
-        }
-        
-        Uart1_Putc('3');
-        Uart1_Putc('4');
-        Uart1_Putc('5');
-        Uart1_Putc('6');
-
-        if (0 == task_cnt) {
-            TRISB &= 0x90F9;// Direction:0-OUT 1-IN
-
-            if (0 == GPIOx_Input(BANKB, 3)) {
-                printf("PB3 is Low\n");
-            } else {
-                printf("PB3 is High\n");
-            }
-
-            GPIOx_Output(BANKB, 9, 0);// PWRKEY low
-            delay_ms(50);
-            GPIOx_Output(BANKB, 9, 1);// PWRKEY High
-            delay_ms(1000);
-            GPIOx_Output(BANKB, 9, 0);// PWRKEY low
-
-            delay_ms(10000);
-
-            if (0 == GPIOx_Input(BANKB, 3)) {
-                printf("PB3 is Low\n");
-            } else {
-                printf("PB3 is High\n");
-            }
-
-//            GPIOx_Output(BANKB, 10, 1);// not airplane mode
-//            GPIOx_Output(BANKB, 11, 1);// RST(default HIGH))
-
-            Configure_BG96();
-        }
-
-        task_cnt++;
-
-        delay_ms(1000);
+        printf("BNO055 Testing...\r\n");
+        delay_ms(2000);
     }
 #endif
 
-#ifndef DEMO_BOARD
-    TRISB &= 0x90F9;// Direction:0-OUT 1-IN
-    GPIOx_Output(BANKB, 9, 0);// PWRKEY low
-    printf("test001...\n");
-    delay_ms(50);
-    GPIOx_Output(BANKB, 9, 1);// PWRKEY High
-    printf("test002...\n");
-    delay_ms(5000);
-    GPIOx_Output(BANKB, 9, 0);// PWRKEY low
-    printf("test003...\n");
-    delay_ms(2000);
-    GPIOx_Output(BANKB, 9, 1);// PWRKEY High
-    printf("test004...\n");
+#if 0// CLRC663 LOOP Testing
+    while(1)
+    {
+//        GPIOx_Output(BANKE, 7, 0);// IFSEL1 Low
+//        delay_ms(1000);
+//        GPIOx_Output(BANKE, 7, 1);// IFSEL1 Low
+//        Uart3_Putc(0xFF);
+        ReadMobibNFCCard();
+//        read_iso14443A_nfc_card();
 
-    Uart3_Init();
-
-    // CLRC663 IO Configuration
-    TRISE = 0xFF1D;// Direction:0-OUT 1-IN
-    TRISB &= 0xFFFD;// Direction:0-OUT 1-IN
-    GPIOx_Output(BANKE, 5, 0);// PDOWN Low -> Power UP Mode
-    GPIOx_Output(BANKE, 6, 0);// IFSEL0 Low
-    GPIOx_Output(BANKE, 7, 0);// IFSEL1 Low
-    GPIOx_Output(BANKB, 1, 1);// IF3 HIGH
+        delay_ms(2000);
+    }
 #endif
-    printf("test005...\n");
 
-    // Read CLRC663 Version
-    // Uart3_Putc(0xFF);
+#if 0// Buzzer LOOP Testing
+    GPIOx_Config(BANKB, 13, OUTPUT_DIR);// Beep
 
-    delay_ms(5000);
-    printf("After BG96 PowerOn...\r\n");
+    u8 beep_loop = 0;
 
     while(1)
     {
-//        Uart3_Putc(0xFF);
-        ReadMobibNFCCard();
-
-        delay_ms(5000);
+        GPIOx_Output(BANKB, 13, 1);
+        __delay_usx(10);
+        GPIOx_Output(BANKB, 13, 0);
+        __delay_usx(10);
+        
+        if (beep_loop++ >= 100) {
+            beep_loop = 0;
+            printf("XBeep Testing...\r\n");
+        }
     }
+#endif
 
     while(1)
     {
