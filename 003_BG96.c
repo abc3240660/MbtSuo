@@ -60,6 +60,7 @@ u8 g_devzone_str[LEN_COMMON_USE+1] = "";
 
 u8 g_imei_str[LEN_COMMON_USE+1] = "";
 u8 g_iccid_str[LEN_COMMON_USE+1] = "";
+u8 g_net_mode[LEN_COMMON_USE+1] = "";
 
 void InitRingBuffers(void)
 {
@@ -187,9 +188,9 @@ unsigned int ReadResponseByteToBuffer()
 
     rxBuffer[bufferHead] = c;
     
-//    if (1 == gs_ftp_test) {
-//        printf("rxBuffer = %s\n", rxBuffer);
-//    }
+    if (1 == gs_ftp_test) {
+        printf("rxBuffer = %s\n", rxBuffer);
+    }
     
     bufferHead = (bufferHead + 1) % RX_BUFFER_LENGTH;
 
@@ -365,8 +366,11 @@ static Cmd_Response_t ReadResponseAndSearch(const char *test_str, unsigned int t
         }
     }
     if (recv_len > 0) {
+        printf("rxBuffer = %s\n", rxBuffer);
+        printf("UNKNOWN_RESPONSE...\n");
         return UNKNOWN_RESPONSE;
     } else {
+        printf("TIMEOUT_RESPONSE...\n");
         return TIMEOUT_RESPONSE;
     }
 }
@@ -1088,6 +1092,34 @@ static bool SetDevCommandEcho(bool echo)
     return false;
 }
 
+bool QueryNetMode(void)
+{
+    u8 i = 0;
+
+    if (SUCCESS_RESPONSE == SendAndSearch(DEV_NET_INFORMATION, RESPONSE_OK, 5)) {
+        char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
+        *end_buf = '\0';
+        char *sta_buf = SearchStrBuffer(": ");
+ 
+        memset(g_net_mode, 0, LEN_COMMON_USE);        
+        if (sta_buf != NULL) {
+            for (i=3; i<strlen(sta_buf); i++) {
+                if (',' == sta_buf[i]) {
+                    g_net_mode[i-3-1] = 0;
+                    break;
+                }
+                g_net_mode[i-3] = sta_buf[i];
+            }
+        }
+
+        printf("g_net_mode = %s\n", g_net_mode);
+
+        return true;
+    }
+
+    return false;
+}
+
 static bool SetAutoNetMode(void)
 {
     const char *cmd;
@@ -1127,25 +1159,58 @@ static bool SetAutoNetMode(void)
         return false;
     }
 #endif
-    cmd = "+QCFG=\"BAND\",F,400A0E189F,A0E189F,1";
+   cmd = "+QCFG=\"NWSCANSEQ\"";;
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+   cmd = "+QCFG=\"NWSCANMODE\"";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+   cmd = "+QCFG=\"IOTOPMODE\"";
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
         return false;
     }
 
-    cmd = "+QCFG=\"NWSCANSEQ\",030201";
+   cmd = "+QCFG=\"BAND\",F,400A0E189F,A0E189F,1";
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
         return false;
     }
-    
+
+   // 00-Automatic = 020301
+   // 01-GSM
+   // 02-LTE CAT M1
+   // 03-LTE CAT NB1
+    cmd = "+QCFG=\"NWSCANSEQ\",030201,1";
+//    cmd = "+QCFG=\"NWSCANSEQ\",03,1";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+
+    // 0-Automatic
+    // 1-GSM Only
+    // 3-LTE Only
    cmd = "+QCFG=\"NWSCANMODE\",0,1";
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
         return false;
     }
 
-    cmd = "+QICSGP=1,1,\"sentinel.m2mmobi.be\",\"\",\"\",1";
+   // 0-LTE CAT M1
+   // 1-LTE Cat NB1
+   // 2-LTE Cat M1 and Cat NB1
+   cmd = "+QCFG=\"IOTOPMODE\",2,1";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+
+   cmd = "+QICSGP=1,1,\"sentinel.m2mmobi.be\",\"\",\"\",1";
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
         return false;
@@ -1268,7 +1333,8 @@ bool ConnectToTcpServer(u8* svr_ip, u8* svr_port, u8* svr_apn)
 
     unsigned int comm_pdp_index = 1;  // The range is 1 ~ 16
     unsigned int comm_socket_index = 0;  // The range is 0 ~ 11
-    Socket_Type_t socket = TCP_CLIENT;
+//    Socket_Type_t socket = TCP_CLIENT;
+    Socket_Type_t socket = UDP_CLIENT;
 
     char apn_error[LEN_BYTE_SZ64+1] = "";
 
@@ -1303,7 +1369,8 @@ bool ConnectToTcpServer(u8* svr_ip, u8* svr_port, u8* svr_apn)
     gs_net_sta = 0x81;
     printf("Open Socket Service Success!\n");
 
-    TcpDeviceRegister();
+    GetCurrentTimeZone();
+    StartCommunication();
 
     return true;
 }
@@ -1424,7 +1491,7 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf, u8* iap_file)
         return 0;
     }
 
-    gs_ftp_test = 1;
+//    gs_ftp_test = 1;
 
     strncpy(cmd, FTP_DOWNLOAD_DAT, LEN_BYTE_SZ64);
     // sprintf(buf, "=\"test.mp3\",\"COM:\",%ld,%ld", offset, length);

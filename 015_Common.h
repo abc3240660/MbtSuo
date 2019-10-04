@@ -18,6 +18,9 @@
 #define         SW_Minor_Version        1
 #define         SW_Release              1
 
+#define         HW_VER                  "201910041950"
+#define         SW_VER                  "201910041950"
+
 #define         T1IPL                   5                                       // define Timer 1 IRQ priority levell for real tome Tick
 #define         T2IPL                   1                                       // define Timer 2 IRQ priority levell for real tome Tick
 

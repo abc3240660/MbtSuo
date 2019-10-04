@@ -22,6 +22,10 @@
 #include "014_Md5.h"
 #include "016_FlashOta.h"
 
+// ring times = X / 2
+u8 g_ring_times = 0;// 6-DD 200-Alarm
+static u8 special_test = 0;
+
 static const char* cmd_list[] = {
     // DEV Auto CMDs
     CMD_DEV_REGISTER,
@@ -60,7 +64,7 @@ static const char* cmd_list[] = {
 static u32 gs_need_ack = 0;
 static u32 gs_till_svr_ack = 0;
 
-static u8 gs_msg_md5[LEN_MD5_HEXSTR+1] = "";
+//static u8 gs_msg_md5[LEN_MD5_HEXSTR+1] = "";
 
 static u8 gs_alarm_on[LEN_COMMON_USE+1] = "1";
 static u8 gs_beep_on[LEN_COMMON_USE+1] = "1";
@@ -73,6 +77,7 @@ static u8 gs_iap_file[LEN_DW_URL+1] = "Mbtsuo_0915.bin";
 static u16 gs_hbeat_gap = DEFAULT_HBEAT_GAP;
 
 static u8 gs_during_bind = 0;
+static unsigned long start_time_reg = 0;
 static unsigned long start_time_risk = 0;
 static unsigned long start_time_locked = 0;
 static unsigned long start_time_unlocked = 0;
@@ -80,7 +85,7 @@ static unsigned long start_time_finish_addc = 0;
 
 static u8 gs_communit_key[LEN_MD5_HEXSTR+1] = "";
 
-static char gs_send_md5[LEN_MD5_HEXSTR+1] = "e10adc3949ba59abbe56e057f20f883e";
+//static char gs_send_md5[LEN_MD5_HEXSTR+1] = "e10adc3949ba59abbe56e057f20f883e";
 
 static unsigned long gs_dw_size_total = 0;
 static unsigned long gs_dw_recved_sum = 0;
@@ -122,11 +127,13 @@ extern u8 g_iccid_str[LEN_COMMON_USE+1];
 
 extern u8 g_devtime_str[LEN_COMMON_USE+1];
 extern u8 g_devzone_str[LEN_COMMON_USE+1];
+extern u8 g_net_mode[LEN_COMMON_USE+1];
 
 extern u8 g_svr_ip[LEN_NET_TCP+1];
 extern u8 g_svr_port[LEN_NET_TCP+1];
 extern u8 g_svr_apn[LEN_NET_TCP+1];
 
+#if 0
 void CalcRegisterKey(void)
 {
     u8 i = 0;
@@ -165,6 +172,7 @@ static void EncodeTcpPacket(u8* in_dat)
 
     printf("MD5 = %s\n", gs_send_md5);
 }
+#endif
 
 u8 get_mobit_cmd_count()
 {
@@ -202,6 +210,7 @@ u8 is_supported_mobit_cmd(u8 pos, char* str)
     return i;
 }
 
+#if 0
 static bool ValidateTcpMsg(char* msg)
 {
     u16 i = 0;
@@ -249,6 +258,7 @@ static bool ValidateTcpMsg(char* msg)
         return false;
     }
 }
+#endif
 
 void ParseMobitMsg(char* msg)
 {
@@ -274,9 +284,9 @@ void ParseMobitMsg(char* msg)
     //printf("Support %d CMDs\n", cmd_count);
 #endif
 
-    if (false == ValidateTcpMsg(msg)) {// MD5 is invalid
-        return;
-    }
+//    if (false == ValidateTcpMsg(msg)) {// MD5 is invalid
+//        return;
+//    }
 
     split_str = strtok(msg, delims);
     while(split_str != NULL) {
@@ -318,6 +328,7 @@ void ParseMobitMsg(char* msg)
                 if (QUERY_PARAMS == cmd_type) {
                     // Needn't do anything, just return params by tcp
                 } else if (RING_ALARM == cmd_type) {
+                    gs_need_ack &= ~(temp<<cmd_type);// no need to do TCPACK to server
                     DoRingAlarmFast();
                 } else if (UNLOCK_DOOR == cmd_type) {
                     DoUnLockTheLockerFast();
@@ -357,6 +368,8 @@ void ParseMobitMsg(char* msg)
             // Parse CMD or ACK with params
             if (DEV_REGISTER == cmd_type) {// only one SVR ACK with params
                 if (3 == index) {
+                    gs_till_svr_ack &= ~(temp<<cmd_type);
+
                     gs_hbeat_gap = atoi(split_str);
                     printf("gs_hbeat_gap = %d\n", gs_hbeat_gap);
                     if (gs_hbeat_gap < 5) {
@@ -475,10 +488,10 @@ bool TcpHeartBeat(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s$%s", g_imei_str, CMD_HEART_BEAT, "4.0", "1", "20", gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
 
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,%s$", g_imei_str, CMD_HEART_BEAT, "4.0", "1", "20", gs_send_md5);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,%s$", g_imei_str, CMD_HEART_BEAT, "4.0", "1", "20", gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -487,15 +500,19 @@ bool TcpDeviceRegister(void)
 {
     // const char send_data[] = "#MOBIT,868446032285351,REG,898602B4151830031698,1.0.0,1.0.0,4.0,1561093302758,2,e10adc3949ba59abbe56e057f20f883e$";
 
-    CalcRegisterKey();
+//    CalcRegisterKey();
 
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,%s,%s,%s$%s", g_imei_str, CMD_DEV_REGISTER, g_iccid_str, "1.0.0", "1.00", "4.0", g_devtime_str, g_devzone_str, gs_communit_key);
+    
+    if (0 == strlen((const char*)g_net_mode)) {
+        strcpy((char*)g_net_mode, "CAT-NB1");
+    }
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,%s,%s,%s,%s$%s", g_imei_str, CMD_DEV_REGISTER, g_iccid_str, HW_VER, SW_VER, "4.0", g_devtime_str, g_devzone_str, g_net_mode, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,%s,%s,%s,%s$", g_imei_str, CMD_DEV_REGISTER, g_iccid_str, "1.0.0", "1.00", "4.0", g_devtime_str, g_devzone_str, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,%s,%s,%s,%s$", g_imei_str, CMD_DEV_REGISTER, g_iccid_str, "1.0.0", "1.00", "4.0", g_devtime_str, g_devzone_str, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -507,10 +524,10 @@ bool TcpFinishFactoryReset(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s$%s", g_imei_str, CMD_FINISH_RST, "1", "111111111", gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s$", g_imei_str, CMD_FINISH_RST, "1", "111111111", gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s$", g_imei_str, CMD_FINISH_RST, "1", "111111111", gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -523,10 +540,10 @@ bool TcpExitCarriageSleep(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s$%s", g_imei_str, CMD_EXIT_SLEEP, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_EXIT_SLEEP, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_EXIT_SLEEP, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -542,10 +559,10 @@ bool TcpReportGPS(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,Re$%s", g_imei_str, CMD_REPORT_GPS, gs_gnss_part, "0", gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_REPORT_GPS, gs_gnss_part, "0", gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_REPORT_GPS, gs_gnss_part, "0", gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -557,10 +574,10 @@ bool TcpInvalidMovingAlarm(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s$%s", g_imei_str, CMD_INVALID_MOVE, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_INVALID_MOVE, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_INVALID_MOVE, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -572,10 +589,10 @@ bool TcpRiskAlarm(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s$%s", g_imei_str, CMD_RISK_REPORT, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_RISK_REPORT, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_RISK_REPORT, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -587,10 +604,10 @@ bool TcpFinishIAP(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s$%s", g_imei_str, CMD_IAP_SUCCESS, "1", "1.0.0", gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s$", g_imei_str, CMD_IAP_SUCCESS, "1", "1.0.0", gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s$", g_imei_str, CMD_IAP_SUCCESS, "1", "1.0.0", gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -602,10 +619,10 @@ bool TcpFinishAddNFCCard(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$%s", g_imei_str, CMD_FINISH_ADDNFC, gs_addordel_cards, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s$", g_imei_str, CMD_FINISH_ADDNFC, gs_addordel_cards, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s$", g_imei_str, CMD_FINISH_ADDNFC, gs_addordel_cards, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -625,10 +642,10 @@ bool TcpReadedOneCard(u8* card_id, u8* serial_nr)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$%s", g_imei_str, CMD_CALYPSO_UPLOAD, card_id, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s$", g_imei_str, CMD_CALYPSO_UPLOAD, card_id, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s$", g_imei_str, CMD_CALYPSO_UPLOAD, card_id, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -640,10 +657,10 @@ bool TcpLockerLocked(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s$%s", g_imei_str, CMD_DOOR_LOCKED, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_DOOR_LOCKED, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_DOOR_LOCKED, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -655,10 +672,10 @@ bool TcpLockerUnlocked(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s$%s", g_imei_str, CMD_DOOR_LOCKED, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_DOOR_LOCKED, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_DOOR_LOCKED, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -670,10 +687,10 @@ bool TcpChargeStarted(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s$%s", g_imei_str, CMD_CHARGE_STARTED, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_CHARGE_STARTED, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_CHARGE_STARTED, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -685,10 +702,10 @@ bool TcpChargeStoped(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s$%s", g_imei_str, CMD_CHARGE_STARTED, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_CHARGE_STARTED, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_CHARGE_STARTED, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -716,15 +733,15 @@ bool TcpReNormalAck(u8* cmd_str, u8* sta)
         sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re$%s", g_imei_str, cmd_str, sta, gs_communit_key);
     }
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
 
-    if (NULL == sta) {
-        sprintf(tcp_send_buf, "#MOBIT,%s,%s,Re,%s$", g_imei_str, cmd_str, gs_send_md5);
-    } else {
-        sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, cmd_str, sta, gs_send_md5);
-    }
+//    if (NULL == sta) {
+//        sprintf(tcp_send_buf, "#MOBIT,%s,%s,Re,%s$", g_imei_str, cmd_str, gs_send_md5);
+//    } else {
+//        sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, cmd_str, sta, gs_send_md5);
+//    }
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -736,10 +753,10 @@ bool TcpReQueryParams(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,Re$%s", g_imei_str, CMD_QUERY_PARAMS, g_svr_ip, g_svr_port, g_svr_apn, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_PARAMS, g_svr_ip, g_svr_port, g_svr_apn, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_PARAMS, g_svr_ip, g_svr_port, g_svr_apn, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -756,10 +773,10 @@ bool TcpReQueryGPS(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,Re$%s", g_imei_str, CMD_QUERY_GPS, gs_gnss_part, "0", gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_GPS, gs_gnss_part, "0", gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_GPS, gs_gnss_part, "0", gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -779,10 +796,10 @@ bool TcpReQueryNFCs(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re$%s", g_imei_str, CMD_QUERY_NFC, gs_tmp_buf_big, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_NFC, gs_tmp_buf_big, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_NFC, gs_tmp_buf_big, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -794,10 +811,10 @@ bool TcpReQueryAlarm(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,Re$%s", g_imei_str, CMD_QUERY_ALARM, gs_alarm_on, gs_beep_on, gs_alarm_level, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_ALARM, gs_alarm_on, gs_beep_on, gs_alarm_level, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_ALARM, gs_alarm_on, gs_beep_on, gs_alarm_level, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -809,10 +826,10 @@ bool TcpReQueryIccid(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re$%s", g_imei_str, CMD_QUERY_ICCID, g_iccid_str, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_ICCID, g_iccid_str, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_QUERY_ICCID, g_iccid_str, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -824,10 +841,10 @@ bool TcpReDeleteNFCs(void)
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re$%s", g_imei_str, CMD_DELETE_NFC, gs_addordel_cards, gs_communit_key);
 
-    EncodeTcpPacket((u8*)tcp_send_buf);
+//    EncodeTcpPacket((u8*)tcp_send_buf);
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_DELETE_NFC, gs_addordel_cards, gs_send_md5);
+//    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,Re,%s$", g_imei_str, CMD_DELETE_NFC, gs_addordel_cards, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
@@ -863,6 +880,7 @@ bool DoUnLockTheLockerFast(void)
 
 bool DoRingAlarmFast(void)
 {
+#if 0
     u8 i = 0;
 
     for (i=0; i<20; i++) {
@@ -873,7 +891,8 @@ bool DoRingAlarmFast(void)
         }
         __delay_usx(25UL);
     }
-
+#endif
+    g_ring_times = 6;// ring 3 times
     printf("DoRingAlarmFast...\n");
 
     return true;
@@ -1418,6 +1437,15 @@ void ProcessTcpServerCommand(void)
                 TcpRiskAlarm();
             }
         }
+    } else if (gs_till_svr_ack & (temp<<DEV_REGISTER)) {
+        if (start_time_reg != 0) {
+            if (isDelayTimeout(start_time_reg,5*1000UL)) {
+                QueryNetMode();
+                TcpDeviceRegister();
+                special_test++;
+                start_time_reg = GetTimeStamp();
+            }
+        }
     }
 }
 
@@ -1429,4 +1457,10 @@ u8 IsDuringShip(void)
 void ClearShipStatus(void)
 {
     gs_during_ship = 0;
+}
+
+void StartCommunication(void)
+{
+    start_time_reg = GetTimeStamp();
+    gs_till_svr_ack |= (1<<DEV_REGISTER);
 }

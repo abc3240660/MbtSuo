@@ -16,8 +16,10 @@
 #include "008_RingBuffer.h"
 #include "015_Common.h"
 
-static unsigned long MobitTimes = 0UL;// unit: ms
-static unsigned long Timer2Cnt = 0UL;// unit: ms
+static unsigned long MobitTimesT1 = 0UL;// unit: ms
+static unsigned long MobitTimesT3 = 0UL;// unit: ms
+static unsigned long MobitTimesT4 = 0UL;// unit: ms
+static unsigned long MobitTimesT2 = 0UL;// unit: ms
 
 static char tmpuse_buf[RX_RINGBUF_MAX_LEN+1] = {0};
 
@@ -26,6 +28,7 @@ static char tmpuse_buf[RX_RINGBUF_MAX_LEN+1] = {0};
 // --
 extern ringbuffer_t g_at_rbuf;
 extern ringbuffer_t g_net_rbuf;
+extern u8 g_ring_times;
 
 //******************************************************************************
 //* Timer 1
@@ -75,30 +78,73 @@ void Configure_Tick2_10ms(void)
 }
 
 //******************************************************************************
+//* Timer 1
+//* Timer to make 10ms Tick
+//******************************************************************************
+void Configure_Tick3_10ms(void)
+{
+#if 0//ndef OSC_20M_USE
+    T1CONbits.TCKPS = 2;  // Select 1:64 Prescaler
+    TMR1 = 0x00;          // Clear timer register
+    PR1 = 2500;           // Load the period value
+    IPC0bits.T1IP = T1IPL;// Set Timer 1 Interrupt Priority Level
+    IFS0bits.T1IF = 0;    // Clear Timer 1 Interrupt Flag
+    IEC0bits.T1IE = 1;    // Enable Timer1 interrupt
+    T1CONbits.TON = 1;    // Start Timer
+#else
+    TMR3 = 0x00;                // Clear timer register
+    PR3 = 0x186;                //Period = 0.0100096 s; Frequency = 10000000 Hz; PR1 390;
+    T3CON = 0x8030;             //TCKPS 1:256; TON enabled; TSIDL disabled; TCS FOSC/2; TECS SOSC; TSYNC disabled; TGATE disabled;
+    IFS0bits.T3IF = false;
+    IEC0bits.T3IE = true;
+#endif
+}
+
+//******************************************************************************
+//* Timer 1
+//* Timer to make 10ms Tick
+//******************************************************************************
+void Configure_Tick4_10ms(void)
+{
+    _T4IP = 2;
+    TMR4 = 0x00;                // Clear timer register
+//    PR4 = 0x1F4;// 500us -> 2500 Hz
+//    PR4 = 0x1A9;// 340us -> 2941 Hz
+    PR4 = 0x180;// 340us -> 3255 Hz
+//    PR4 = 0x188;// 340us -> 3188 Hz
+//    PR4 = 0x177;// 300us
+//    PR4 = 0xFA;// 200us
+//    PR4 = 0x7D;// 100us
+    T4CON = 0x8010;             //TCKPS 1:256; TON enabled; TSIDL disabled; TCS FOSC/2; TECS SOSC; TSYNC disabled; TGATE disabled;
+    IFS1bits.T4IF = false;
+    IEC1bits.T4IE = true;
+}
+
+//******************************************************************************
 //* Timer 1 IRQ
 //******************************************************************************
 void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
 {
-    MobitTimes += 1;
-    if(MobitTimes > 100000UL){
-        MobitTimes = 0;
+    MobitTimesT1 += 1;
+    if(MobitTimesT1 > 100000UL){
+        MobitTimesT1 = 0;
     }
 
 #if 0
     if (GetNetStatus() != 0x81) {
-        if (0 == (MobitTimes%21)) {
+        if (0 == (MobitTimesT1%21)) {
             GPIOB_SetPin(1, 1);
         }
 
-        if (0 == (MobitTimes%41)) {
+        if (0 == (MobitTimesT1%41)) {
             GPIOB_SetPin(1, 0);
         }
     }
 #endif
     
-    if (0 == MobitTimes%1000) {
-        printf("1000 count...\n");
-    }
+//    if (0 == MobitTimesT1%1000) {
+//        printf("1000 count...\n");
+//    }
 
     IFS0bits.T1IF = 0;// Clear Timer1 interrupt flag
 }
@@ -119,9 +165,9 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
 
     char *p = NULL;
 
-    Timer2Cnt += 1;
-    if(Timer2Cnt > 100000UL){
-        Timer2Cnt = 0;
+    MobitTimesT2 += 1;
+    if(MobitTimesT2 > 100000UL){
+        MobitTimesT2 = 0;
     }
 
     while (1) {
@@ -311,12 +357,62 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
         }
     }
 
-    if (0 == Timer2Cnt % 300) {
+    if (0 == MobitTimesT2 % 300) {
         // printf("timer2 trigger\r\n");
         printf("recv len = %d\n", IsTmpRingBufferAvailable());
     }
 
     IFS0bits.T2IF = 0;// Clear Timer2 interrupt flag
+}
+
+//******************************************************************************
+//* Timer 1 IRQ
+//******************************************************************************
+void __attribute__((__interrupt__, no_auto_psv)) _T3Interrupt(void)
+{
+    MobitTimesT3 += 1;
+    if(MobitTimesT3 > 100000UL){
+        MobitTimesT3 = 0;
+    }
+    
+    if (0 == MobitTimesT3%1000) {
+        printf("1000 count...\n");
+    }
+
+    IFS0bits.T3IF = 0;// Clear Timer1 interrupt flag
+}
+
+static gs_beep_ring = 0;
+//******************************************************************************
+//* Timer 4 IRQ -> 340us
+//******************************************************************************
+void __attribute__((__interrupt__, no_auto_psv)) _T4Interrupt(void)
+{
+    MobitTimesT4 += 1;
+    if(MobitTimesT4 > 1000000UL){
+        MobitTimesT4 = 0;
+    }
+    
+    if (0 == MobitTimesT4%100000) {
+        printf("T4 1000 count...\n");
+    }
+    
+    if (0 == MobitTimesT4%300) {// 102ms
+        if (g_ring_times > 0) {
+            g_ring_times--;
+        }
+    }
+    
+    if ((g_ring_times>0) && (0 == g_ring_times%2)) {
+        if (0 == MobitTimesT4%2) {
+            GPIOx_Output(BANKB, 13, 1);
+        }
+        if (1 == MobitTimesT4%2) {
+            GPIOx_Output(BANKB, 13, 0);
+        }
+    }
+
+    IFS1bits.T4IF = 0;// Clear Timer1 interrupt flag
 }
 
 //******************************************************************************************
@@ -352,7 +448,7 @@ void DelayMs(unsigned long val)
 //******************************************************************************************
 unsigned long GetTimeStamp()
 {
-    return MobitTimes;
+    return MobitTimesT1;
 }
 //******************************************************************************************
 // FuncName: isDelayTimeout
@@ -365,12 +461,12 @@ bool isDelayTimeout(unsigned long start_time,unsigned long delayms)
     if(delayms < 10){
         delayms = 10;
     }
-    if(MobitTimes >= start_time){
-        if((MobitTimes - start_time) > (delayms/10UL)){
+    if(MobitTimesT1 >= start_time){
+        if((MobitTimesT1 - start_time) > (delayms/10UL)){
             return 1;
         }
     }else{
-        if((100000UL-start_time+MobitTimes) > (delayms/10UL)){
+        if((100000UL-start_time+MobitTimesT1) > (delayms/10UL)){
             return 1;
         }
     }

@@ -35,9 +35,10 @@ static u32 start_time_hbeat = 0;
 static u8 gs_charge_sta = 0;
 
 u8 g_svr_ip[LEN_NET_TCP+1]  = "192.168.1.105";
-u8 g_svr_port[LEN_NET_TCP+1] = "10211";
+u8 g_svr_port[LEN_NET_TCP+1] = "10212";// 10211-TCP 10212-UDP
 u8 g_svr_apn[LEN_NET_TCP+1] = "sentinel.m2mmobi.be";
 
+/*
 static void __delay_usx(uint16_t ms)
 {
     int i=0,j=0;
@@ -45,22 +46,28 @@ static void __delay_usx(uint16_t ms)
         for(j=0;j<20;j++);
     }
 }
+*/
 
 int main(void)
 {
     u8 net_sta = 0;
-    u32 boot_times = 0;
+//    u32 boot_times = 0;
 
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
 
     unsigned long task_cnt = 0;
 
-    u8 params_dat[LEN_BYTE_SZ64+1] = "";
+//    u8 params_dat[LEN_BYTE_SZ64+1] = "";
+
+    GPIOx_Config(BANKB, 13, OUTPUT_DIR);// Beep
+    GPIOx_Output(BANKB, 13, 0);
 
     System_Config();
-    GPIOB_Init();
+//    GPIOB_Init();
     Configure_Tick_10ms();
     Configure_Tick2_10ms();
+    Configure_Tick3_10ms();
+    Configure_Tick4_10ms();
 
 #ifndef DEMO_BOARD
     CLRC663_PowerUp();
@@ -68,6 +75,12 @@ int main(void)
 #endif
 
     Uart1_Init();
+#if 0
+    while(1) {
+        printf("test001XApplication running......\n");
+        delay_ms(3000);
+    }
+#endif
     Uart2_Init();
     Uart3_Init();
     Uart4_Init();
@@ -115,6 +128,10 @@ int main(void)
     InitRingBuffers();
     printf("XApplication running...\r\n");
 #endif
+    
+    // Diable Beep
+    GPIOx_Config(BANKB, 13, OUTPUT_DIR);// Beep
+    GPIOx_Output(BANKB, 13, 0);
 
 #if 0// BNO055 Testing
     GPIOx_Config(BANKC, 13, OUTPUT_DIR);// BNO055
@@ -215,7 +232,7 @@ int main(void)
 
             net_sta = GetNetStatus();
             if ((0x80==net_sta) || (0x40==net_sta)) {// lost connection
-                // ConnectToTcpServer(g_svr_ip, g_svr_port, g_svr_apn);
+                ConnectToTcpServer(g_svr_ip, g_svr_port, g_svr_apn);
             }
         }
 
@@ -256,6 +273,7 @@ int main(void)
         // --
         if (0 == (task_cnt%21)) {  // every 1.0s
             ProcessTcpSvrCmds();
+            ProcessTcpServerCommand();
         }
 
         // --
@@ -323,6 +341,7 @@ int main(void)
             task_cnt = 0;
         }
 
+#if 0
         if (0x81 == net_sta) {
             if ((task_cnt%16) < 8) {
                 GPIOB_SetPin(task_cnt%4, 1);
@@ -336,6 +355,7 @@ int main(void)
                 GPIOB_SetPin(task_cnt%2+1, 0);
             }
         }
+#endif
 
         if (0 == (task_cnt%20)) {// every 1.0s
         }

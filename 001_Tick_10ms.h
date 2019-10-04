@@ -18,7 +18,9 @@
 
 void Configure_Tick_10ms(void);
 void Configure_Tick2_10ms(void);
-void Configure_Tick3_1ms(void);
+void Configure_Tick3_10ms(void);
+void Configure_Tick4_10ms(void);
+
 void delay_ms(unsigned long val);
 void DelayMs(unsigned long val);
 unsigned long GetTimeStamp();

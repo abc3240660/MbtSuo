@@ -307,6 +307,7 @@ bool BG96TcpSendMiddle(char *data_buf);
 bool BG96TcpSendHead(unsigned int socket_index, Socket_Type_t socket);
 u32 GetFTPFileSize(u8* iap_file);
 void BG96_PowerUp(void);
+bool QueryNetMode(void);
 
 #endif //__BG96_H
 
