@@ -741,7 +741,7 @@ static bool InitAPN(unsigned int pdp_index, char *apn, char *usr, char *pwd, cha
     return false;
 }
 
-static bool OpenSocketService(unsigned int pdp_index, unsigned int socket_index, Socket_Type_t socket, char *ip, unsigned int port, unsigned int local_port, Access_Mode_t mode)
+static bool OpenSocketService(unsigned int pdp_index, unsigned int socket_index, Socket_Type_t socket, char *ip, char *port, unsigned int local_port, Access_Mode_t mode)
 {
     char cmd[LEN_BYTE_SZ128+1] = "";
     char buf[LEN_BYTE_SZ128+1] = "";
@@ -750,16 +750,16 @@ static bool OpenSocketService(unsigned int pdp_index, unsigned int socket_index,
     switch (socket)
     {
         case TCP_CLIENT:
-            sprintf(buf, "=%d,%d,\"TCP\",\"%s\",%d,%d,%d", pdp_index, socket_index, ip, port, local_port, mode);
+            sprintf(buf, "=%d,%d,\"TCP\",\"%s\",%s,%d,%d", pdp_index, socket_index, ip, port, local_port, mode);
             break;
         case TCP_SEVER:
-            sprintf(buf, "=%d,%d,\"TCP LISTENER\",\"%s\",%d,%d,%d", pdp_index, socket_index, ip, port, local_port, mode);
+            sprintf(buf, "=%d,%d,\"TCP LISTENER\",\"%s\",%s,%d,%d", pdp_index, socket_index, ip, port, local_port, mode);
             break;
         case UDP_CLIENT:
-            sprintf(buf, "=%d,%d,\"UDP\",\"%s\",%d,%d,%d", pdp_index, socket_index, ip, port, local_port, mode);
+            sprintf(buf, "=%d,%d,\"UDP\",\"%s\",%s,%d,%d", pdp_index, socket_index, ip, port, local_port, mode);
             break;
         case UDP_SEVER:
-            sprintf(buf, "=%d,%d,\"UDP SERVICE\",\"%s\",%d,%d,%d", pdp_index, socket_index, ip, port, local_port, mode);
+            sprintf(buf, "=%d,%d,\"UDP SERVICE\",\"%s\",%s,%d,%d", pdp_index, socket_index, ip, port, local_port, mode);
             break;
         default:
             return false;
@@ -979,8 +979,7 @@ bool ReturnErrorCode(int *s_err_code)
     return false;
 }
 
-/////////////////////////////////// BG96 GNSS ///////////////////////////////////
-static bool TurnOnGNSS(GNSS_Work_Mode_t mode, Cmd_Status_t status)
+bool TurnOnGNSS(GNSS_Work_Mode_t mode, Cmd_Status_t status)
 {
     char cmd[LEN_BYTE_SZ16+1] = "";
     char buf[LEN_BYTE_SZ8+1] = "";
@@ -1007,11 +1006,34 @@ static bool TurnOnGNSS(GNSS_Work_Mode_t mode, Cmd_Status_t status)
     return false;
 }
 
-static bool TurnOffGNSS()
+bool TurnOffGNSS(void)
 {
     char cmd[LEN_BYTE_SZ16+1] = "";
     strncpy(cmd, GNSS_TURN_OFF, LEN_BYTE_SZ16);
 
+    if (SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 10)){
+        return true;
+    }
+    return false;
+}
+
+bool TurnTryLocate(void)
+{
+    char cmd[LEN_BYTE_SZ16+1] = "";
+    strncpy(cmd, "+QGPSLOC?", LEN_BYTE_SZ16);
+
+    if (SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 10)){
+        return true;
+    }
+    return false;
+}
+
+bool TurnOnGNSSDamon(void)
+{
+    char cmd[LEN_BYTE_SZ16+1] = "";
+    strncpy(cmd, GNSS_TURN_ON, LEN_BYTE_SZ16);
+
+    strcat(cmd, "=1");
     if (SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 10)){
         return true;
     }
@@ -1034,21 +1056,12 @@ static bool GetGNSSPositionInformation(char *position)
     return false;
 }
 
-static bool SwithToGSM(void)
-{
-    return true;
-}
-
-static bool SwithToNB(void)
-{
-    return true;
-}
-
 bool CloseTcpService(void)
 {
     const char *cmd = "+QICLOSE=0";
 
     if(SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
+        gs_net_sta = 0x80;
         return true;
     }
     return false;
@@ -1123,68 +1136,33 @@ bool QueryNetMode(void)
 static bool SetAutoNetMode(void)
 {
     const char *cmd;
-#if 0
-    cmd = "+CGMM";
+
+    cmd = "+QCFG=\"NWSCANSEQ\"";;
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+    cmd = "+QCFG=\"NWSCANMODE\"";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+    cmd = "+QCFG=\"IOTOPMODE\"";
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
         return false;
     }
 
-    cmd = "+CGMR";
+    cmd = "+QCFG=\"BAND\",F,400A0E189F,A0E189F,1";
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
         return false;
     }
 
-    cmd = "+QCFG=\"bip/auth\",1";
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        // return false;
-    }
-
-    cmd = "+QNVFW=\"/nv/item_files/modem/uim/gstk/proactive_feature_enable_cfg\",7FFFFF7F";
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-    cmd = "+QNVW=6253,0,\"01\"";
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-
-    cmd = "+QSIMDET=0,1";
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-#endif
-   cmd = "+QCFG=\"NWSCANSEQ\"";;
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-   cmd = "+QCFG=\"NWSCANMODE\"";
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-   cmd = "+QCFG=\"IOTOPMODE\"";
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-
-   cmd = "+QCFG=\"BAND\",F,400A0E189F,A0E189F,1";
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-
-   // 00-Automatic = 020301
-   // 01-GSM
-   // 02-LTE CAT M1
-   // 03-LTE CAT NB1
+    // 00-Automatic = 020301
+    // 01-GSM
+    // 02-LTE CAT M1
+    // 03-LTE CAT NB1
     cmd = "+QCFG=\"NWSCANSEQ\",030201,1";
 //    cmd = "+QCFG=\"NWSCANSEQ\",03,1";
 
@@ -1216,20 +1194,6 @@ static bool SetAutoNetMode(void)
         return false;
     }
 
-    cmd = "+QNWINFO";
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-    
-    GetDevSimICCID();
-
-    cmd = "+QINISTAT";
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-
     return true;
 }
 
@@ -1248,8 +1212,6 @@ bool BG96ATInitialize(void)
     if (trycnt < 1) {
         return false;
     }
-
-    SwithToGSM();
 
     SetAutoNetMode();
 
@@ -1354,7 +1316,7 @@ bool ConnectToTcpServer(u8* svr_ip, u8* svr_port, u8* svr_apn)
 
     trycnt = 10;
     while(trycnt--) {
-        if (OpenSocketService(comm_pdp_index, comm_socket_index, socket, (char *)svr_ip, atoi((char *)svr_port), 0, DIRECT_PUSH_MODE)){
+        if (OpenSocketService(comm_pdp_index, comm_socket_index, socket, (char *)svr_ip, (char *)svr_port, 0, DIRECT_PUSH_MODE)){
             break;
         }
 
@@ -1395,7 +1357,8 @@ bool OpenFtpSession(unsigned int pdp_index, u8* ftp_ip, u8* ftp_port)
     memset(cmd, '\0', LEN_BYTE_SZ64);
     strncpy(cmd, FTP_CONFIG_PARAMETER, LEN_BYTE_SZ64);
     // strcat(cmd, "=\"account\",\"lide\",\"Lide2019!@#\"");    
-    strcat(cmd, "=\"account\",\"Administrator\",\"AInijia88443628._\"");
+    // strcat(cmd, "=\"account\",\"Administrator\",\"AInijia88443628._\"");
+    strcat(cmd, "=\"account\",\"upgrade\",\"SentineL_UpFm_Ftp\"");
     if(!SendAndSearch_multi(cmd, RESPONSE_OK, RESPONSE_ERROR, 2)){
         return false;
     }

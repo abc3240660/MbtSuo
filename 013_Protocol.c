@@ -23,7 +23,7 @@
 #include "016_FlashOta.h"
 
 // ring times = X / 2
-u8 g_ring_times = 0;// 6-DD 200-Alarm
+u8 g_ring_times = 6;// 6-DD 200-Alarm
 static u8 special_test = 0;
 
 static const char* cmd_list[] = {
@@ -101,7 +101,8 @@ static u32 gs_ftp_offset = 0;
 //static u8 gs_ftp_ip[LEN_NET_TCP]  = "122.4.233.119";
 //static u8 gs_ftp_port[LEN_NET_TCP] = "10218";
 
-static u8 gs_ftp_ip[LEN_NET_TCP+1]  = "101.132.150.94";
+// "101.132.150.94" "21"
+static u8 gs_ftp_ip[LEN_NET_TCP+1]  = "192.168.1.105";
 static u8 gs_ftp_port[LEN_NET_TCP+1] = "21";
 
 // TODO: Need to reset into 0 if IAP failed for ReIAP Request
@@ -767,7 +768,8 @@ bool TcpReQueryGPS(void)
     // #MOBIT,868446032285351,GGEO,51.106922|3.702681|20|180,0,Re,e10adc3949ba59abbe56e057f20f883e$
 
     if (0 == strlen(gs_gnss_part)) {
-        gs_gnss_part[0] = 'F';
+        //gs_gnss_part[0] = 'F';
+        strcpy(gs_gnss_part, "F|F|F|F");
     }
 
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
@@ -1302,6 +1304,7 @@ void ProcessTcpServerCommand(void)
 {
     // during download mode, skip other operations
     // till download success or failed
+#if 0
     if (gs_iap_waiting != 0) {
         DoFtpIAP();
 
@@ -1318,6 +1321,7 @@ void ProcessTcpServerCommand(void)
 
         return;
     }
+#endif
 
     unsigned long temp = 1;
 

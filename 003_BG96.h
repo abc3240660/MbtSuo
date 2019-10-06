@@ -308,6 +308,11 @@ bool BG96TcpSendHead(unsigned int socket_index, Socket_Type_t socket);
 u32 GetFTPFileSize(u8* iap_file);
 void BG96_PowerUp(void);
 bool QueryNetMode(void);
+void GetGPSInfo(char* gnss_part);
+bool TurnOnGNSS(GNSS_Work_Mode_t mode, Cmd_Status_t status);
+bool TurnOffGNSS(void);
+bool TurnTryLocate(void);
+bool TurnOnGNSSDamon(void);
 
 #endif //__BG96_H
 

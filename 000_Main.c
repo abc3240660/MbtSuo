@@ -66,8 +66,8 @@ int main(void)
 //    GPIOB_Init();
     Configure_Tick_10ms();
     Configure_Tick2_10ms();
-    Configure_Tick3_10ms();
-    Configure_Tick4_10ms();
+//    Configure_Tick3_10ms();
+//    Configure_Tick4_10ms();
 
 #ifndef DEMO_BOARD
     CLRC663_PowerUp();
@@ -84,6 +84,16 @@ int main(void)
     Uart2_Init();
     Uart3_Init();
     Uart4_Init();
+
+#if 0
+    TurnOffGNSS();
+    TurnOnGNSSDamon();
+
+    while(1) {
+        TurnTryLocate();
+        delay_ms(5000);
+    }
+#endif
 
 #if 0
 //    LB1938_Init();
