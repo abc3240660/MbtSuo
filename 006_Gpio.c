@@ -176,18 +176,18 @@ RD4 -> LED_BLUE
 
 void LEDs_AllON(void)
 {
-    LATD |= ~0xFF81;// Output Value:0-OFF 1-ON
+    LATD |= ~0xFF8F;// Output Value:0-OFF 1-ON
 }
 
 void LEDs_AllOff(void)
 {
-    LATD &= 0xFF81;// Output Value:0-OFF 1-ON
+    LATD &= 0xFF8F;// Output Value:0-OFF 1-ON
 }
 
 void LEDs_Init(void)
 {
     // config RD1/2/3/4/5/6 into output
-    TRISD &= 0xFF81;// Direction:0-OUT 1-IN
+    TRISD &= 0xFF8F;// Direction:0-OUT 1-IN
 
     // ON all to indicate powerup
     LEDs_AllON();

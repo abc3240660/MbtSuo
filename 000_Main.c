@@ -38,6 +38,8 @@ u8 g_svr_ip[LEN_NET_TCP+1]  = "192.168.1.105";
 u8 g_svr_port[LEN_NET_TCP+1] = "10212";// 10211-TCP 10212-UDP
 u8 g_svr_apn[LEN_NET_TCP+1] = "sentinel.m2mmobi.be";
 
+extern u8 g_ring_times;
+
 /*
 static void __delay_usx(uint16_t ms)
 {
@@ -50,6 +52,7 @@ static void __delay_usx(uint16_t ms)
 
 int main(void)
 {
+    u8 nfc_ret = 0;
     u8 net_sta = 0;
 //    u32 boot_times = 0;
 
@@ -64,10 +67,11 @@ int main(void)
 
     System_Config();
 //    GPIOB_Init();
+    LEDs_Init();
     Configure_Tick_10ms();
     Configure_Tick2_10ms();
 //    Configure_Tick3_10ms();
-//    Configure_Tick4_10ms();
+    Configure_Tick4_10ms();
 
 #ifndef DEMO_BOARD
     CLRC663_PowerUp();
@@ -159,17 +163,30 @@ int main(void)
     }
 #endif
 
-#if 0// CLRC663 LOOP Testing
+#if 1// CLRC663 LOOP Testing
+    LEDs_AllOff();
+
     while(1)
     {
 //        GPIOx_Output(BANKE, 7, 0);// IFSEL1 Low
 //        delay_ms(1000);
 //        GPIOx_Output(BANKE, 7, 1);// IFSEL1 Low
 //        Uart3_Putc(0xFF);
-        ReadMobibNFCCard();
+        nfc_ret = ReadMobibNFCCard();
+        if (0 == nfc_ret) {
+            g_ring_times = 2;
+        }
 //        read_iso14443A_nfc_card();
 
-        delay_ms(2000);
+        if (0 == nfc_ret) {
+            LEDs_AllON();
+        }
+        delay_ms(1000);
+
+        if (0 == nfc_ret) {
+            LEDs_AllOff();
+        }
+        delay_ms(1000);
     }
 #endif
 
