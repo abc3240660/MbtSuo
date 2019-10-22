@@ -74,9 +74,10 @@ void Uart1_Init(void)
     _TRISD1 = 1;
     _TRISD3 = 0;
 
+    // BRGH = 1
     U1MODE = 0X8808;
     U1STA = 0X2400;
-    // 4M/(34+1) = 114285
+    // 10M/(21+1) = 114285
     U1BRG = 0x15;
 #endif
 

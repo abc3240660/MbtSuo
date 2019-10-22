@@ -39,6 +39,8 @@ void Configure_Tick_10ms(void)
 #if 0//ndef OSC_20M_USE
     T1CONbits.TCKPS = 2;  // Select 1:64 Prescaler
     TMR1 = 0x00;          // Clear timer register
+    // Fcy = Fosc/2 = 16M
+    // 2500*(1/(16M/64)) = 2500*4us = 10ms
     PR1 = 2500;           // Load the period value
     IPC0bits.T1IP = T1IPL;// Set Timer 1 Interrupt Priority Level
     IFS0bits.T1IF = 0;    // Clear Timer 1 Interrupt Flag
@@ -46,6 +48,8 @@ void Configure_Tick_10ms(void)
     T1CONbits.TON = 1;    // Start Timer
 #else
     TMR1 = 0x00;                // Clear timer register
+    // Fcy = Fosc/2 = 10M
+    // 390*(1/(10M/256)) = 9984us = 10ms
     PR1 = 0x186;                //Period = 0.0100096 s; Frequency = 10000000 Hz; PR1 390;
     T1CON = 0x8030;             //TCKPS 1:256; TON enabled; TSIDL disabled; TCS FOSC/2; TECS SOSC; TSYNC disabled; TGATE disabled;
     IFS0bits.T1IF = false;
@@ -130,6 +134,30 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
         MobitTimesT1 = 0;
     }
 
+    if (GetLedsStatus(MAIN_LED_B)) {
+        if (0 == (MobitTimesT1%2)) {
+            LEDs_Ctrl(MAIN_LED_B, LED_ON);
+        } else {
+            LEDs_Ctrl(MAIN_LED_B, LED_OFF);
+        }
+    }
+
+    if (GetLedsStatus(MAIN_LED_R)) {
+        if (0 == (MobitTimesT1%2)) {
+            LEDs_Ctrl(MAIN_LED_R, LED_ON);
+        } else {
+            LEDs_Ctrl(MAIN_LED_R, LED_OFF);
+        }
+    }
+
+    if (GetLedsStatus(MAIN_LED_G)) {
+        if (0 == (MobitTimesT1%2)) {
+            LEDs_Ctrl(MAIN_LED_G, LED_ON);
+        } else {
+            LEDs_Ctrl(MAIN_LED_G, LED_OFF);
+        }
+    }
+
 #if 0
     if (GetNetStatus() != 0x81) {
         if (0 == (MobitTimesT1%21)) {
@@ -141,7 +169,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
         }
     }
 #endif
-    
+
 //    if (0 == MobitTimesT1%1000) {
 //        printf("1000 count...\n");
 //    }

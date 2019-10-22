@@ -66,12 +66,12 @@ int main(void)
     GPIOx_Output(BANKB, 13, 0);
 
     System_Config();
-//    GPIOB_Init();
+    GPIOB_Init();
     LEDs_Init();
     Configure_Tick_10ms();
     Configure_Tick2_10ms();
 //    Configure_Tick3_10ms();
-    Configure_Tick4_10ms();
+//    Configure_Tick4_10ms();
 
 #ifndef DEMO_BOARD
     CLRC663_PowerUp();

@@ -20,12 +20,12 @@ extern "C" {
 #endif
 
 typedef enum {
-    MAIN_LED_R = 0,
-    MAIN_LED_G,
-    MAIN_LED_B,
-    EXTE_LED_R,
+    EXTE_LED_B = 1,
     EXTE_LED_G,
-    EXTE_LED_B,
+    EXTE_LED_R,
+    MAIN_LED_B,
+    MAIN_LED_R,
+    MAIN_LED_G,
 } LED_INDEX;
 
 typedef enum {
@@ -47,11 +47,18 @@ typedef enum {
     INPUT_DIR,
 } GPIO_DIR;
 
+typedef enum {
+    PULL_DOWN = 0,
+    PULL_UP,
+} GPIO_PUL;
+
 void GPIOB_Init(void);
 void GPIOB_SetPin(short pin,char value);
 void GPIOx_Config(GPIO_BANKx port, u8 pin, GPIO_DIR dir);
 void GPIOx_Output(GPIO_BANKx port, u8 pin, u8 value);
 u8 GPIOx_Input(GPIO_BANKx port, u8 pin);
+u8 GetLedsStatus(LED_INDEX led_id);
+void SetLedsStatus(LED_INDEX led_id, LED_STA led_sta);
 
 void LEDs_Init(void);
 void LEDs_Ctrl(LED_INDEX led_id,LED_STA led_sta);

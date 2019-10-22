@@ -15,6 +15,8 @@
 
 #include "006_Gpio.h"
 
+u8 gs_leds_sta = 0;
+
 void GPIOB_Init(void)
 {
 #ifdef DEMO_BOARD
@@ -23,12 +25,6 @@ void GPIOB_Init(void)
     // AD1PCFGL |= 0x000F;
     LATB |= 0X0000;// Output Value:0-OFF 1-ON
     TRISB &= 0XFF00;// Direction:0-OUT 1-IN
-#else
-    CM2CON = 0;
-    ODCD &= 0xFFF0;// Open-Drain Control
-    // AD1PCFGL |= 0x000F;
-    LATD |= 0X0000;// Output Value:0-OFF 1-ON
-    TRISD &= 0X0000;// Direction:0-OUT 1-IN
 #endif
 }
 
@@ -41,12 +37,6 @@ void GPIOB_SetPin(short pin,char value)
         LATB |= (1<<pin);
     }else{
         LATB &= ~(1<<pin);
-    }
-#else
-    if(value){
-        LATD |= (1<<pin);
-    }else{
-        LATD &= ~(1<<pin);
     }
 #endif
 }
@@ -88,6 +78,59 @@ void GPIOx_Config(GPIO_BANKx port, u8 pin, GPIO_DIR dir)
             TRISG |= (1<<pin);
         } else {
             TRISG &= ~(1<<pin);
+        }
+    }
+}
+
+void GPIOx_Pull(GPIO_BANKx port, u8 pin, GPIOx_PUL value)
+{
+    if (BANKB == port) {
+        if(PULL_UP == value){
+            IOCPDB &= ~(1<<pin);
+            IOCPUB |= (1<<pin);
+        } else {
+            IOCPUB &= ~(1<<pin);
+            IOCPDB |= (1<<pin);
+        }
+    } else if (BANKC == port) {
+        if(PULL_UP == value){
+            IOCPDC &= ~(1<<pin);
+            IOCPUC |= (1<<pin);
+        } else {
+            IOCPUC &= ~(1<<pin);
+            IOCPDC |= (1<<pin);
+        }
+    } else if (BANKD == port) {
+        if(PULL_UP == value){
+            IOCPDD &= ~(1<<pin);
+            IOCPUD |= (1<<pin);
+        } else {
+            IOCPUD &= ~(1<<pin);
+            IOCPDD |= (1<<pin);
+        }
+    } else if (BANKE == port) {
+        if(PULL_UP == value){
+            IOCPDE &= ~(1<<pin);
+            IOCPUE |= (1<<pin);
+        } else {
+            IOCPUE &= ~(1<<pin);
+            IOCPDE |= (1<<pin);
+        }
+    } else if (BANKF == port) {
+        if(PULL_UP == value){
+            IOCPDF &= ~(1<<pin);
+            IOCPUF |= (1<<pin);
+        } else {
+            IOCPUF ~(1<<pin);
+            IOCPDF |= (1<<pin);
+        }
+    } else if (BANKG == port) {
+        if(PULL_UP == value){
+            IOCPDG &= ~(1<<pin);
+            IOCPUG |= (1<<pin);
+        } else {
+            IOCPUG &= ~(1<<pin);
+            IOCPDG |= (1<<pin);
         }
     }
 }
@@ -176,18 +219,33 @@ RD4 -> LED_BLUE
 
 void LEDs_AllON(void)
 {
-    LATD |= ~0xFF8F;// Output Value:0-OFF 1-ON
+    // Output Value:0-OFF 1-ON
+    // LEDs_Ctrl(MAIN_LED_B, LED_ON);
+    // LEDs_Ctrl(MAIN_LED_R, LED_ON);
+    // LEDs_Ctrl(MAIN_LED_G, LED_ON);
+    SetLedsStatus(MAIN_LED_B, LED_ON);
+    SetLedsStatus(MAIN_LED_R, LED_ON);
+    SetLedsStatus(MAIN_LED_G, LED_ON);
 }
 
 void LEDs_AllOff(void)
 {
-    LATD &= 0xFF8F;// Output Value:0-OFF 1-ON
+    // Output Value:0-OFF 1-ON
+    SetLedsStatus(MAIN_LED_B, LED_OFF);
+    SetLedsStatus(MAIN_LED_R, LED_OFF);
+    SetLedsStatus(MAIN_LED_G, LED_OFF);
+
+    delay_ms(1000);
+    LEDs_Ctrl(MAIN_LED_B, LED_OFF);
+    LEDs_Ctrl(MAIN_LED_R, LED_OFF);
+    LEDs_Ctrl(MAIN_LED_G, LED_OFF);
 }
 
 void LEDs_Init(void)
 {
-    // config RD1/2/3/4/5/6 into output
-    TRISD &= 0xFF8F;// Direction:0-OUT 1-IN
+    GPIOx_Config(BANKD, MAIN_LED_B, OUTPUT_DIR);
+    GPIOx_Config(BANKD, MAIN_LED_R, OUTPUT_DIR);
+    GPIOx_Config(BANKD, MAIN_LED_G, OUTPUT_DIR);
 
     // ON all to indicate powerup
     LEDs_AllON();
@@ -203,7 +261,6 @@ void LEDs_Ctrl(LED_INDEX led_id,LED_STA led_sta)
         LATD &= (~1<<led_id);
     }
 }
-
 
 void InOutPurpose_Init(void)
 {
@@ -276,4 +333,28 @@ void InOutPurpose_Init(void)
     // OUT: RG9 for TouchPad: sensitivity PWM
     // XX:  RG10~RG15 for unused
     TRISG &= 0xFF81;// Direction:0-OUT 1-IN
+}
+
+void Charge_Init(void)
+{
+    // Charge Status
+    GPIOx_Pull(BANKF, 2, PULL_UP);
+    GPIOx_Config(BANKF, 2, INPUT_DIR);
+
+    // Charge Enable
+    GPIOx_Config(BANKG, 3, OUTPUT_DIR);
+}
+
+u8 GetLedsStatus(LED_INDEX led_id)
+{
+    return (gs_leds_sta&(1<<led_id)) ? 1 : 0;
+}
+
+void SetLedsStatus(LED_INDEX led_id, LED_STA led_sta)
+{
+    if (LED_ON == led_sta) {
+        gs_leds_sta |= (1<<led_id);
+    } else {
+        gs_leds_sta &= ~(1<<led_id);
+    }
 }
