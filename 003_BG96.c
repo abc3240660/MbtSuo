@@ -1199,7 +1199,7 @@ static bool SetAutoNetMode(void)
 
 bool BG96ATInitialize(void)
 {
-    u8 trycnt = 10;
+    int trycnt = 10;
 
     printf("This is the Mobit Debug Serial!\n");
 
@@ -1213,9 +1213,7 @@ bool BG96ATInitialize(void)
         return false;
     }
 
-    SetAutoNetMode();
-
-    trycnt = 10;
+    trycnt = 50;
     while(trycnt--) {
         if (true == QueryNetStatus()) {
             break;
@@ -1223,6 +1221,8 @@ bool BG96ATInitialize(void)
     }
 
     if (trycnt < 1) {
+        SetAutoNetMode();
+        asm("reset");
         return false;
     }
 

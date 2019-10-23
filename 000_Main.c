@@ -50,13 +50,19 @@ static void __delay_usx(uint16_t ms)
 }
 */
 
+#define GPS_DEBUG 1
+
 int main(void)
 {
     u8 nfc_ret = 0;
     u8 net_sta = 0;
 //    u32 boot_times = 0;
 
+#ifdef GPS_DEBUG
+    u16 hbeat_gap = 5;
+#else
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
+#endif
 
     unsigned long task_cnt = 0;
 
@@ -71,7 +77,7 @@ int main(void)
     Configure_Tick_10ms();
     Configure_Tick2_10ms();
 //    Configure_Tick3_10ms();
-    Configure_Tick4_10ms();
+//    Configure_Tick4_10ms();
 
 #ifndef DEMO_BOARD
     CLRC663_PowerUp();
@@ -163,7 +169,8 @@ int main(void)
     }
 #endif
 
-#if 1// CLRC663 LOOP Testing
+    LEDs_AllOff();
+#if 0// CLRC663 LOOP Testing
     LEDs_AllOff();
 
     while(1)
@@ -274,6 +281,10 @@ int main(void)
             if (start_time_hbeat != 0) {
                 if (isDelayTimeout(start_time_hbeat,hbeat_gap*1000UL)) {
                     start_time_hbeat = GetTimeStamp();
+#ifdef GPS_DEBUG
+                    DoQueryGPSFast();
+                    TcpReportGPS(void);
+#endif
                     TcpHeartBeat();
                 }
             }
