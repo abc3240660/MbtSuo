@@ -60,6 +60,7 @@ u8 g_devzone_str[LEN_COMMON_USE+1] = "";
 
 u8 g_imei_str[LEN_COMMON_USE+1] = "";
 u8 g_iccid_str[LEN_COMMON_USE+1] = "";
+u8 g_rssi_str[LEN_COMMON_USE+1] = "";
 u8 g_net_mode[LEN_COMMON_USE+1] = "";
 
 void InitRingBuffers(void)
@@ -538,6 +539,39 @@ static bool DevSimPIN(char *pin, Cmd_Status_t status)
             return true;
         }
     }
+    return false;
+}
+
+bool GetDevRSSI(void)
+{
+    u8 i = 0;
+    u8 len = 0;
+
+    memset(g_rssi_str, 0, LEN_COMMON_USE);
+
+    g_rssi_str[0] = 'F';
+    if (SUCCESS_RESPONSE == SendAndSearch(DEV_NET_RSSI, RESPONSE_OK, 2)) {
+        char *sta_buf = SearchStrBuffer(": ");
+
+        len = strlen(sta_buf);
+        for (i=0; i<LEN_COMMON_USE; i++) {
+
+            if (i > len) {
+                break;
+            }
+
+            if (',' == sta_buf[i+2]) {
+                break;
+            }
+
+            g_rssi_str[i] = sta_buf[i+2];
+        }
+
+        printf("g_rssi_str = %s\n", g_rssi_str);
+
+        return true;
+    }
+
     return false;
 }
 

@@ -120,11 +120,15 @@ static u8 gs_addordel_cards[LEN_BYTE_SZ512+1] = {0};
 
 static char gs_one_tcpcmds[RX_RINGBUF_MAX_LEN+1] = {0};
 
+// 0-opened 1-closed
+static u8 gs_lock_sta = 0;
+
 // --
 // ---------------------- global variables -------------------- //
 // --
 extern u8 g_imei_str[LEN_COMMON_USE+1];
 extern u8 g_iccid_str[LEN_COMMON_USE+1];
+extern u8 g_rssi_str[LEN_COMMON_USE+1];
 
 extern u8 g_devtime_str[LEN_COMMON_USE+1];
 extern u8 g_devzone_str[LEN_COMMON_USE+1];
@@ -484,10 +488,23 @@ void ParseMobitMsg(char* msg)
 // ============================================ DEV TCP Host ============================================ //
 bool TcpHeartBeat(void)
 {
+    u32 bat_vol = 0;
+    u8 vol_str[8] = "";
     // const char send_data[] = "#MOBIT,868446032285351,HB,4.0,1,20,e10adc3949ba59abbe56e057f20f883e$";
 
+    if (GetBatteryVoltage(&bat_vol)) {
+        if ((bat_vol>=0) && (bat_vol<=1023)) {
+            sprintf(vol_str, "%d\.%d", (((bat_vol*2*330)/1024)%1000)/100, (((bat_vol*2*330)/1024)%100)/10);
+        } else {
+            strcpy((char*)vol_str, "F");
+        }
+    } else {
+        strcpy((char*)vol_str, "F");
+    }
+
+    GetDevRSSI();
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s$%s", g_imei_str, CMD_HEART_BEAT, "4.0", "1", "20", gs_communit_key);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%d,%s$%s", g_imei_str, CMD_HEART_BEAT, vol_str, gs_lock_sta, g_rssi_str, gs_communit_key);
 
 //    EncodeTcpPacket((u8*)tcp_send_buf);
 //    memset(tcp_send_buf, 0, LEN_MAX_SEND);
@@ -499,16 +516,28 @@ bool TcpHeartBeat(void)
 
 bool TcpDeviceRegister(void)
 {
+    u32 bat_vol = 0;
+    u8 vol_str[8] = "";
     // const char send_data[] = "#MOBIT,868446032285351,REG,898602B4151830031698,1.0.0,1.0.0,4.0,1561093302758,2,e10adc3949ba59abbe56e057f20f883e$";
 
 //    CalcRegisterKey();
 
-    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    
     if (0 == strlen((const char*)g_net_mode)) {
         strcpy((char*)g_net_mode, "CAT-NB1");
     }
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,%s,%s,%s,%s$%s", g_imei_str, CMD_DEV_REGISTER, g_iccid_str, HW_VER, SW_VER, "4.0", g_devtime_str, g_devzone_str, g_net_mode, gs_communit_key);
+
+    if (GetBatteryVoltage(&bat_vol)) {
+        if ((bat_vol>=0) && (bat_vol<=1023)) {
+            sprintf(vol_str, "%d\.%d", (((bat_vol*2*330)/1024)%1000)/100, (((bat_vol*2*330)/1024)%100)/10);
+        } else {
+            strcpy((char*)vol_str, "F");
+        }
+    } else {
+        strcpy((char*)vol_str, "F");
+    }
+
+    memset(tcp_send_buf, 0, LEN_MAX_SEND);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,%s,%s,%s,%s,%s$%s", g_imei_str, CMD_DEV_REGISTER, g_iccid_str, HW_VER, SW_VER, vol_str, g_devtime_str, g_devzone_str, g_net_mode, gs_communit_key);
 
 //    EncodeTcpPacket((u8*)tcp_send_buf);
 
@@ -558,7 +587,7 @@ bool TcpReportGPS(void)
     }
 
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,Re$%s", g_imei_str, CMD_REPORT_GPS, gs_gnss_part, "0", gs_communit_key);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s$%s", g_imei_str, CMD_REPORT_GPS, gs_gnss_part, "0", gs_communit_key);
 
 //    EncodeTcpPacket((u8*)tcp_send_buf);
 
@@ -566,6 +595,12 @@ bool TcpReportGPS(void)
 //    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%s,Re,%s$", g_imei_str, CMD_REPORT_GPS, gs_gnss_part, "0", gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
+}
+
+void ReportInvalidMovingAlarm(void)
+{
+    TcpInvalidMovingAlarm();
+    TcpReportGPS();
 }
 
 bool TcpInvalidMovingAlarm(void)
@@ -581,6 +616,12 @@ bool TcpInvalidMovingAlarm(void)
 //    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_INVALID_MOVE, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
+}
+
+void ReportRiskAlarm(void)
+{
+    TcpRiskAlarm();
+    TcpReportGPS();
 }
 
 bool TcpRiskAlarm(void)
@@ -1389,6 +1430,7 @@ void ProcessTcpServerCommand(void)
 
                         if (run_ret) {
                             TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("1"));
+                            ReportLockerUnlocked();
                         } else {
                             TcpReNormalAck((u8*)(cmd_list[i]), (u8*)("0"));
                         }
@@ -1423,6 +1465,7 @@ void ProcessTcpServerCommand(void)
         if (start_time_unlocked != 0) {
             if (isDelayTimeout(start_time_unlocked,10*1000UL)) {
                 TcpLockerUnlocked();
+                TcpReportGPS();
                 // TODO: delete this test
                 gs_till_svr_ack = 0;
             }
