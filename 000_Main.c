@@ -202,12 +202,13 @@ int main(void)
     
     LEDs_AllOff();
 
-#if 1
+#if 0
     while(1) {
         if(ADC0_GetValue(&adcValue)){
-            printf("ADC1:%ld\r\n",adcValue);
+            printf("ADC0:%ld\r\n",adcValue);
         }
         
+        printf("test...\n");
         delay_ms(5000);
     }
 #endif
@@ -265,12 +266,8 @@ int main(void)
     InitRingBuffers();
     printf("XApplication running...\r\n");
 #endif
-    
-    // Diable Beep
-    GPIOx_Config(BANKB, 13, OUTPUT_DIR);// Beep
-    GPIOx_Output(BANKB, 13, 0);
 
-#if 1// BNO055 Testing
+#if 0// BNO055 Testing
     GPIOx_Config(BANKC, 13, OUTPUT_DIR);// BNO055
     GPIOx_Config(BANKC, 14, OUTPUT_DIR);// BNO055
     GPIOx_Output(BANKC, 13, 1);
@@ -351,7 +348,9 @@ int main(void)
             asm("reset");
         }
 
+#ifndef GPS_DEBUG
         hbeat_gap = GetHeartBeatGap();
+#endif
         net_sta = GetNetStatus();
 
         if (1 == IsApnChangeWait()) {

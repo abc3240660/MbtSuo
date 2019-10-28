@@ -1,4 +1,6 @@
+#include <stdio.h>
 #include "xc.h"
+#include "001_Tick_10ms.h"
 #include "019_ADC0.h"
 
 void ADC0_Init(void)
@@ -80,19 +82,30 @@ void ADC0_Init(void)
 
 bool ADC0_GetValue(uint32_t *value)
 {
+    uint8_t trycnt = 30;
     uint16_t Value100=0;
-    AD1CON1bits.SAMP = 1;
-    if(_AD1IF)
-    {
-        _AD1IF = 0 ;
-        Value100 = ADC1BUF0 ;
-//        *value = Value100 * 330/1024 ;
-//        *value = *value + *value; 
-        *value = Value100; 
+    
+    while(trycnt--) {
+        AD1CON1bits.SAMP = 1;
+        if(_AD1IF)
+        {
+            _AD1IF = 0 ;
+            Value100 = ADC1BUF0 ;
+
+            printf("ADC Value = %d\n", Value100);
+
+    //        *value = Value100 * 330/1024 ;
+    //        *value = *value + *value; 
+            *value = Value100; 
+            AD1CON1bits.SAMP = 0;
+            return true;
+        }
         AD1CON1bits.SAMP = 0;
-        return true;
+        
+        printf("try again...\n");
+        delay_ms(100);
     }
-    AD1CON1bits.SAMP = 0;
+    
     return false;
 }
 
