@@ -1198,7 +1198,7 @@ static bool SetAutoNetMode(void)
     // 02-LTE CAT M1
     // 03-LTE CAT NB1
     cmd = "+QCFG=\"NWSCANSEQ\",030201,1";
-//    cmd = "+QCFG=\"NWSCANSEQ\",03,1";
+//    cmd = "+QCFG=\"NWSCANSEQ\",02,1";
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
         return false;
@@ -1207,9 +1207,11 @@ static bool SetAutoNetMode(void)
     // 0-Automatic
     // 1-GSM Only
     // 3-LTE Only
+//   cmd = "+QCFG=\"NWSCANMODE\",1,1";
    cmd = "+QCFG=\"NWSCANMODE\",0,1";
+//   cmd = "+QCFG=\"NWSCANMODE\",3,1";
 
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+   if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
         return false;
     }
 
@@ -1246,6 +1248,10 @@ bool BG96ATInitialize(void)
     if (trycnt < 1) {
         return false;
     }
+
+    delay_ms(10000);
+
+    QueryNetMode();
 
     trycnt = 50;
     while(trycnt--) {

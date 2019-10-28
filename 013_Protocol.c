@@ -12,12 +12,14 @@
 #include <stdio.h>
 #include <string.h>
 
+
 #include "001_Tick_10ms.h"
 #include "003_BG96.h"
 #include "004_LB1938.h"
 #include "006_GPIO.h"
 #include "007_Uart.h"
 #include "012_CLRC663_NFC.h"
+#include "019_ADC0.h"
 #include "013_Protocol.h"
 #include "014_Md5.h"
 #include "016_FlashOta.h"
@@ -488,13 +490,17 @@ void ParseMobitMsg(char* msg)
 // ============================================ DEV TCP Host ============================================ //
 bool TcpHeartBeat(void)
 {
+    u32 tmp_vol1 = 0;
+    u32 tmp_vol2 = 0;
     u32 bat_vol = 0;
     u8 vol_str[8] = "";
     // const char send_data[] = "#MOBIT,868446032285351,HB,4.0,1,20,e10adc3949ba59abbe56e057f20f883e$";
 
-    if (GetBatteryVoltage(&bat_vol)) {
+    if (ADC0_GetValue(&bat_vol)) {
         if ((bat_vol>=0) && (bat_vol<=1023)) {
-            sprintf(vol_str, "%d\.%d", (((bat_vol*2*330)/1024)%1000)/100, (((bat_vol*2*330)/1024)%100)/10);
+            tmp_vol1 = (((bat_vol*2*330)/1024)%1000)/100;
+            tmp_vol2 = (((bat_vol*2*330)/1024)%100)/10;
+            sprintf((char*)vol_str, "%ld.%ld", tmp_vol1, tmp_vol2);
         } else {
             strcpy((char*)vol_str, "F");
         }
@@ -516,6 +522,8 @@ bool TcpHeartBeat(void)
 
 bool TcpDeviceRegister(void)
 {
+    u32 tmp_vol1 = 0;
+    u32 tmp_vol2 = 0;
     u32 bat_vol = 0;
     u8 vol_str[8] = "";
     // const char send_data[] = "#MOBIT,868446032285351,REG,898602B4151830031698,1.0.0,1.0.0,4.0,1561093302758,2,e10adc3949ba59abbe56e057f20f883e$";
@@ -526,9 +534,11 @@ bool TcpDeviceRegister(void)
         strcpy((char*)g_net_mode, "CAT-NB1");
     }
 
-    if (GetBatteryVoltage(&bat_vol)) {
+    if (ADC0_GetValue(&bat_vol)) {
         if ((bat_vol>=0) && (bat_vol<=1023)) {
-            sprintf(vol_str, "%d\.%d", (((bat_vol*2*330)/1024)%1000)/100, (((bat_vol*2*330)/1024)%100)/10);
+            tmp_vol1 = (((bat_vol*2*330)/1024)%1000)/100;
+            tmp_vol2 = (((bat_vol*2*330)/1024)%100)/10;
+            sprintf((char*)vol_str, "%ld.%ld", tmp_vol1, tmp_vol2);
         } else {
             strcpy((char*)vol_str, "F");
         }
@@ -583,7 +593,7 @@ bool TcpReportGPS(void)
     // #MOBIT,868446032285351,GEO,51.106922|3.702681|20|180,0,e10adc3949ba59abbe56e057f20f883e$
 
     if (0 == strlen(gs_gnss_part)) {
-        gs_gnss_part[0] = 'F';
+        strcpy(gs_gnss_part, "F|F|F|F");
     }
 
     memset(tcp_send_buf, 0, LEN_MAX_SEND);

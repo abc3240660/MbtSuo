@@ -166,6 +166,7 @@ void print_card_ID(uint8_t* buf, uint8_t bufsize, u8* card_id, u8* serial_nr)
  //   print_card_ID_block(buf, bufsize);
 }
 
+#if 0
 void read_iso14443A_nfc_card(){ 
   CLRC663_configure_communication_protocol(CLRC630_PROTO_ISO14443A_106_MILLER_MANCHESTER); // Configure CLRC663
 
@@ -195,6 +196,7 @@ void read_iso14443A_nfc_card(){
     }
   }
 }
+#endif
 
 u8 read_iso14443B_nfc_card(u8* card_id, u8* serial_nr)
 {

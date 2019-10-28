@@ -382,7 +382,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T3Interrupt(void)
     IFS0bits.T3IF = 0;// Clear Timer1 interrupt flag
 }
 
-static gs_beep_ring = 0;
+static u8 gs_beep_ring = 0;
 //******************************************************************************
 //* Timer 4 IRQ -> 340us
 //******************************************************************************

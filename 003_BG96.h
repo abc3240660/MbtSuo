@@ -313,6 +313,7 @@ bool TurnOnGNSS(GNSS_Work_Mode_t mode, Cmd_Status_t status);
 bool TurnOffGNSS(void);
 bool TurnTryLocate(void);
 bool TurnOnGNSSDamon(void);
+bool GetDevRSSI(void);
 
 #endif //__BG96_H
 
