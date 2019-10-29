@@ -1220,6 +1220,8 @@ static bool SetAutoNetMode(void)
 static bool DumpNetMode(void)
 {
     const char *cmd;
+    char mode_cfg[16] = "";
+    char *sta_buf = NULL;
 
     cmd = "+QCFG=\"NWSCANSEQ\"";;
 
@@ -1235,6 +1237,25 @@ static bool DumpNetMode(void)
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
         return false;
+    }
+
+    sta_buf = SearchStrBuffer(",");
+    if (sta_buf != NULL) {
+        mode_cfg[0] = sta_buf[1];
+        printf("mode_cfg = %s\n", mode_cfg);
+        
+        if (mode_cfg[0] != '2') {
+            // 0-LTE CAT M1
+            // 1-LTE Cat NB1
+            // 2-LTE Cat M1 and Cat NB1
+            cmd = "+QCFG=\"IOTOPMODE\",2,1";
+
+             if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+                 return false;
+             }
+            
+            asm("reset");
+        }
     }
 
     cmd = "+QCFG=\"BAND\"";
