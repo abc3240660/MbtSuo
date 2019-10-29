@@ -1171,22 +1171,6 @@ static bool SetAutoNetMode(void)
 {
     const char *cmd;
 
-    cmd = "+QCFG=\"NWSCANSEQ\"";;
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-    cmd = "+QCFG=\"NWSCANMODE\"";
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-    cmd = "+QCFG=\"IOTOPMODE\"";
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-
     cmd = "+QCFG=\"BAND\",F,400A0E189F,A0E189F,1";
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
@@ -1233,6 +1217,35 @@ static bool SetAutoNetMode(void)
     return true;
 }
 
+static bool DumpNetMode(void)
+{
+    const char *cmd;
+
+    cmd = "+QCFG=\"NWSCANSEQ\"";;
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+    cmd = "+QCFG=\"NWSCANMODE\"";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+    cmd = "+QCFG=\"IOTOPMODE\"";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+
+    cmd = "+QCFG=\"BAND\"";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+
+    return true;
+}
+
 bool BG96ATInitialize(void)
 {
     int trycnt = 10;
@@ -1251,6 +1264,7 @@ bool BG96ATInitialize(void)
 
     delay_ms(10000);
 
+    DumpNetMode();
     QueryNetMode();
 
     trycnt = 50;
@@ -1592,15 +1606,19 @@ void GetGPSInfo(char* gnss_part)
         if (',' == gs_gnss_pos[i]) {
             k++;
 
-            if ((2==k) || (3==k) || (7==k)) {
+            if ((2==k) || (3==k) || (4==k)) {
                 gnss_part[m++] = '|';
             }
 
             continue;
         }
 
-        if ((1==k) || (2==k) || (6==k) || (7==k)) {
+        if ((1==k) || (2==k) || (3==k) || (10==k)) {
             gnss_part[m++] = gs_gnss_pos[i];
+            if (10 == k) {
+                gnss_part[m++] = gs_gnss_pos[i+1];
+                k++;
+            }
         }
     }
 

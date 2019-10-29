@@ -510,7 +510,7 @@ bool TcpHeartBeat(void)
 
     GetDevRSSI();
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%d,%s$%s", g_imei_str, CMD_HEART_BEAT, vol_str, gs_lock_sta, g_rssi_str, gs_communit_key);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%d,%s$%s", g_imei_str, CMD_HEART_BEAT, vol_str, gs_lock_sta, g_rssi_str, g_net_mode);
 
 //    EncodeTcpPacket((u8*)tcp_send_buf);
 //    memset(tcp_send_buf, 0, LEN_MAX_SEND);

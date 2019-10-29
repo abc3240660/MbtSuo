@@ -193,7 +193,12 @@ int main(void)
 #if 0
     while(1) {
         printf("test001XApplication running......\n");
-        delay_ms(3000);
+        delay_ms(1000);
+        LEDs_AllOff();
+        delay_ms(1000);
+        LEDs_AllON();
+        delay_ms(10);
+        LEDs_AllOff();
     }
 #endif
     Uart2_Init();
@@ -400,6 +405,7 @@ int main(void)
                     DoQueryGPSFast();
                     TcpReportGPS();
 #endif
+                    QueryNetMode();
                     TcpHeartBeat();
                 }
             }
