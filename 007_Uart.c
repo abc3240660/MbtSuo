@@ -77,8 +77,7 @@ void Uart1_Init(void)
     U1MODE = 0X8808;
     U1STA = 0X2400;
     // 4M/(34+1) = 114285
-    // U1BRG = 0x15;
-    U1BRG = 34;
+    U1BRG = 0x15;
 #endif
 
     _U1TXIP = 3;

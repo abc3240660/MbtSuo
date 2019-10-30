@@ -36,7 +36,7 @@ extern u8 g_ring_times;
 //******************************************************************************
 void Configure_Tick_10ms(void)
 {
-#if 1//ndef OSC_20M_USE
+#if 0//ndef OSC_20M_USE
     T1CONbits.TCKPS = 2;  // Select 1:64 Prescaler
     TMR1 = 0x00;          // Clear timer register
     PR1 = 2500;           // Load the period value

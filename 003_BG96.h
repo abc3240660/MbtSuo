@@ -45,6 +45,7 @@ static const char DEV_NET_STATUS[] = "+CREG";
 static const char DEV_NET_STATUS_G[] = "+CGREG";
 static const char DEV_EPS_NET_STATUS[] = "+CEREG";
 static const char DEV_NET_RSSI[] = "+CSQ";
+static const char DEV_NET_MODE_RSSI[] = "+QCSQ";
 static const char DEV_NET_OPERATOR[] = "+COPS";
 static const char DEV_NET_INFORMATION[] = "+QNWINFO";
 static const char DEV_NET_PACKET_COUNTER[] = "+QGDCNT";
@@ -314,6 +315,7 @@ bool TurnOffGNSS(void);
 bool TurnTryLocate(void);
 bool TurnOnGNSSDamon(void);
 bool GetDevRSSI(void);
+bool GetDevNetModeRSSI(void);
 
 #endif //__BG96_H
 

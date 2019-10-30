@@ -575,6 +575,56 @@ bool GetDevRSSI(void)
     return false;
 }
 
+bool GetDevNetModeRSSI(void)
+{
+    u8 i = 0;
+    u8 k = 0;
+    u8 len = 0;
+    u8 item_index = 0;
+
+    memset((char*)g_net_mode, 0, LEN_COMMON_USE);
+//    memset((char*)g_rssi_str, 0, LEN_COMMON_USE);
+
+//    g_rssi_str[0] = 'F';
+    if (SUCCESS_RESPONSE == SendAndSearch(DEV_NET_MODE_RSSI, RESPONSE_OK, 2)) {
+        char *sta_buf = SearchStrBuffer(": ");
+
+        len = strlen((const char*)sta_buf);
+        for (i=0; i<LEN_COMMON_USE; i++) {
+
+            if (i > len) {
+                break;
+            }
+
+            if (',' == sta_buf[i+2]) {
+                k = 0;
+                item_index++;
+                continue;
+            }
+            
+            if (0 == item_index) {
+                if (sta_buf[i+2] != '"') {
+                    g_net_mode[k++] = sta_buf[i+2];
+                }
+            } else if (1 == item_index) {
+                if (('\r'==sta_buf[i+2]) || ('\n'==sta_buf[i+2])) {
+                    break;
+                }
+//                g_rssi_str[k++] = sta_buf[i+2];
+            } else {
+                break;
+            }
+        }
+
+        printf("g_net_mode = %s\n", g_net_mode);
+//        printf("g_rssi_str = %s\n", g_rssi_str);
+
+        return true;
+    }
+
+    return false;
+}
+
 static bool GetDevSimICCID(void)
 {
     if (SUCCESS_RESPONSE == SendAndSearch(DEV_SIM_ICCID, RESPONSE_OK, 2)) {
