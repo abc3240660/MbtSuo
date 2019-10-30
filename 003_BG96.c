@@ -583,9 +583,10 @@ bool GetDevNetModeRSSI(void)
     u8 item_index = 0;
 
     memset((char*)g_net_mode, 0, LEN_COMMON_USE);
-//    memset((char*)g_rssi_str, 0, LEN_COMMON_USE);
+    memset((char*)g_rssi_str, 0, LEN_COMMON_USE);
 
-//    g_rssi_str[0] = 'F';
+    g_rssi_str[0] = 'F';
+    g_net_mode[0] = 'F';
     if (SUCCESS_RESPONSE == SendAndSearch(DEV_NET_MODE_RSSI, RESPONSE_OK, 2)) {
         char *sta_buf = SearchStrBuffer(": ");
 
@@ -610,14 +611,14 @@ bool GetDevNetModeRSSI(void)
                 if (('\r'==sta_buf[i+2]) || ('\n'==sta_buf[i+2])) {
                     break;
                 }
-//                g_rssi_str[k++] = sta_buf[i+2];
+                g_rssi_str[k++] = sta_buf[i+2];
             } else {
                 break;
             }
         }
 
         printf("g_net_mode = %s\n", g_net_mode);
-//        printf("g_rssi_str = %s\n", g_rssi_str);
+        printf("g_rssi_str = %s\n", g_rssi_str);
 
         return true;
     }
