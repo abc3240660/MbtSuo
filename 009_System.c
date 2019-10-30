@@ -42,8 +42,8 @@
 #pragma config FCKSM = CSDCMD           // Clock Switching Mode bits (Both Clock switching and Fail-safe Clock Monitor are disabled)
 #else
 // FOSCSEL
-#pragma config FNOSC = PRI    //Oscillator Source Selection->Primary Oscillator (XT, HS, EC)
-#pragma config PLLMODE = DISABLED    //PLL Mode Selection->No PLL used; PLLEN bit is not available
+#pragma config FNOSC = PRIPLL    //Oscillator Source Selection->Primary Oscillator (XT, HS, EC)
+#pragma config PLLMODE = PLL96DIV5    //PLL Mode Selection->No PLL used; PLLEN bit is not available
 #pragma config IESO = OFF    //Two-speed Oscillator Start-up Enable bit->Start up with user-selected oscillator source
 
 // FOSC

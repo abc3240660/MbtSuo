@@ -131,9 +131,15 @@ int main(void)
     PMD7 = 0xFF;
     PMD8 = 0xFF;
 #endif
+
+    Sleep();
+    Nop();
+    while(1);
+#endif
+
 #if 0
     while(1) {
-#if 0
+#if 1
         GPIOx_Output(BANKB, 12, 0);
         GPIOx_Output(BANKB, 13, 1);
 //        delay_debug(1);// LPRC
@@ -148,10 +154,6 @@ int main(void)
     }
 #endif
 
-    Sleep();
-    Nop();
-    while(1);
-#endif
     u8 nfc_ret = 0;
     u8 net_sta = 0;
 //    u32 boot_times = 0;
@@ -167,7 +169,7 @@ int main(void)
 
 //    u8 params_dat[LEN_BYTE_SZ64+1] = "";
 
-#if 1
+#if 0
     _ANSB13 = 0;
     GPIOx_Config(BANKB, 13, OUTPUT_DIR);// Beep
     GPIOx_Output(BANKB, 13, 0);
@@ -176,21 +178,21 @@ int main(void)
     System_Config();
 //    GPIOB_Init();
     LEDs_Init();
-    ADC0_Init();
+//    ADC0_Init();
     Configure_Tick_10ms();
-    Configure_Tick2_10ms();
+//    Configure_Tick2_10ms();
 //    Configure_Tick3_10ms();
 //    Configure_Tick4_10ms();
 
 #ifndef DEMO_BOARD
-    CLRC663_PowerUp();
-    BG96_PowerUp();
+//    CLRC663_PowerUp();
+//    BG96_PowerUp();
 #endif
 
     Uart1_Init();
     LEDs_AllOff();
 
-#if 0
+#if 1
     while(1) {
         printf("test001XApplication running......\n");
         delay_ms(1000);
