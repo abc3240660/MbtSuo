@@ -28,6 +28,7 @@
 #include "013_Protocol.h"
 #include "016_FlashOta.h"
 #include "017_InnerFlash.h"
+#include "019_ADC0.h"
 
 // static u8 is_mode_nb = 0;
 static u32 start_time_hbeat = 0;
@@ -50,24 +51,132 @@ static void __delay_usx(uint16_t ms)
 }
 */
 
+void delay_debug(u32 cnt)
+{
+    u32 i = 0;
+    u32 j = 0;
+    
+    for (i=0; i<cnt; i++)
+        for (j=0; j<1000; j++);
+}
+#define GPS_DEBUG 1
+
 int main(void)
 {
+#if 0
+#if 0
+    _ANSB0 = 0;
+    _ANSB1 = 0;
+    _ANSB2 = 0;
+    _ANSB3 = 0;
+
+    _ANSB10 = 0;
+    _ANSB11 = 0;
+    _ANSB12 = 0;
+    _ANSB13 = 0;
+#else
+    ANSB = 0;
+    ANSC = 0;
+    ANSD = 0;
+    ANSE = 0;
+    ANSF = 0;
+    ANSG = 0;
+#endif
+
+#if 0
+    GPIOx_Config(BANKB, 0, OUTPUT_DIR);// Beep
+    GPIOx_Config(BANKB, 1, OUTPUT_DIR);// Beep
+    GPIOx_Config(BANKB, 2, OUTPUT_DIR);// Beep
+    GPIOx_Config(BANKB, 3, OUTPUT_DIR);// Beep
+
+    GPIOx_Config(BANKB, 10, OUTPUT_DIR);// Beep
+    GPIOx_Config(BANKB, 11, OUTPUT_DIR);// Beep
+    GPIOx_Config(BANKB, 12, OUTPUT_DIR);// Beep
+    GPIOx_Config(BANKB, 13, OUTPUT_DIR);// Beep
+    
+    IOCPDB = 0xF + (0xF<<10);
+
+#if 0
+    GPIOx_Output(BANKB, 0, 0);
+    GPIOx_Output(BANKB, 1, 0);
+    GPIOx_Output(BANKB, 2, 0);
+    GPIOx_Output(BANKB, 3, 0);
+
+    GPIOx_Output(BANKB, 10, 0);
+    GPIOx_Output(BANKB, 11, 0);
+    GPIOx_Output(BANKB, 12, 0);
+    GPIOx_Output(BANKB, 13, 0);
+#endif
+#else
+    TRISB = 0xFF;
+    TRISC = 0xFF;
+    TRISD = 0xFF;
+    TRISE = 0xFF;
+    TRISF = 0xFF;
+    TRISG = 0xFF;
+    
+    IOCPDB = 0xFF;
+    IOCPDC = 0xFF;
+    IOCPDD = 0xFF;
+    IOCPDE = 0xFF;
+    IOCPDF = 0xFF;
+    IOCPDG = 0xFF;
+    
+    PMD1 = 0xFF;
+    PMD2 = 0xFF;
+    PMD3 = 0xFF;
+    PMD4 = 0xFF;
+    PMD5 = 0xFF;
+    PMD6 = 0xFF;
+    PMD7 = 0xFF;
+    PMD8 = 0xFF;
+#endif
+#if 0
+    while(1) {
+#if 0
+        GPIOx_Output(BANKB, 12, 0);
+        GPIOx_Output(BANKB, 13, 1);
+//        delay_debug(1);// LPRC
+//        delay_debug(100);// FRC
+        delay_debug(300);// PRI 20MHz
+        GPIOx_Output(BANKB, 12, 1);
+        GPIOx_Output(BANKB, 13, 0);
+//        delay_debug(1);// LPRC
+//        delay_debug(100);// FRC
+        delay_debug(300);// PRI 20MHz
+#endif
+    }
+#endif
+
+    Sleep();
+    Nop();
+    while(1);
+#endif
     u8 nfc_ret = 0;
     u8 net_sta = 0;
 //    u32 boot_times = 0;
 
+    u32 adcValue = 0;
+#ifdef GPS_DEBUG
+    u16 hbeat_gap = 5;
+#else
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
+#endif
 
     unsigned long task_cnt = 0;
 
 //    u8 params_dat[LEN_BYTE_SZ64+1] = "";
 
+#if 1
+    _ANSB13 = 0;
     GPIOx_Config(BANKB, 13, OUTPUT_DIR);// Beep
     GPIOx_Output(BANKB, 13, 0);
+#endif
 
     System_Config();
     GPIOB_Init();
     LEDs_Init();
+    ADC0_Init();
     Configure_Tick_10ms();
     Configure_Tick2_10ms();
 //    Configure_Tick3_10ms();
@@ -79,15 +188,35 @@ int main(void)
 #endif
 
     Uart1_Init();
+    LEDs_AllOff();
+
 #if 0
     while(1) {
         printf("test001XApplication running......\n");
-        delay_ms(3000);
+        delay_ms(1000);
+        LEDs_AllOff();
+        delay_ms(1000);
+        LEDs_AllON();
+        delay_ms(10);
+        LEDs_AllOff();
     }
 #endif
     Uart2_Init();
     Uart3_Init();
     Uart4_Init();
+    
+    LEDs_AllOff();
+
+#if 0
+    while(1) {
+        if(ADC0_GetValue(&adcValue)){
+            printf("ADC0:%ld\r\n",adcValue);
+        }
+        
+        printf("test...\n");
+        delay_ms(5000);
+    }
+#endif
 
 #if 0
     TurnOffGNSS();
@@ -142,10 +271,6 @@ int main(void)
     InitRingBuffers();
     printf("XApplication running...\r\n");
 #endif
-    
-    // Diable Beep
-    GPIOx_Config(BANKB, 13, OUTPUT_DIR);// Beep
-    GPIOx_Output(BANKB, 13, 0);
 
 #if 0// BNO055 Testing
     GPIOx_Config(BANKC, 13, OUTPUT_DIR);// BNO055
@@ -163,7 +288,7 @@ int main(void)
     }
 #endif
 
-#if 1// CLRC663 LOOP Testing
+#if 0// CLRC663 LOOP Testing
     LEDs_AllOff();
 
     while(1)
@@ -228,7 +353,9 @@ int main(void)
             asm("reset");
         }
 
+#ifndef GPS_DEBUG
         hbeat_gap = GetHeartBeatGap();
+#endif
         net_sta = GetNetStatus();
 
         if (1 == IsApnChangeWait()) {
@@ -274,6 +401,10 @@ int main(void)
             if (start_time_hbeat != 0) {
                 if (isDelayTimeout(start_time_hbeat,hbeat_gap*1000UL)) {
                     start_time_hbeat = GetTimeStamp();
+#ifdef GPS_DEBUG
+                    DoQueryGPSFast();
+                    TcpReportGPS();
+#endif
                     TcpHeartBeat();
                 }
             }

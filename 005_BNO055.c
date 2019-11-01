@@ -41,7 +41,7 @@ uint8_t Uart4_Getc(void)
             delay_ms(50);
         }
     }while(--try_cnt);
-    printf("uart3 recv timeout\n");
+    printf("uart4 recv timeout\n");
     return 0;
 }
 

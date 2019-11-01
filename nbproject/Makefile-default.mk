@@ -57,17 +57,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=001_Tick_10ms.c 007_Uart.c 002_CLRC663.c 003_BG96.c 004_LB1938.c 005_BNO055.c 006_Gpio.c 008_RingBuffer.c 009_System.c 012_CLRC663_NFC.c 013_Protocol.c 014_Md5.c 011_Spi.c 017_InnerFlash.c 000_Main.c 016_FlashOta.c 018_dsPICflash.s
+SOURCEFILES_QUOTED_IF_SPACED=001_Tick_10ms.c 007_Uart.c 002_CLRC663.c 003_BG96.c 004_LB1938.c 005_BNO055.c 006_Gpio.c 008_RingBuffer.c 009_System.c 012_CLRC663_NFC.c 013_Protocol.c 014_Md5.c 011_Spi.c 017_InnerFlash.c 000_Main.c 016_FlashOta.c 018_dsPICflash.s 019_ADC0.c
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/001_Tick_10ms.o ${OBJECTDIR}/007_Uart.o ${OBJECTDIR}/002_CLRC663.o ${OBJECTDIR}/003_BG96.o ${OBJECTDIR}/004_LB1938.o ${OBJECTDIR}/005_BNO055.o ${OBJECTDIR}/006_Gpio.o ${OBJECTDIR}/008_RingBuffer.o ${OBJECTDIR}/009_System.o ${OBJECTDIR}/012_CLRC663_NFC.o ${OBJECTDIR}/013_Protocol.o ${OBJECTDIR}/014_Md5.o ${OBJECTDIR}/011_Spi.o ${OBJECTDIR}/017_InnerFlash.o ${OBJECTDIR}/000_Main.o ${OBJECTDIR}/016_FlashOta.o ${OBJECTDIR}/018_dsPICflash.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/001_Tick_10ms.o.d ${OBJECTDIR}/007_Uart.o.d ${OBJECTDIR}/002_CLRC663.o.d ${OBJECTDIR}/003_BG96.o.d ${OBJECTDIR}/004_LB1938.o.d ${OBJECTDIR}/005_BNO055.o.d ${OBJECTDIR}/006_Gpio.o.d ${OBJECTDIR}/008_RingBuffer.o.d ${OBJECTDIR}/009_System.o.d ${OBJECTDIR}/012_CLRC663_NFC.o.d ${OBJECTDIR}/013_Protocol.o.d ${OBJECTDIR}/014_Md5.o.d ${OBJECTDIR}/011_Spi.o.d ${OBJECTDIR}/017_InnerFlash.o.d ${OBJECTDIR}/000_Main.o.d ${OBJECTDIR}/016_FlashOta.o.d ${OBJECTDIR}/018_dsPICflash.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/001_Tick_10ms.o ${OBJECTDIR}/007_Uart.o ${OBJECTDIR}/002_CLRC663.o ${OBJECTDIR}/003_BG96.o ${OBJECTDIR}/004_LB1938.o ${OBJECTDIR}/005_BNO055.o ${OBJECTDIR}/006_Gpio.o ${OBJECTDIR}/008_RingBuffer.o ${OBJECTDIR}/009_System.o ${OBJECTDIR}/012_CLRC663_NFC.o ${OBJECTDIR}/013_Protocol.o ${OBJECTDIR}/014_Md5.o ${OBJECTDIR}/011_Spi.o ${OBJECTDIR}/017_InnerFlash.o ${OBJECTDIR}/000_Main.o ${OBJECTDIR}/016_FlashOta.o ${OBJECTDIR}/018_dsPICflash.o ${OBJECTDIR}/019_ADC0.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/001_Tick_10ms.o.d ${OBJECTDIR}/007_Uart.o.d ${OBJECTDIR}/002_CLRC663.o.d ${OBJECTDIR}/003_BG96.o.d ${OBJECTDIR}/004_LB1938.o.d ${OBJECTDIR}/005_BNO055.o.d ${OBJECTDIR}/006_Gpio.o.d ${OBJECTDIR}/008_RingBuffer.o.d ${OBJECTDIR}/009_System.o.d ${OBJECTDIR}/012_CLRC663_NFC.o.d ${OBJECTDIR}/013_Protocol.o.d ${OBJECTDIR}/014_Md5.o.d ${OBJECTDIR}/011_Spi.o.d ${OBJECTDIR}/017_InnerFlash.o.d ${OBJECTDIR}/000_Main.o.d ${OBJECTDIR}/016_FlashOta.o.d ${OBJECTDIR}/018_dsPICflash.o.d ${OBJECTDIR}/019_ADC0.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/001_Tick_10ms.o ${OBJECTDIR}/007_Uart.o ${OBJECTDIR}/002_CLRC663.o ${OBJECTDIR}/003_BG96.o ${OBJECTDIR}/004_LB1938.o ${OBJECTDIR}/005_BNO055.o ${OBJECTDIR}/006_Gpio.o ${OBJECTDIR}/008_RingBuffer.o ${OBJECTDIR}/009_System.o ${OBJECTDIR}/012_CLRC663_NFC.o ${OBJECTDIR}/013_Protocol.o ${OBJECTDIR}/014_Md5.o ${OBJECTDIR}/011_Spi.o ${OBJECTDIR}/017_InnerFlash.o ${OBJECTDIR}/000_Main.o ${OBJECTDIR}/016_FlashOta.o ${OBJECTDIR}/018_dsPICflash.o
+OBJECTFILES=${OBJECTDIR}/001_Tick_10ms.o ${OBJECTDIR}/007_Uart.o ${OBJECTDIR}/002_CLRC663.o ${OBJECTDIR}/003_BG96.o ${OBJECTDIR}/004_LB1938.o ${OBJECTDIR}/005_BNO055.o ${OBJECTDIR}/006_Gpio.o ${OBJECTDIR}/008_RingBuffer.o ${OBJECTDIR}/009_System.o ${OBJECTDIR}/012_CLRC663_NFC.o ${OBJECTDIR}/013_Protocol.o ${OBJECTDIR}/014_Md5.o ${OBJECTDIR}/011_Spi.o ${OBJECTDIR}/017_InnerFlash.o ${OBJECTDIR}/000_Main.o ${OBJECTDIR}/016_FlashOta.o ${OBJECTDIR}/018_dsPICflash.o ${OBJECTDIR}/019_ADC0.o
 
 # Source Files
-SOURCEFILES=001_Tick_10ms.c 007_Uart.c 002_CLRC663.c 003_BG96.c 004_LB1938.c 005_BNO055.c 006_Gpio.c 008_RingBuffer.c 009_System.c 012_CLRC663_NFC.c 013_Protocol.c 014_Md5.c 011_Spi.c 017_InnerFlash.c 000_Main.c 016_FlashOta.c 018_dsPICflash.s
+SOURCEFILES=001_Tick_10ms.c 007_Uart.c 002_CLRC663.c 003_BG96.c 004_LB1938.c 005_BNO055.c 006_Gpio.c 008_RingBuffer.c 009_System.c 012_CLRC663_NFC.c 013_Protocol.c 014_Md5.c 011_Spi.c 017_InnerFlash.c 000_Main.c 016_FlashOta.c 018_dsPICflash.s 019_ADC0.c
 
 
 CFLAGS=
@@ -206,6 +206,13 @@ ${OBJECTDIR}/016_FlashOta.o: 016_FlashOta.c  nbproject/Makefile-${CND_CONF}.mk
 	${MP_CC} $(MP_EXTRA_CC_PRE)  016_FlashOta.c  -o ${OBJECTDIR}/016_FlashOta.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/016_FlashOta.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_SIMULATOR=1  -mno-eds-warn  -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -mlarge-code -mlarge-data -O0 -msmart-io=1 -Wall -msfr-warn=off  
 	@${FIXDEPS} "${OBJECTDIR}/016_FlashOta.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
+${OBJECTDIR}/019_ADC0.o: 019_ADC0.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/019_ADC0.o.d 
+	@${RM} ${OBJECTDIR}/019_ADC0.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  019_ADC0.c  -o ${OBJECTDIR}/019_ADC0.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/019_ADC0.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_SIMULATOR=1  -mno-eds-warn  -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -mlarge-code -mlarge-data -O0 -msmart-io=1 -Wall -msfr-warn=off  
+	@${FIXDEPS} "${OBJECTDIR}/019_ADC0.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
+	
 else
 ${OBJECTDIR}/001_Tick_10ms.o: 001_Tick_10ms.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} "${OBJECTDIR}" 
@@ -318,6 +325,13 @@ ${OBJECTDIR}/016_FlashOta.o: 016_FlashOta.c  nbproject/Makefile-${CND_CONF}.mk
 	@${RM} ${OBJECTDIR}/016_FlashOta.o 
 	${MP_CC} $(MP_EXTRA_CC_PRE)  016_FlashOta.c  -o ${OBJECTDIR}/016_FlashOta.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/016_FlashOta.o.d"      -mno-eds-warn  -g -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -mlarge-code -mlarge-data -O0 -msmart-io=1 -Wall -msfr-warn=off  
 	@${FIXDEPS} "${OBJECTDIR}/016_FlashOta.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
+	
+${OBJECTDIR}/019_ADC0.o: 019_ADC0.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/019_ADC0.o.d 
+	@${RM} ${OBJECTDIR}/019_ADC0.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  019_ADC0.c  -o ${OBJECTDIR}/019_ADC0.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/019_ADC0.o.d"      -mno-eds-warn  -g -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -mlarge-code -mlarge-data -O0 -msmart-io=1 -Wall -msfr-warn=off  
+	@${FIXDEPS} "${OBJECTDIR}/019_ADC0.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 endif
 

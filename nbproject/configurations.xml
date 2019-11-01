@@ -21,6 +21,7 @@
       <itemPath>015_Common.h</itemPath>
       <itemPath>017_InnerFlash.h</itemPath>
       <itemPath>016_FlashOta.h</itemPath>
+      <itemPath>019_ADC0.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -46,6 +47,7 @@
       <itemPath>000_Main.c</itemPath>
       <itemPath>016_FlashOta.c</itemPath>
       <itemPath>018_dsPICflash.s</itemPath>
+      <itemPath>019_ADC0.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -56,6 +58,7 @@
   <sourceRootList>
     <Elem>.</Elem>
     <Elem>../../Mbtsuo_YangOK/Mbtsuo</Elem>
+    <Elem>../Mbtsuo_1027ForJDC/Mbtsuo</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>

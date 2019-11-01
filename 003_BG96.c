@@ -60,6 +60,7 @@ u8 g_devzone_str[LEN_COMMON_USE+1] = "";
 
 u8 g_imei_str[LEN_COMMON_USE+1] = "";
 u8 g_iccid_str[LEN_COMMON_USE+1] = "";
+u8 g_rssi_str[LEN_COMMON_USE+1] = "";
 u8 g_net_mode[LEN_COMMON_USE+1] = "";
 
 void InitRingBuffers(void)
@@ -538,6 +539,90 @@ static bool DevSimPIN(char *pin, Cmd_Status_t status)
             return true;
         }
     }
+    return false;
+}
+
+bool GetDevRSSI(void)
+{
+    u8 i = 0;
+    u8 len = 0;
+
+    memset(g_rssi_str, 0, LEN_COMMON_USE);
+
+    g_rssi_str[0] = 'F';
+    if (SUCCESS_RESPONSE == SendAndSearch(DEV_NET_RSSI, RESPONSE_OK, 2)) {
+        char *sta_buf = SearchStrBuffer(": ");
+
+        len = strlen(sta_buf);
+        for (i=0; i<LEN_COMMON_USE; i++) {
+
+            if (i > len) {
+                break;
+            }
+
+            if (',' == sta_buf[i+2]) {
+                break;
+            }
+
+            g_rssi_str[i] = sta_buf[i+2];
+        }
+
+        printf("g_rssi_str = %s\n", g_rssi_str);
+
+        return true;
+    }
+
+    return false;
+}
+
+bool GetDevNetModeRSSI(void)
+{
+    u8 i = 0;
+    u8 k = 0;
+    u8 len = 0;
+    u8 item_index = 0;
+
+    memset((char*)g_net_mode, 0, LEN_COMMON_USE);
+    memset((char*)g_rssi_str, 0, LEN_COMMON_USE);
+
+    g_rssi_str[0] = 'F';
+    g_net_mode[0] = 'F';
+    if (SUCCESS_RESPONSE == SendAndSearch(DEV_NET_MODE_RSSI, RESPONSE_OK, 2)) {
+        char *sta_buf = SearchStrBuffer(": ");
+
+        len = strlen((const char*)sta_buf);
+        for (i=0; i<LEN_COMMON_USE; i++) {
+
+            if (i > len) {
+                break;
+            }
+
+            if (',' == sta_buf[i+2]) {
+                k = 0;
+                item_index++;
+                continue;
+            }
+            
+            if (0 == item_index) {
+                if (sta_buf[i+2] != '"') {
+                    g_net_mode[k++] = sta_buf[i+2];
+                }
+            } else if (1 == item_index) {
+                if (('\r'==sta_buf[i+2]) || ('\n'==sta_buf[i+2])) {
+                    break;
+                }
+                g_rssi_str[k++] = sta_buf[i+2];
+            } else {
+                break;
+            }
+        }
+
+        printf("g_net_mode = %s\n", g_net_mode);
+        printf("g_rssi_str = %s\n", g_rssi_str);
+
+        return true;
+    }
+
     return false;
 }
 
@@ -1137,22 +1222,6 @@ static bool SetAutoNetMode(void)
 {
     const char *cmd;
 
-    cmd = "+QCFG=\"NWSCANSEQ\"";;
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-    cmd = "+QCFG=\"NWSCANMODE\"";
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-    cmd = "+QCFG=\"IOTOPMODE\"";
-
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
-        return false;
-    }
-
     cmd = "+QCFG=\"BAND\",F,400A0E189F,A0E189F,1";
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
@@ -1164,7 +1233,7 @@ static bool SetAutoNetMode(void)
     // 02-LTE CAT M1
     // 03-LTE CAT NB1
     cmd = "+QCFG=\"NWSCANSEQ\",030201,1";
-//    cmd = "+QCFG=\"NWSCANSEQ\",03,1";
+//    cmd = "+QCFG=\"NWSCANSEQ\",02,1";
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
         return false;
@@ -1173,9 +1242,11 @@ static bool SetAutoNetMode(void)
     // 0-Automatic
     // 1-GSM Only
     // 3-LTE Only
+//   cmd = "+QCFG=\"NWSCANMODE\",1,1";
    cmd = "+QCFG=\"NWSCANMODE\",0,1";
+//   cmd = "+QCFG=\"NWSCANMODE\",3,1";
 
-    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+   if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
         return false;
     }
 
@@ -1197,9 +1268,59 @@ static bool SetAutoNetMode(void)
     return true;
 }
 
+static bool DumpNetMode(void)
+{
+    const char *cmd;
+    char mode_cfg[16] = "";
+    char *sta_buf = NULL;
+
+    cmd = "+QCFG=\"NWSCANSEQ\"";;
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+    cmd = "+QCFG=\"NWSCANMODE\"";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+    cmd = "+QCFG=\"IOTOPMODE\"";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+
+    sta_buf = SearchStrBuffer(",");
+    if (sta_buf != NULL) {
+        mode_cfg[0] = sta_buf[1];
+        printf("mode_cfg = %s\n", mode_cfg);
+        
+        if (mode_cfg[0] != '2') {
+            // 0-LTE CAT M1
+            // 1-LTE Cat NB1
+            // 2-LTE Cat M1 and Cat NB1
+            cmd = "+QCFG=\"IOTOPMODE\",2,1";
+
+             if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+                 return false;
+             }
+            
+            asm("reset");
+        }
+    }
+
+    cmd = "+QCFG=\"BAND\"";
+
+    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
+        return false;
+    }
+
+    return true;
+}
+
 bool BG96ATInitialize(void)
 {
-    u8 trycnt = 10;
+    int trycnt = 10;
 
     printf("This is the Mobit Debug Serial!\n");
 
@@ -1213,9 +1334,12 @@ bool BG96ATInitialize(void)
         return false;
     }
 
-    SetAutoNetMode();
+    delay_ms(10000);
 
-    trycnt = 10;
+    DumpNetMode();
+    QueryNetMode();
+
+    trycnt = 50;
     while(trycnt--) {
         if (true == QueryNetStatus()) {
             break;
@@ -1223,6 +1347,8 @@ bool BG96ATInitialize(void)
     }
 
     if (trycnt < 1) {
+        SetAutoNetMode();
+        asm("reset");
         return false;
     }
 
@@ -1552,15 +1678,19 @@ void GetGPSInfo(char* gnss_part)
         if (',' == gs_gnss_pos[i]) {
             k++;
 
-            if ((2==k) || (3==k) || (7==k)) {
+            if ((2==k) || (3==k) || (4==k)) {
                 gnss_part[m++] = '|';
             }
 
             continue;
         }
 
-        if ((1==k) || (2==k) || (6==k) || (7==k)) {
+        if ((1==k) || (2==k) || (3==k) || (10==k)) {
             gnss_part[m++] = gs_gnss_pos[i];
+            if (10 == k) {
+                gnss_part[m++] = gs_gnss_pos[i+1];
+                k++;
+            }
         }
     }
 
