@@ -187,15 +187,15 @@ int main(void)
 //    Configure_Tick3_10ms();
 //    Configure_Tick4_10ms();
 
+    Uart1_Init();
+    LEDs_AllOff();
+
 #ifndef DEMO_BOARD
     CLRC663_PowerUp();
     BG96_PowerUp();
 
     gs_bg96_sta = 0;
 #endif
-
-    Uart1_Init();
-    LEDs_AllOff();
 
 #if 0
     while(1) {

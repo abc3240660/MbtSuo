@@ -1676,20 +1676,97 @@ void GetGPSInfo(char* gnss_part)
 }
 
 /////////////////////////////////// BG96 Common ///////////////////////////////////
-static bool InitModule()
+void ResetBG96Module(void)
 {
-//    GPIOx_Config(BANKB, 11, OUTPUT_DIR);// RESET
-//    GPIOx_Output(BANKB, 11, 0);
-//    delay_ms(300);
-//    GPIOx_Output(BANKB, 11, 1);
+    _ANSB11 = 0;
 
-    GPIOx_Config(BANKB, 8, OUTPUT_DIR);// AP_READY
-    GPIOx_Output(BANKB, 8, 0);
+    GPIOx_Config(BANKB, 11, OUTPUT_DIR);// RESET
+    GPIOx_Output(BANKB, 11, 0);
+    delay_ms(50);
+    GPIOx_Output(BANKB, 11, 1);
+    delay_ms(300);
+    GPIOx_Output(BANKB, 11, 0);
+}
+
+void PowerOffBG96Module(void)
+{
+    _ANSB9 = 0;
 
     GPIOx_Config(BANKB, 9, OUTPUT_DIR);// PWRKEY
-    GPIOx_Output(BANKB, 9, 0);
-    delay_ms(2000);
-    GPIOx_Output(BANKB, 9, 1);
+    GPIOx_Output(BANKB, 9, 0);// default SI2302 HIGH
+    delay_ms(100);
+    GPIOx_Output(BANKB, 9, 1);// MCU High -> SI2302 Low  -> PowerOff
+    delay_ms(800);// SI2302 Low >= 0.65s :  On -> Off
+    GPIOx_Output(BANKB, 9, 0);// release to default SI2302 HIGH
+}
+
+void PowerOnBG96Module(void)
+{
+    _ANSB9 = 0;
+
+    GPIOx_Config(BANKB, 9, OUTPUT_DIR);// PWRKEY
+    GPIOx_Output(BANKB, 9, 0);// default SI2302 HIGH
+    delay_ms(100);
+    GPIOx_Output(BANKB, 9, 1);// MCU High -> SI2302 Low  -> PowerOn
+    delay_ms(600);// SI2302 Low >= 0.5s :  Off -> On
+    GPIOx_Output(BANKB, 9, 0);// release to default SI2302 HIGH
+}
+
+static bool InitModule(void)
+{
+    u8 i = 0;
+
+    _ANSB3 = 0;
+    _ANSB8 = 0;
+
+//    IOCPDB |= (1<<3);
+//    GPIOx_Config(BANKB, 3, INPUT_DIR);// STATUS
+
+/*
+    GPIOx_Config(BANKB, 8, OUTPUT_DIR);// AP_READY
+    GPIOx_Output(BANKB, 8, 0);
+*/
+    if (GPIOx_Input(BANKB, 3)) {// default HIGH: Power off
+        printf("BG96 Status HIGH\n");
+    } else {
+        printf("BG96 Status Low\n");
+    }
+
+    PowerOnBG96Module();
+
+    for (i=0; i<15; i++) {
+        if (GPIOx_Input(BANKB, 3)) {
+            printf("BG96 Status HIGH\n");
+        } else {
+            printf("BG96 Status Low\n");
+        }
+
+        delay_ms(1000);
+    }
+
+    PowerOffBG96Module();
+
+    for (i=0; i<15; i++) {
+        if (GPIOx_Input(BANKB, 3)) {
+            printf("BG96X Status HIGH\n");
+        } else {
+            printf("BG96X Status Low\n");
+        }
+
+        delay_ms(1000);
+    }
+    
+    PowerOnBG96Module();
+
+    for (i=0; i<15; i++) {
+        if (GPIOx_Input(BANKB, 3)) {
+            printf("BG96 Status HIGH\n");
+        } else {
+            printf("BG96 Status Low\n");
+        }
+
+        delay_ms(1000);
+    }
 
     return true;
 }
