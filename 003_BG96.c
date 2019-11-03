@@ -367,8 +367,7 @@ static Cmd_Response_t ReadResponseAndSearch(const char *test_str, unsigned int t
         }
     }
     if (recv_len > 0) {
-        printf("rxBuffer = %s\n", rxBuffer);
-        printf("UNKNOWN_RESPONSE...\n");
+        printf("UNKNOWN_RESPONSE = %s\n", rxBuffer);
         return UNKNOWN_RESPONSE;
     } else {
         printf("TIMEOUT_RESPONSE...\n");
@@ -1691,8 +1690,6 @@ static bool InitModule()
     GPIOx_Output(BANKB, 9, 0);
     delay_ms(2000);
     GPIOx_Output(BANKB, 9, 1);
-    
-    printf("TRISB=%.4X\n", TRISB);
 
     return true;
 }

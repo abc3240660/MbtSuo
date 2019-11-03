@@ -508,8 +508,9 @@ bool TcpHeartBeat(void)
         strcpy((char*)vol_str, "F");
     }
 
-//    GetDevRSSI();
-    GetDevNetModeRSSI();
+    GetDevRSSI();
+    QueryNetMode();
+    //GetDevNetModeRSSI();
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
     sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s,%d,%s,%s", g_imei_str, CMD_HEART_BEAT, vol_str, gs_lock_sta, g_rssi_str, g_net_mode);
 
