@@ -511,7 +511,7 @@ static bool GetDevIMEI(void)
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
         memset(g_imei_str, 0, LEN_COMMON_USE);
-        strncpy((char*)g_imei_str, (const char*)rxBuffer, LEN_COMMON_USE);
+        strncpy((char*)g_imei_str, (const char*)rxBuffer+2, LEN_COMMON_USE);
         printf("g_imei_str = %s\n", g_imei_str);
 
         return true;
@@ -1162,7 +1162,7 @@ bool CloseFtpService(void)
     return false;
 }
 
-static bool QueryNetStatus(void)
+bool QueryNetStatus(void)
 {
     const char *cmd = "+CGATT?";
 
@@ -1218,7 +1218,7 @@ bool QueryNetMode(void)
     return false;
 }
 
-static bool SetAutoNetMode(void)
+bool SetAutoNetMode(void)
 {
     const char *cmd;
 
@@ -1268,7 +1268,7 @@ static bool SetAutoNetMode(void)
     return true;
 }
 
-static bool DumpNetMode(void)
+bool DumpNetMode(void)
 {
     const char *cmd;
     char mode_cfg[16] = "";
@@ -1318,43 +1318,21 @@ static bool DumpNetMode(void)
     return true;
 }
 
+bool BG96EnsureRxOk(void)
+{
+    if (SetDevCommandEcho(false)) {
+        return true;
+    }
+
+    return false;
+}
+
 bool BG96ATInitialize(void)
 {
     int trycnt = 10;
 
-    printf("This is the Mobit Debug Serial!\n");
-
-    while(trycnt--) {
-        if (SetDevCommandEcho(false)) {
-            break;
-        }
-    }
-
-    if (trycnt < 1) {
-        return false;
-    }
-
-    delay_ms(10000);
-
-    DumpNetMode();
-    QueryNetMode();
-
-    trycnt = 50;
-    while(trycnt--) {
-        if (true == QueryNetStatus()) {
-            break;
-        }
-    }
-
-    if (trycnt < 1) {
-        SetAutoNetMode();
-        asm("reset");
-        return false;
-    }
-
     gs_net_sta = 0x40;
 
-    trycnt = 10;
     while(trycnt--) {
         if (true == GetDevIMEI()) {
             break;

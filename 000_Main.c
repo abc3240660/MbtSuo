@@ -35,6 +35,9 @@ static u32 start_time_hbeat = 0;
 
 static u8 gs_charge_sta = 0;
 
+// 0-During Powering 1-ACK OK 2-CGATT OK
+static u8 gs_bg96_sta = 0;
+
 u8 g_svr_ip[LEN_NET_TCP+1]  = "192.168.1.105";
 u8 g_svr_port[LEN_NET_TCP+1] = "10212";// 10211-TCP 10212-UDP
 u8 g_svr_apn[LEN_NET_TCP+1] = "sentinel.m2mmobi.be";
@@ -59,6 +62,7 @@ void delay_debug(u32 cnt)
     for (i=0; i<cnt; i++)
         for (j=0; j<1000; j++);
 }
+
 #define GPS_DEBUG 1
 
 int main(void)
@@ -156,6 +160,7 @@ int main(void)
     u8 net_sta = 0;
 //    u32 boot_times = 0;
 
+    u8 trycnt = 0;
     u32 adcValue = 0;
 #ifdef GPS_DEBUG
     u16 hbeat_gap = 5;
@@ -185,6 +190,8 @@ int main(void)
 #ifndef DEMO_BOARD
     CLRC663_PowerUp();
     BG96_PowerUp();
+
+    gs_bg96_sta = 0;
 #endif
 
     Uart1_Init();
@@ -381,7 +388,9 @@ int main(void)
         // if net-register failed or lost connection
         if (0 == (task_cnt++%200)) {
             if (0 == net_sta) {
-                Configure_BG96();
+                if (2 == gs_bg96_sta) {
+                    Configure_BG96();
+                }
             }
 
             net_sta = GetNetStatus();
@@ -444,6 +453,31 @@ int main(void)
         // ---------------------- TASK 5 -------------------- //
         // --
         if (0 == (task_cnt%41)) {  // every 2.0s
+            if (0 == gs_bg96_sta) {
+                trycnt++;
+                if (BG96EnsureRxOk()) {
+                    trycnt = 0;
+                    gs_bg96_sta = 1;
+
+                    DumpNetMode();
+                    QueryNetMode();
+                }
+            }
+
+            if (1 == gs_bg96_sta) {
+                trycnt++;
+                if (QueryNetStatus()) {
+                    gs_bg96_sta = 2;
+                    trycnt = 0;
+                }
+            }
+            
+            if (trycnt >= 100) {
+                trycnt = 0;
+                SetAutoNetMode();
+                BG96_PowerUp();
+                // asm("reset");
+            }
         }
 
         // --
