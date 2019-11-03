@@ -1682,7 +1682,7 @@ void ResetBG96Module(void)
 
     GPIOx_Config(BANKB, 11, OUTPUT_DIR);// RESET
     GPIOx_Output(BANKB, 11, 0);
-    delay_ms(50);
+    delay_ms(100);
     GPIOx_Output(BANKB, 11, 1);
     delay_ms(300);
     GPIOx_Output(BANKB, 11, 0);
@@ -1717,55 +1717,33 @@ static bool InitModule(void)
     u8 i = 0;
 
     _ANSB3 = 0;
-    _ANSB8 = 0;
-
 //    IOCPDB |= (1<<3);
 //    GPIOx_Config(BANKB, 3, INPUT_DIR);// STATUS
 
-/*
-    GPIOx_Config(BANKB, 8, OUTPUT_DIR);// AP_READY
-    GPIOx_Output(BANKB, 8, 0);
-*/
+    _ANSB8 = 0;
+//    GPIOx_Config(BANKB, 8, OUTPUT_DIR);// AP_READY
+//    GPIOx_Output(BANKB, 8, 0);
+
     if (GPIOx_Input(BANKB, 3)) {// default HIGH: Power off
-        printf("BG96 Status HIGH\n");
-    } else {
-        printf("BG96 Status Low\n");
+        printf("BG96 Boot Off -> Power on...\n");
+        PowerOnBG96Module();
+    } else {// Already Power on
+        printf("BG96 Boot On -> Reset...\n");
+        ResetBG96Module();
     }
 
-    PowerOnBG96Module();
-
     for (i=0; i<15; i++) {
-        if (GPIOx_Input(BANKB, 3)) {
-            printf("BG96 Status HIGH\n");
-        } else {
-            printf("BG96 Status Low\n");
-        }
-
-        delay_ms(1000);
-    }
-
-    PowerOffBG96Module();
-
-    for (i=0; i<15; i++) {
-        if (GPIOx_Input(BANKB, 3)) {
-            printf("BG96X Status HIGH\n");
-        } else {
-            printf("BG96X Status Low\n");
+        if (!GPIOx_Input(BANKB, 3)) {// Power on
+            break;
         }
 
         delay_ms(1000);
     }
     
-    PowerOnBG96Module();
-
-    for (i=0; i<15; i++) {
-        if (GPIOx_Input(BANKB, 3)) {
-            printf("BG96 Status HIGH\n");
-        } else {
-            printf("BG96 Status Low\n");
-        }
-
-        delay_ms(1000);
+    if (15 == i) {
+        printf("BG96 Power on failed\n");
+    } else {
+        printf("BG96 Power on success\n");
     }
 
     return true;

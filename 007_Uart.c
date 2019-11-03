@@ -320,7 +320,7 @@ void __attribute__((__interrupt__,no_auto_psv)) _U2RXInterrupt(void)
         //if (rx_debug_flag) {
         //    printf("%.2X-%c\n", temp, temp);
         //}
-        Uart1_Putc(temp);
+        //Uart1_Putc(temp);
         _U2RXIF = 0;
         if (U2STAbits.OERR) {
             U2STAbits.OERR = 0;
