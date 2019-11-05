@@ -109,3 +109,10 @@ bool ADC0_GetValue(uint32_t *value)
     return false;
 }
 
+void ADC0_Enable(void)
+{
+}
+
+void ADC0_Disable(void)
+{
+}

@@ -16,6 +16,8 @@ extern "C" {
 #include <stdbool.h>
 
 void ADC0_Init(void);
+void ADC0_Enable(void);
+void ADC0_Disable(void);
 bool ADC0_GetValue(uint32_t *value);
 
 #ifdef	__cplusplus

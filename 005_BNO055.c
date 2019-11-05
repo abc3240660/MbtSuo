@@ -873,6 +873,18 @@ int16_t Configure_BNO055(void)
     return result;
 }
 
+void BNO055_PowerUp(void)
+{
+    GPIOx_Config(BANKC, 13, OUTPUT_DIR);// RST
+    GPIOx_Config(BANKC, 14, OUTPUT_DIR);// BOOTLOAD
+
+    GPIOx_Output(BANKC, 14, 1);
+
+    GPIOx_Output(BANKC, 13, 0);
+    delay_ms(100);
+    GPIOx_Output(BANKC, 13, 1);
+}
+
 //******************************************************************************
 //* END OF FILE
 //******************************************************************************

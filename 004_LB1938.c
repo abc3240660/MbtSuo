@@ -26,8 +26,8 @@ void LB1938_Init(void)
     GPIOx_Config(BANKD, 8, OUTPUT_DIR);
     GPIOx_Config(BANKD, 9, OUTPUT_DIR);
 
-    GPIOx_Output(BANKD, 8, LED_OFF);
-    GPIOx_Output(BANKD, 9, LED_OFF);
+    GPIOx_Output(BANKD, 8, 0);
+    GPIOx_Output(BANKD, 9, 0);
 }
 
 void LB1938_MotorCtrl(MOTOR_FWD motor_fwd, u8 hold_ms)
@@ -35,14 +35,19 @@ void LB1938_MotorCtrl(MOTOR_FWD motor_fwd, u8 hold_ms)
     u8 pin = 0;
 
     if (MOTOR_LEFT == motor_fwd) {
-        pin = 4;
+        pin = 8;
     } else {
-        pin = 4;
+        pin = 9;
     }
 
-    GPIOx_Output(BANKB, pin, LED_ON);
+    GPIOx_Output(BANKD, pin, 1);
     delay_ms(hold_ms);
-    GPIOx_Output(BANKB, pin, LED_OFF);
+    GPIOx_Output(BANKD, pin, 0);
+}
+
+void LB1938_OpenLock(void)
+{
+    LB1938_MotorCtrl(MOTOR_LEFT, 10);
 }
 
 //******************************************************************************

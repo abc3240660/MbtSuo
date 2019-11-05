@@ -81,12 +81,12 @@ void Uart1_Init(void)
     U1BRG = 0x15;
 #endif
 
-    _U1TXIP = 3;
-    _U1RXIP = 7;
+    _U1TXIP = IPL_DIS;
+    _U1RXIP = IPL_DIS;
     _U1TXIF = 0;
     _U1RXIF = 0;
     _U1TXIE = 0;
-    _U1RXIE = 1;
+    _U1RXIE = 0;
 }
 
 // 115200 for BG96
@@ -406,8 +406,9 @@ void Uart4_Init(void)
     U4STA = 0X2400;
     U4BRG = 0x15;//34;
 
-    IPC22bits.U4TXIP = 0;
-    IPC22bits.U4RXIP = 1;
+    IPC22bits.U4TXIP = IPL_DIS;
+    IPC22bits.U4RXIP = IPL_HIGH;
+    IEC5bits.U4TXIE = 0;
     IEC5bits.U4RXIE = 1;
 }
 

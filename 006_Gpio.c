@@ -17,31 +17,10 @@
 
 u8 gs_leds_sta = 0;
 
-void GPIOB_Init(void)
-{
-#ifdef DEMO_BOARD
-    CM2CON = 0;
-    ODCB &= 0xFFF0;// Open-Drain Control
-    // AD1PCFGL |= 0x000F;
-    LATB |= 0X0000;// Output Value:0-OFF 1-ON
-    TRISB &= 0XFF00;// Direction:0-OUT 1-IN
-#endif
-}
+// 0-normal 1-blink
+u8 gs_leds_mod = 0;
 
-void GPIOB_SetPin(short pin,char value)
-{
-#ifdef DEMO_BOARD
-    // BANKB: for read
-    // LATB: for read -> modify -> write
-    if(value){
-        LATB |= (1<<pin);
-    }else{
-        LATB &= ~(1<<pin);
-    }
-#endif
-}
-
-void GPIOx_Config(GPIO_BANKx port, u8 pin, GPIO_DIR dir)
+void void GPIOx_Config(GPIO_BANKx port, u8 pin, GPIO_DIR dir)
 {
     if (BANKB == port) {
         if(dir){
@@ -220,9 +199,6 @@ RD4 -> LED_BLUE
 void LEDs_AllON(void)
 {
     // Output Value:0-OFF 1-ON
-    // LEDs_Ctrl(MAIN_LED_B, LED_ON);
-    // LEDs_Ctrl(MAIN_LED_R, LED_ON);
-    // LEDs_Ctrl(MAIN_LED_G, LED_ON);
     SetLedsStatus(MAIN_LED_B, LED_ON);
     SetLedsStatus(MAIN_LED_R, LED_ON);
     SetLedsStatus(MAIN_LED_G, LED_ON);
@@ -234,11 +210,6 @@ void LEDs_AllOff(void)
     SetLedsStatus(MAIN_LED_B, LED_OFF);
     SetLedsStatus(MAIN_LED_R, LED_OFF);
     SetLedsStatus(MAIN_LED_G, LED_OFF);
-
-    delay_ms(1000);
-    LEDs_Ctrl(MAIN_LED_B, LED_OFF);
-    LEDs_Ctrl(MAIN_LED_R, LED_OFF);
-    LEDs_Ctrl(MAIN_LED_G, LED_OFF);
 }
 
 void LEDs_Init(void)
@@ -247,8 +218,14 @@ void LEDs_Init(void)
     GPIOx_Config(BANKD, MAIN_LED_R, OUTPUT_DIR);
     GPIOx_Config(BANKD, MAIN_LED_G, OUTPUT_DIR);
 
-    // ON all to indicate powerup
-    LEDs_AllON();
+    // Green LED ON to indicate powerup
+    GPIOx_Output(BANKD, MAIN_LED_G, 1);
+    delay_ms(10);
+
+    // Disable all LEDs
+    GPIOx_Output(BANKD, MAIN_LED_B, 0);
+    GPIOx_Output(BANKD, MAIN_LED_R, 0);
+    GPIOx_Output(BANKD, MAIN_LED_G, 0);
 }
 
 // PORTx: just for read
@@ -260,6 +237,38 @@ void LEDs_Ctrl(LED_INDEX led_id,LED_STA led_sta)
     }else{
         LATD &= (~1<<led_id);
     }
+}
+
+void LockSwitch_Init(void)
+{
+    GPIOx_Config(BANKE 4, INPUT_DIR);
+}
+
+u8 IsLockSwitchOpen(void)
+{
+    if (GPIOx_Input(BANKE, 4)) {
+        return 1;// Open
+    } else {
+        return 0;// Close
+    }
+}
+
+void Beep_Init(void)
+{
+    _ANSB13 = 0;
+
+    GPIOx_Config(BANKB, 13, OUTPUT_DIR);
+    GPIOx_Output(BANKB, 13, 0);// default low -> poweroff
+}
+
+void Beep_Low(void)
+{
+    GPIOx_Output(BANKB, 13, 0);
+}
+
+void Beep_High(void)
+{
+    GPIOx_Output(BANKB, 13, 0);
 }
 
 void InOutPurpose_Init(void)
@@ -343,6 +352,21 @@ void Charge_Init(void)
 
     // Charge Enable
     GPIOx_Config(BANKG, 3, OUTPUT_DIR);
+    GPIOx_Output(BANKG, 3, 0);// allow charge
+}
+
+void Charge_Disable(void)
+{
+    GPIOx_Output(BANKG, 3, 1);// disable charge
+}
+
+u8 Charge_InsertDetect(void)
+{
+    if (GPIOx_Input(BANKF, 2)) {
+        return 0;// normal mode
+    } else {
+        return 1;// charging mode
+    }
 }
 
 u8 GetLedsStatus(LED_INDEX led_id)
@@ -357,4 +381,18 @@ void SetLedsStatus(LED_INDEX led_id, LED_STA led_sta)
     } else {
         gs_leds_sta &= ~(1<<led_id);
     }
+}
+
+void SetLedsMode(LED_INDEX led_id, LED_MOD led_mod)
+{
+    if (LED_BLINK == led_mod) {
+        gs_leds_mod |= (1<<led_id);
+    } else {
+        gs_leds_mod &= ~(1<<led_id);
+    }
+}
+
+u8 GetLedsMode(LED_INDEX led_id)
+{
+    return (gs_leds_mod&(1<<led_id)) ? 1 : 0;
 }

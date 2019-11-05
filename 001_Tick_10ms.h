@@ -16,13 +16,15 @@
 
 #include "015_Common.h"
 
-void Configure_Tick_10ms(void);
+void Configure_Tick1_10ms(void);
 void Configure_Tick2_10ms(void);
-void Configure_Tick3_10ms(void);
-void Configure_Tick4_10ms(void);
 
+void Enable_Tick2(void);
+void Disable_Tick2(void);
+
+void delay_ms_nop(u32 cnt);
+void delay_us_nop(u32 cnt);
 void delay_ms(unsigned long val);
-void DelayMs(unsigned long val);
 unsigned long GetTimeStamp();
 bool isDelayTimeout(unsigned long start_time,unsigned long delayms);
 

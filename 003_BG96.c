@@ -995,7 +995,7 @@ void InitSerial()
 
 bool SendDataAndCheck(const char *data_buf, const char *ok_str, const char *err_str, unsigned int timeout)
 {
-    DelayMs(100);
+    delay_ms(100);
 
     // to read recv fifo till empty
     while (ReadByteFromRingBuffer() >= 0);
@@ -1026,7 +1026,7 @@ bool SendDataAndCheck(const char *data_buf, const char *ok_str, const char *err_
 
 bool SendATcommand(const char *command)
 {
-    DelayMs(100);
+    delay_ms(100);
     // to read recv fifo till empty
     while (ReadByteFromRingBuffer() >= 0);
     printf("SND: ");

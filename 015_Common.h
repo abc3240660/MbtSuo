@@ -21,6 +21,11 @@
 #define         HW_VER                  "201910041950"
 #define         SW_VER                  "201910041950"
 
+#define         IPL_HIGH                7
+#define         IPL_MID                 5
+#define         IPL_LOW                 3
+#define         IPL_DIS                 0
+
 #define         T1IPL                   5                                       // define Timer 1 IRQ priority levell for real tome Tick
 #define         T2IPL                   1                                       // define Timer 2 IRQ priority levell for real tome Tick
 

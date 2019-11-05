@@ -308,6 +308,8 @@ int16_t bno055_set_ext_crystal(bool usextal);
 // read system status & self test result & system error
 void bno055_read_status(uint8_t *sys_stat, uint8_t *st_ret, uint8_t * sys_err);
 
+void BNO055_PowerUp(void);
+
 #endif //__BNO055_H
 
 //******************************************************************************
