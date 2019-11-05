@@ -12,7 +12,7 @@
 
 #include <stdio.h>
 #include <p24fxxxx.h>
-
+#include "001_Tick_10ms.h"
 #include "006_Gpio.h"
 
 u8 gs_leds_sta = 0;
@@ -220,7 +220,7 @@ void LEDs_Init(void)
 
     // Green LED ON to indicate powerup
     GPIOx_Output(BANKD, MAIN_LED_G, 1);
-    delay_ms(10);
+    delay_ms_nop(10);
 
     // Disable all LEDs
     GPIOx_Output(BANKD, MAIN_LED_B, 0);

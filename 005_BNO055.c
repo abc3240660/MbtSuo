@@ -622,6 +622,56 @@ char bno055_enter_normal_mode(void)
 
 char bno055_enter_lower_mode(void)
 {
+    u8 onebyte = 0;
+
+    u16 result = 0;
+ // Select BNO055 config mode
+ result = bno055_write_byte(BNO055_OPR_MODE, CONFIGMODE);
+    if(result){
+        return -1;
+    }
+ bno_055_delay_ms(25);
+
+ result = bno055_write_byte(BNO055_PAGE_ID, 0x0);
+    if(result){
+        return -2;
+    }
+    bno_055_delay_ms(25);
+
+ result = bno055_write_byte(BNO055_PWR_MODE, 0x01);
+    if(result){
+        return -1;
+    }
+ bno_055_delay_ms(25);
+ 
+ result = bno055_write_byte(BNO055_OPR_MODE, NDOF);
+    if(result){
+        return -1;
+    }
+ bno_055_delay_ms(25);
+
+ result = bno055_write_byte(BNO055_PAGE_ID, 0x1);
+    if(result){
+        return -2;
+    }
+    bno_055_delay_ms(25);
+    
+ result = bno055_write_byte(BNO055_INT_EN, 0x40);//ACC_AM ACC_NM
+    if(result){
+        return -4;
+    }
+    bno_055_delay_ms(50);
+
+ result = bno055_write_byte(BNO055_PAGE_ID, 0x0);
+    if(result){
+        return -2;
+    }
+    bno_055_delay_ms(25);
+ return 0;
+}
+
+char bno055_enter_lower_modex(void)
+{
     u16 result = 0;
 	// Select BNO055 config mode
 	result = bno055_write_byte(BNO055_OPR_MODE, CONFIGMODE);
@@ -657,10 +707,10 @@ char bno055_enter_lower_mode(void)
     }
 	bno_055_delay_ms(25);
 	
-	result = bno055_write_byte(BNO055_OPR_MODE, NDOF);
-    if(result){
-        return -1;
-    }
+//	result = bno055_write_byte(BNO055_OPR_MODE, NDOF);
+//    if(result){
+//        return -1;
+//    }
 	bno_055_delay_ms(25);
 
 	return 0;
@@ -1037,6 +1087,11 @@ void BNO055_PowerUp(void)
     GPIOx_Output(BANKC, 13, 0);
     delay_ms(100);
     GPIOx_Output(BANKC, 13, 1);
+
+    delay_ms(2000);
+    GPIOx_Output(BANKC, 13, 0);// nTILT_RST
+    delay_ms(2000);
+    GPIOx_Output(BANKC, 13, 1);// nTILT_RST
 }
 
 //******************************************************************************

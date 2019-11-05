@@ -1694,9 +1694,9 @@ void PowerOffBG96Module(void)
 
     GPIOx_Config(BANKB, 9, OUTPUT_DIR);// PWRKEY
     GPIOx_Output(BANKB, 9, 0);// default SI2302 HIGH
-    delay_ms(100);
+    delay_ms_nop(100);
     GPIOx_Output(BANKB, 9, 1);// MCU High -> SI2302 Low  -> PowerOff
-    delay_ms(800);// SI2302 Low >= 0.65s :  On -> Off
+    delay_ms_nop(800);// SI2302 Low >= 0.65s :  On -> Off
     GPIOx_Output(BANKB, 9, 0);// release to default SI2302 HIGH
 }
 

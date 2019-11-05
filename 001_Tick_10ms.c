@@ -216,7 +216,7 @@ void delay_ms_nop(u32 cnt)
     u32 j = 0;
 
     for (i=0; i<cnt; i++)
-        for (j=0; j<1000; j++);
+        for (j=0; j<1150; j++);
 }
 
 // Delay Unit: 1us
@@ -232,7 +232,7 @@ void delay_us_nop(u32 cnt)
     u32 j = 0;
 
     for (i=0; i<cnt; i++)
-        for (j=0; j<1000; j++);
+        for (j=0; j<115; j++);
 }
 
 

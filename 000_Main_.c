@@ -58,7 +58,6 @@ static void __delay_usx(uint16_t ms)
 }
 */
 
-
 int main(void)
 {
 	float cur_pitch;
@@ -107,15 +106,6 @@ int main(void)
     printf("ART Application running...\r\n");
 
 #if 1// BNO055 Testing
-    GPIOx_Config(BANKC, 13, OUTPUT_DIR);// BNO055 
-    GPIOx_Config(BANKC, 14, OUTPUT_DIR);// BNO055
-    GPIOx_Output(BANKC, 14, 1);// nTILT_BOOT_LOAD
-   
-    delay_ms(2000);
-    GPIOx_Output(BANKC, 13, 0);// nTILT_RST
-    delay_ms(2000);
-    GPIOx_Output(BANKC, 13, 1);// nTILT_RST
-
     delay_ms(4000);
 	BNO055_init();
 	 if(0 == bno055_get_euler(&cur_pitch, &cur_yaw, &cur_roll))
