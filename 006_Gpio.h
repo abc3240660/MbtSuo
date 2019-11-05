@@ -64,7 +64,7 @@ u8 GetLedsStatus(LED_INDEX led_id);
 void SetLedsStatus(LED_INDEX led_id, LED_STA led_sta);
 
 u8 GetLedsMode(LED_INDEX led_id);
-void SetLedsMode(LED_INDEX led_id, LED_STA led_sta);
+void SetLedsMode(LED_INDEX led_id, LED_MOD led_sta);
 
 void LEDs_Init(void);
 void LEDs_Ctrl(LED_INDEX led_id,LED_STA led_sta);

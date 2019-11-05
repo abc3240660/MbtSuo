@@ -74,19 +74,18 @@ void Uart1_Init(void)
     _TRISD1 = 1;
     _TRISD3 = 0;
 
-    // BRGH = 1
     U1MODE = 0X8808;
     U1STA = 0X2400;
-    // 10M/(21+1) = 114285
-    U1BRG = 0x15;
+    // 4M/(34+1) = 114285
+    U1BRG = 34;
 #endif
 
-    _U1TXIP = IPL_DIS;
-    _U1RXIP = IPL_DIS;
+//    _U1TXIP = 3;
+    _U1RXIP = IPL_LOW;
     _U1TXIF = 0;
     _U1RXIF = 0;
-    _U1TXIE = 0;
-    _U1RXIE = 0;
+//    _U1TXIE = 0;
+    _U1RXIE = 1;
 }
 
 // 115200 for BG96
@@ -202,7 +201,7 @@ void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
 
     do {
         temp = U3RXREG;
-        printf("-%.2X", (u8)temp);
+        //printf("-%.2X", (u8)temp);
         _U3RXIF = 0;
         if (U3STAbits.OERR) {
             U3STAbits.OERR = 0;
@@ -390,7 +389,9 @@ bool WaitUartTmpRxIdle(void)
 
     return true;
 }
+extern u8 BNO_055_RECV_BUFF[64];
 
+extern u16 recv_total_len;
 void Uart4_Init(void)
 {
     RPOR6bits.RP12R = 0x0015;    //RD11->UART4:U4TX
@@ -400,11 +401,11 @@ void Uart4_Init(void)
     _TRISD10 = 1;
     _TRISD11 = 0;
     
-//    _ANSD10 = 0;
+    //_ANSD10 = 0;
     
     U4MODE=0X8808;
     U4STA = 0X2400;
-    U4BRG = 0x15;//34;
+    U4BRG = 34;//34;
 
     IPC22bits.U4TXIP = IPL_DIS;
     IPC22bits.U4RXIP = IPL_HIGH;
@@ -415,6 +416,7 @@ void Uart4_Init(void)
 void Uart4_Putc(char ch)
 {
     U4TXREG = ch;
+    //printf("TX[%.2X] ", (u8)ch);
     while(_U4TXIF == 0);
     _U4TXIF = 0;
 }
@@ -424,13 +426,18 @@ void __attribute__((__interrupt__,no_auto_psv)) _U4RXInterrupt(void)
     char temp = 0;
 
     do {
-        temp = U4RXREG;
-        printf("+%.2X", (u8)temp);
-        _U4RXIF = 0;
+
         if (U4STAbits.OERR) {
+            printf("U4 OEER \n");
             U4STAbits.OERR = 0;
-        } else {
-            Uart4_Buffer[Uart4_Use_Len++] = temp;
+        } else
+        {
+            _U4RXIF = 0;
+            //temp = U4RXREG;  
+            //printf("RX[%.2X] ", (u8)temp);            
+            //Uart4_Buffer[Uart4_Use_Len++] = temp;
+			BNO_055_RECV_BUFF[recv_total_len++]=U4RXREG;
+            //printf("recv_total_len=%.2X", (u8)recv_total_len);
         }
     } while (U4STAbits.URXDA);
 }

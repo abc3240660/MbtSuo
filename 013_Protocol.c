@@ -498,8 +498,8 @@ bool TcpHeartBeat(void)
 
     if (ADC0_GetValue(&bat_vol)) {
         if ((bat_vol>=0) && (bat_vol<=1023)) {
-            tmp_vol1 = (((bat_vol*2*330)/1024)%1000)/100;
-            tmp_vol2 = (((bat_vol*2*330)/1024)%100)/10;
+            tmp_vol1 = (((bat_vol*330*18)/10240)%1000)/100;
+            tmp_vol2 = (((bat_vol*330*18)/10240)%100)/10;
             sprintf((char*)vol_str, "%ld.%ld", tmp_vol1, tmp_vol2);
         } else {
             strcpy((char*)vol_str, "F");

@@ -13,9 +13,12 @@
 #define __BNO055_H
 
 #include <p24fxxxx.h>
-
+#include <string.h>
+#include <stdint.h>
 #include "015_Common.h"
 
+#define SLO_NO_MOT_DUR		15 //16s
+#define SMNM				1
 // BNO055 Register Map
 //
 // BNO055 Page 0
@@ -262,51 +265,59 @@ enum SignRemapMode{
   REMAP_SIGN_P7 = 0x05
 };
 
-int16_t Configure_BNO055(void);
+u16 Configure_BNO055(void);
 
-int16_t bno055_demo(void);
+u16 bno055_demo(void);
 
-int16_t bno055_calibrate_demo(void);
+u16 bno055_calibrate_demo(void);
 
-int16_t bno055_verify_chip(void);
+u16 bno055_verify_chip(void);
 
 // read the X/Y/Z axis of acceleration
-int16_t bno055_read_accel(int16_t *p_out);
+u16 bno055_read_accel(u16 *p_out);
 
 // read the X/Y/Z axis of gyroscope
-int16_t bno055_read_gyro(int16_t *p_out);
+u16 bno055_read_gyro(u16 *p_out);
 
 // read the X/Y/Z axis of magnetometer
-int16_t bno055_read_mag(int16_t *p_out);
+u16 bno055_read_mag(u16 *p_out);
 
 // read the W/X/Y/Z axis of quaternion
-int16_t bno055_read_quat(int16_t *p_out);
+u16 bno055_read_quat(u16 *p_out);
 
 // read the heading/roll/pitch of euler
-int16_t bno055_read_eul(int16_t *p_out);
+u16 bno055_read_eul(u16 *p_out);
 
 // read the X/Y/Z axis of linear acceleration
-int16_t bno055_read_lia(int16_t *p_out);
+u16 bno055_read_lia(u16 *p_out);
 
 // read the X/Y/Z axis of gravity vector
-int16_t bno055_read_grv(int16_t *p_out);;
+u16 bno055_read_grv(u16 *p_out);;
 
 // change the chip's axis remap
-int8_t bno055_set_axis_remap(uint8_t mode);
+char bno055_set_axis_remap(u8 mode);
 
 // change the chip's axis sign
-int8_t bno055_set_axis_sign(uint8_t mode);
+char bno055_set_axis_sign(u8 mode);
 
-int8_t bno055_enter_suspend_mode(void);
+char bno055_enter_suspend_mode(void);
 
-int8_t bno055_enter_normal_mode(void);
+char bno055_enter_normal_mode(void);
+char bno055_enter_lower_mode(void);
+u16 bno055_read_calibrate_sta(u16 *calib_sta);
 
-int16_t bno055_read_calibrate_sta(int16_t *calib_sta);
-
-int16_t bno055_set_ext_crystal(bool usextal);
+u16 bno055_set_ext_crystal(u8 usextal);
 
 // read system status & self test result & system error
-void bno055_read_status(uint8_t *sys_stat, uint8_t *st_ret, uint8_t * sys_err);
+void bno055_read_status(u8 *sys_stat, u8 *st_ret, u8 * sys_err);
+u8 bno055_get_int_src(void);
+u16 bno055_clear_int(void);
+u16 bno055_get_euler(float *cur_pitch, float *cur_yaw, float *cur_roll);
+u16 bno055_euler_check(float init_pitch, float init_yaw, float init_roll);
+int16_t BNO055_init(void);
+
+
+void EXT_INT_Initialize(void);
 
 void BNO055_PowerUp(void);
 

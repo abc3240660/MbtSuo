@@ -367,8 +367,7 @@ static Cmd_Response_t ReadResponseAndSearch(const char *test_str, unsigned int t
         }
     }
     if (recv_len > 0) {
-        printf("rxBuffer = %s\n", rxBuffer);
-        printf("UNKNOWN_RESPONSE...\n");
+        printf("UNKNOWN_RESPONSE = %s\n", rxBuffer);
         return UNKNOWN_RESPONSE;
     } else {
         printf("TIMEOUT_RESPONSE...\n");
@@ -511,7 +510,7 @@ static bool GetDevIMEI(void)
         char *end_buf = SearchStrBuffer(RESPONSE_CRLF_OK);
         *end_buf = '\0';
         memset(g_imei_str, 0, LEN_COMMON_USE);
-        strncpy((char*)g_imei_str, (const char*)rxBuffer, LEN_COMMON_USE);
+        strncpy((char*)g_imei_str, (const char*)rxBuffer+2, LEN_COMMON_USE);
         printf("g_imei_str = %s\n", g_imei_str);
 
         return true;
@@ -1162,7 +1161,7 @@ bool CloseFtpService(void)
     return false;
 }
 
-static bool QueryNetStatus(void)
+bool QueryNetStatus(void)
 {
     const char *cmd = "+CGATT?";
 
@@ -1218,7 +1217,7 @@ bool QueryNetMode(void)
     return false;
 }
 
-static bool SetAutoNetMode(void)
+bool SetAutoNetMode(void)
 {
     const char *cmd;
 
@@ -1268,7 +1267,7 @@ static bool SetAutoNetMode(void)
     return true;
 }
 
-static bool DumpNetMode(void)
+bool DumpNetMode(void)
 {
     const char *cmd;
     char mode_cfg[16] = "";
@@ -1318,43 +1317,21 @@ static bool DumpNetMode(void)
     return true;
 }
 
+bool BG96EnsureRxOk(void)
+{
+    if (SetDevCommandEcho(false)) {
+        return true;
+    }
+
+    return false;
+}
+
 bool BG96ATInitialize(void)
 {
     int trycnt = 10;
 
-    printf("This is the Mobit Debug Serial!\n");
-
-    while(trycnt--) {
-        if (SetDevCommandEcho(false)) {
-            break;
-        }
-    }
-
-    if (trycnt < 1) {
-        return false;
-    }
-
-    delay_ms(10000);
-
-    DumpNetMode();
-    QueryNetMode();
-
-    trycnt = 50;
-    while(trycnt--) {
-        if (true == QueryNetStatus()) {
-            break;
-        }
-    }
-
-    if (trycnt < 1) {
-        SetAutoNetMode();
-        asm("reset");
-        return false;
-    }
-
     gs_net_sta = 0x40;
 
-    trycnt = 10;
     while(trycnt--) {
         if (true == GetDevIMEI()) {
             break;
@@ -1699,22 +1676,75 @@ void GetGPSInfo(char* gnss_part)
 }
 
 /////////////////////////////////// BG96 Common ///////////////////////////////////
-static bool InitModule()
+void ResetBG96Module(void)
 {
-//    GPIOx_Config(BANKB, 11, OUTPUT_DIR);// RESET
-//    GPIOx_Output(BANKB, 11, 0);
-//    delay_ms(300);
-//    GPIOx_Output(BANKB, 11, 1);
+    _ANSB11 = 0;
 
-    GPIOx_Config(BANKB, 8, OUTPUT_DIR);// AP_READY
-    GPIOx_Output(BANKB, 8, 0);
+    GPIOx_Config(BANKB, 11, OUTPUT_DIR);// RESET
+    GPIOx_Output(BANKB, 11, 0);
+    delay_ms(100);
+    GPIOx_Output(BANKB, 11, 1);
+    delay_ms(300);
+    GPIOx_Output(BANKB, 11, 0);
+}
+
+void PowerOffBG96Module(void)
+{
+    _ANSB9 = 0;
 
     GPIOx_Config(BANKB, 9, OUTPUT_DIR);// PWRKEY
-    GPIOx_Output(BANKB, 9, 0);
-    delay_ms(2000);
-    GPIOx_Output(BANKB, 9, 1);
+    GPIOx_Output(BANKB, 9, 0);// default SI2302 HIGH
+    delay_ms(100);
+    GPIOx_Output(BANKB, 9, 1);// MCU High -> SI2302 Low  -> PowerOff
+    delay_ms(800);// SI2302 Low >= 0.65s :  On -> Off
+    GPIOx_Output(BANKB, 9, 0);// release to default SI2302 HIGH
+}
+
+void PowerOnBG96Module(void)
+{
+    _ANSB9 = 0;
+
+    GPIOx_Config(BANKB, 9, OUTPUT_DIR);// PWRKEY
+    GPIOx_Output(BANKB, 9, 0);// default SI2302 HIGH
+    delay_ms(100);
+    GPIOx_Output(BANKB, 9, 1);// MCU High -> SI2302 Low  -> PowerOn
+    delay_ms(600);// SI2302 Low >= 0.5s :  Off -> On
+    GPIOx_Output(BANKB, 9, 0);// release to default SI2302 HIGH
+}
+
+static bool InitModule(void)
+{
+    u8 i = 0;
+
+    _ANSB3 = 0;
+//    IOCPDB |= (1<<3);
+//    GPIOx_Config(BANKB, 3, INPUT_DIR);// STATUS
+
+    _ANSB8 = 0;
+//    GPIOx_Config(BANKB, 8, OUTPUT_DIR);// AP_READY
+//    GPIOx_Output(BANKB, 8, 0);
+
+    if (GPIOx_Input(BANKB, 3)) {// default HIGH: Power off
+        printf("BG96 Boot Off -> Power on...\n");
+        PowerOnBG96Module();
+    } else {// Already Power on
+        printf("BG96 Boot On -> Reset...\n");
+        ResetBG96Module();
+    }
+
+    for (i=0; i<15; i++) {
+        if (!GPIOx_Input(BANKB, 3)) {// Power on
+            break;
+        }
+
+        delay_ms(1000);
+    }
     
-    printf("TRISB=%.4X\n", TRISB);
+    if (15 == i) {
+        printf("BG96 Power on failed\n");
+    } else {
+        printf("BG96 Power on success\n");
+    }
 
     return true;
 }

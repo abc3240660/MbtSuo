@@ -454,10 +454,10 @@ void CardIDFlashBankInit(void)
 
 void CLRC663_PowerUp(void)
 {
-    GPIOx_Config(BANKB 1, OUTPUT_DIR);
-    GPIOx_Config(BANKE 5, OUTPUT_DIR);
-    GPIOx_Config(BANKE 6, OUTPUT_DIR);
-    GPIOx_Config(BANKE 7, OUTPUT_DIR);
+    GPIOx_Config(BANKB, 1, OUTPUT_DIR);
+    GPIOx_Config(BANKE, 5, OUTPUT_DIR);
+    GPIOx_Config(BANKE, 6, OUTPUT_DIR);
+    GPIOx_Config(BANKE, 7, OUTPUT_DIR);
 
     GPIOx_Output(BANKE, 5, 0);// PDOWN Low -> Power UP Mode
     GPIOx_Output(BANKE, 6, 0);// IFSEL0 Low

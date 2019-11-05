@@ -316,6 +316,12 @@ bool TurnTryLocate(void);
 bool TurnOnGNSSDamon(void);
 bool GetDevRSSI(void);
 bool GetDevNetModeRSSI(void);
+bool BG96EnsureRxOk(void);
+bool QueryNetStatus(void);
+bool SetAutoNetMode(void);
+bool DumpNetMode(void);
+void ResetBG96Module(void);
+void PowerOffBG96Module(void);
 
 #endif //__BG96_H
 

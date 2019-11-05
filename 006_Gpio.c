@@ -20,7 +20,7 @@ u8 gs_leds_sta = 0;
 // 0-normal 1-blink
 u8 gs_leds_mod = 0;
 
-void void GPIOx_Config(GPIO_BANKx port, u8 pin, GPIO_DIR dir)
+void GPIOx_Config(GPIO_BANKx port, u8 pin, GPIO_DIR dir)
 {
     if (BANKB == port) {
         if(dir){
@@ -61,7 +61,7 @@ void void GPIOx_Config(GPIO_BANKx port, u8 pin, GPIO_DIR dir)
     }
 }
 
-void GPIOx_Pull(GPIO_BANKx port, u8 pin, GPIOx_PUL value)
+void GPIOx_Pull(GPIO_BANKx port, u8 pin, GPIO_PUL value)
 {
     if (BANKB == port) {
         if(PULL_UP == value){
@@ -100,7 +100,7 @@ void GPIOx_Pull(GPIO_BANKx port, u8 pin, GPIOx_PUL value)
             IOCPDF &= ~(1<<pin);
             IOCPUF |= (1<<pin);
         } else {
-            IOCPUF ~(1<<pin);
+            IOCPUF &= ~(1<<pin);
             IOCPDF |= (1<<pin);
         }
     } else if (BANKG == port) {
@@ -241,7 +241,7 @@ void LEDs_Ctrl(LED_INDEX led_id,LED_STA led_sta)
 
 void LockSwitch_Init(void)
 {
-    GPIOx_Config(BANKE 4, INPUT_DIR);
+    GPIOx_Config(BANKE, 4, INPUT_DIR);
 }
 
 u8 IsLockSwitchOpen(void)
