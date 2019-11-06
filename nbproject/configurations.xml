@@ -8,7 +8,6 @@
       <itemPath>007_Uart.h</itemPath>
       <itemPath>002_CLRC663.h</itemPath>
       <itemPath>002_CLRC663_Def.h</itemPath>
-      <itemPath>003_BG96.h</itemPath>
       <itemPath>004_LB1938.h</itemPath>
       <itemPath>005_BNO055.h</itemPath>
       <itemPath>006_Gpio.h</itemPath>
@@ -16,7 +15,6 @@
       <itemPath>009_System.h</itemPath>
       <itemPath>011_Spi.h</itemPath>
       <itemPath>012_CLRC663_NFC.h</itemPath>
-      <itemPath>013_Protocol.h</itemPath>
       <itemPath>014_Md5.h</itemPath>
       <itemPath>015_Common.h</itemPath>
       <itemPath>017_InnerFlash.h</itemPath>
@@ -33,14 +31,12 @@
       <itemPath>001_Tick_10ms.c</itemPath>
       <itemPath>007_Uart.c</itemPath>
       <itemPath>002_CLRC663.c</itemPath>
-      <itemPath>003_BG96.c</itemPath>
       <itemPath>004_LB1938.c</itemPath>
       <itemPath>005_BNO055.c</itemPath>
       <itemPath>006_Gpio.c</itemPath>
       <itemPath>008_RingBuffer.c</itemPath>
       <itemPath>009_System.c</itemPath>
       <itemPath>012_CLRC663_NFC.c</itemPath>
-      <itemPath>013_Protocol.c</itemPath>
       <itemPath>014_Md5.c</itemPath>
       <itemPath>011_Spi.c</itemPath>
       <itemPath>017_InnerFlash.c</itemPath>
