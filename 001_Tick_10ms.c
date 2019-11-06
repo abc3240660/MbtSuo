@@ -10,16 +10,14 @@
 //******************************************************************************
 
 #include "001_Tick_10ms.h"
-#include "003_BG96.h"
 #include "006_Gpio.h"
 #include "007_Uart.h"
-#include "008_RingBuffer.h"
 #include "015_Common.h"
 
 static unsigned long MobitTimesT1 = 0UL;// unit: ms
 static unsigned long MobitTimesT2 = 0UL;// unit: ms
-static unsigned long MobitTimesT3 = 0UL;// unit: ms
-static unsigned long MobitTimesT4 = 0UL;// unit: ms
+// static unsigned long MobitTimesT3 = 0UL;// unit: ms
+// static unsigned long MobitTimesT4 = 0UL;// unit: ms
 
 // --
 // ---------------------- global variables -------------------- //
@@ -232,7 +230,7 @@ void delay_us_nop(u32 cnt)
     u32 j = 0;
 
     for (i=0; i<cnt; i++)
-        for (j=0; j<115; j++);
+        for (j=0; j<1; j++);
 }
 
 

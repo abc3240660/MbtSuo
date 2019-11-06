@@ -17,7 +17,6 @@
 
 #include "001_Tick_10ms.h"
 #include "002_CLRC663.h"
-#include "003_BG96.h"
 #include "004_LB1938.h"
 #include "005_BNO055.h"
 #include "006_Gpio.h"
@@ -25,7 +24,6 @@
 #include "009_System.h"
 #include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
-#include "013_Protocol.h"
 #include "016_FlashOta.h"
 #include "017_InnerFlash.h"
 #include "019_ADC0.h"
@@ -35,12 +33,8 @@ static u32 start_time_nfc = 0;
 
 static u8 gs_charge_sta = 0;
 
-u8 g_svr_ip[LEN_NET_TCP+1]  = "192.168.1.105";
-u8 g_svr_port[LEN_NET_TCP+1] = "10212";// 10211-TCP 10212-UDP
-u8 g_svr_apn[LEN_NET_TCP+1] = "sentinel.m2mmobi.be";
-
 u8 g_led_times;
-extern u8 g_ring_times;
+u8 g_ring_times;
 
 // 0-normal 1-low power
 u8 g_bno055_sta;
@@ -57,6 +51,18 @@ static void __delay_usx(uint16_t ms)
     }
 }
 */
+
+static void PowerOffBG96Module(void)
+{
+    _ANSB9 = 0;
+
+    GPIOx_Config(BANKB, 9, OUTPUT_DIR);// PWRKEY
+    GPIOx_Output(BANKB, 9, 0);// default SI2302 HIGH
+    delay_ms_nop(100);
+    GPIOx_Output(BANKB, 9, 1);// MCU High -> SI2302 Low  -> PowerOff
+    delay_ms_nop(800);// SI2302 Low >= 0.65s :  On -> Off
+    GPIOx_Output(BANKB, 9, 0);// release to default SI2302 HIGH
+}
 
 int main(void)
 {
@@ -97,7 +103,7 @@ int main(void)
     Configure_Tick1_10ms();
     Configure_Tick2_10ms();
 
-    CLRC663_PowerUp();
+//    CLRC663_PowerUp();
     BNO055_PowerUp();
 
     Uart1_Init();// Debug
@@ -114,15 +120,15 @@ int main(void)
 #if 1// BNO055 Testing
     delay_ms(4000);
 	BNO055_init();
-	 if(0 == bno055_get_euler(&cur_pitch, &cur_yaw, &cur_roll))
-		 printf("base : %f        %f       %f \n",cur_pitch, cur_yaw, cur_roll);
-	 else
-		 printf("Get base eurl failed \n");
+    if(0 == bno055_get_euler(&cur_pitch, &cur_yaw, &cur_roll))
+        printf("base : %f        %f       %f \n",(double)cur_pitch, (double)cur_yaw, (double)cur_roll);
+	else
+	    printf("Get base eurl failed \n");
     EXT_INT_Initialize();
-     bno055_clear_int();//clear INT
+    bno055_clear_int();//clear INT
     //bno055_enter_normal_mode();//
     //Configure_BNO055();
-   // printf("After BG96 PowerOn...\r\n");
+    //printf("After BG96 PowerOn...\r\n");
     
 //    while(1) {
 //        printf("BNO055 Testing...\r\n");
@@ -133,6 +139,67 @@ int main(void)
 
     while(1)
     {
+#if 0
+        if (g_bno055_sta) {// low power
+            Sleep();
+            Nop();
+        }
+
+        if (g_bno055_move) {// BNO055 wakeup
+            if (IsLockSwitchOpen()) {
+                Sleep();
+                Nop();
+            } else {
+                nfc_enable = 1;
+            }
+        } else {// WDT wakeup for Charge Detect
+            if (Charge_InsertDetect()) {
+                gs_charge_sta |= 0x80;
+
+                ADC0_Init();
+
+                if (ADC0_GetValue(&adc_val)) {
+                    if (adc_val > 1000) {
+                        Charge_Disable();
+                        SetLedsStatus(MAIN_LED_G, LED_ON);
+                    } else {
+                        SetLedsMode(MAIN_LED_B, LED_BLINK);
+                        SetLedsStatus(MAIN_LED_B, LED_ON);
+                    }
+                }
+
+                ADC0_Disable();
+            } else {
+                if (0x80 == gs_charge_sta) {
+                    gs_charge_sta = 0;
+                    SetLedsMode(MAIN_LED_B, LED_BLINK);
+                    SetLedsStatus(MAIN_LED_B, LED_OFF);
+                    SetLedsStatus(MAIN_LED_G, LED_OFF);
+                }
+            }
+        }
+
+        // -- use accuate time gap to hbeat
+        // ---------------------- H Beat -------------------- //
+        // --
+        if (1 == nfc_enable) {
+            if (0 == start_time_nfc) {
+                g_ring_times = 6;
+                Enable_Tick2();
+                SetLedsStatus(MAIN_LED_B, LED_ON);
+                start_time_nfc = GetTimeStamp();
+            }
+
+            if (start_time_nfc != 0) {
+                if (isDelayTimeout(start_time_nfc,nfc_time*1000UL)) {
+                    nfc_enable = 0;
+                    SetLedsStatus(MAIN_LED_B, LED_OFF);
+                }
+            }
+        } else {
+            start_time_nfc = 0;
+        }
+#endif
         if (0 == (task_cnt++%200)) {
         }
 
@@ -178,10 +245,28 @@ int main(void)
                 bno055_clear_int();//clear INT
                 if(onebyte&0x80)
                 {
-                      printf("Enter low power \n");
-                      bno055_enter_lower_mode();
-                      bno055_mode=1;
-                      //delay_ms(500);
+                    printf("Enter low power \n");
+                    bno055_enter_lower_mode();
+                    bno055_mode=1;
+                    //delay_ms(500);
+                    
+#if 0
+                    PMD1 = 0xFF;
+                    PMD2 = 0xFF;
+                    PMD3 = 0xFF;
+                    PMD4 = 0xFF;
+                    PMD5 = 0xFF;
+                    PMD6 = 0xFF;
+                    PMD7 = 0xFF;
+                    PMD8 = 0xFF;    
+
+                    _GIE = 0;
+                    __builtin_write_OSCCONH(5);
+                    __builtin_write_OSCCONL(0x01);
+                    while(OSCCONbits.OSWEN);
+                    _GIE = 1;
+#endif
+
                     Sleep(); 
                 }else if(onebyte&0x40){
                     printf("Enter normal \n");

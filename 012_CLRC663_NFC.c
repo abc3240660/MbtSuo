@@ -11,14 +11,13 @@
 ******************************************************************************/
 
 #include <xc.h>
-
+#include <string.h>
 #include "001_Tick_10ms.h"
 #include "004_LB1938.h"
 #include "006_Gpio.h"
 #include "007_Uart.h"
 #include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
-#include "013_Protocol.h"
 #include "016_FlashOta.h"
 
 static u8 gs_tmp_card_id[LEN_BYTE_SZ32+1] = {0};
@@ -279,81 +278,17 @@ u8 ReadMobibNFCCard(void)
 
     Clrc663_Clear();
 
-    if (IsDuringBind()) {
-        if (0 == gs_start_time_nfc) {
-            for (i=0; i<20; i++) {
-                if(i%2){
-                    LATD |= (1<<8);
-                }else{
-                    LATD &= ~(1<<8);
-                }
-                __delay_usx(25UL);
-            }
-
-            j = 0;
-            gs_start_time_nfc = GetTimeStamp();
-        }
-    } else {
-        gs_start_time_nfc = 0;
-    }
-
     if (read_iso14443B_nfc_card(gs_tmp_card_id, gs_tmp_serial_nr) > 0) {
         tmp_len = strlen((const char*)gs_tmp_card_id);
         tmp_len = strlen((const char*)gs_tmp_serial_nr);
 
-//        LATB |= (1<<4);
-//        delay_ms(5000);
-//        LATB &= ~(1<<4);
-
-        for (i=0; i<20; i++) {
-            if(i%2){
-                LATD |= (1<<8);
-            }else{
-                LATD &= ~(1<<8);
-            }
-            __delay_usx(25UL);
-        }
-
-        TcpReadedOneCard(gs_tmp_card_id, gs_tmp_serial_nr);
-
-        if (IsDuringBind()) {
-            gs_start_time_nfc = GetTimeStamp();
-            index = AddNewMobibCard(gs_tmp_card_id, gs_tmp_serial_nr);
-            if (index != 88) {
-                gs_bind_index[j++] = index;
-            }
-        } else {
-            for (i=0; i<CNTR_MAX_CARD; i++) {
-                if (0 == strncmp((const char*)gs_bind_cards[i], (const char*)gs_tmp_card_id, LEN_CARD_ID)) {
-                    LB1938_MotorCtrl(MOTOR_LEFT, MOTOR_HOLD_TIME);
-                    ReportLockerUnlocked();
-                }
+        for (i=0; i<CNTR_MAX_CARD; i++) {
+            if (0 == strncmp((const char*)gs_bind_cards[i], (const char*)gs_tmp_card_id, LEN_CARD_ID)) {
+                LB1938_MotorCtrl(MOTOR_LEFT, MOTOR_HOLD_TIME);
             }
         }
 
         return 0;
-    }
-
-    // cannot readout any MOBIB card for 10s
-    // so just finish this ADDC command
-    if (IsDuringBind()) {
-        if (gs_start_time_nfc != 0) {
-            if (isDelayTimeout(gs_start_time_nfc,10*1000UL)) {
-                for (i=0; i<60; i++) {
-                    if (0 == i%20) {
-                        delay_ms(200);
-                    }
-
-                    if(i%2){
-                        LATD |= (1<<8);
-                    }else{
-                        LATD &= ~(1<<8);
-                    }
-                    __delay_usx(25UL);
-                }
-                ReportFinishAddNFC(&gs_bind_cards[0], gs_bind_index);
-            }
-        }
     }
 
     return 1;
@@ -460,6 +395,19 @@ void CLRC663_PowerUp(void)
     GPIOx_Config(BANKE, 7, OUTPUT_DIR);
 
     GPIOx_Output(BANKE, 5, 0);// PDOWN Low -> Power UP Mode
+    GPIOx_Output(BANKE, 6, 0);// IFSEL0 Low
+    GPIOx_Output(BANKE, 7, 0);// IFSEL1 Low
+    GPIOx_Output(BANKB, 1, 1);// IF3 HIGH
+}
+
+void CLRC663_PowerOff(void)
+{
+    GPIOx_Config(BANKB, 1, OUTPUT_DIR);
+    GPIOx_Config(BANKE, 5, OUTPUT_DIR);
+    GPIOx_Config(BANKE, 6, OUTPUT_DIR);
+    GPIOx_Config(BANKE, 7, OUTPUT_DIR);
+
+    GPIOx_Output(BANKE, 5, 1);// PDOWN Low -> Power UP Mode
     GPIOx_Output(BANKE, 6, 0);// IFSEL0 Low
     GPIOx_Output(BANKE, 7, 0);// IFSEL1 Low
     GPIOx_Output(BANKB, 1, 1);// IF3 HIGH

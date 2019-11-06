@@ -16,9 +16,7 @@
 #include <p24fxxxx.h>
 
 #include "001_Tick_10ms.h"
-#include "003_BG96.h"
 #include "007_Uart.h"
-#include "008_RingBuffer.h"
 
 #define UART3_BUFFER_MAX_LEN 32
 
@@ -30,10 +28,10 @@ uint16_t Uart4_Use_Len = 0;
 
 static char Uart2_Send_Buf[UART2_BUFFER_MAX_LEN] = {0};
 
-static ringbuffer_t tmp_rbuf;
+//static ringbuffer_t tmp_rbuf;
 
 // ringbuf for temp recved
-static char tmpRingbuf[RX_RINGBUF_MAX_LEN] = {0};
+// static char tmpRingbuf[RX_RINGBUF_MAX_LEN] = {0};
 
 uint8_t Uart3_Buffer[64] = {0};
 int Uart3_Use_Len = 0;
@@ -139,8 +137,6 @@ void Uart2_Init(void)
     _U2RXIF = 0;
     _U2TXIE = 0;
     _U2RXIE = 1;
-
-    ringbuffer_init(&tmp_rbuf,tmpRingbuf,RX_RINGBUF_MAX_LEN);
 }
 
 // 115200 for CLRC663
@@ -325,7 +321,6 @@ void __attribute__((__interrupt__,no_auto_psv)) _U2RXInterrupt(void)
         if (U2STAbits.OERR) {
             U2STAbits.OERR = 0;
         } else {
-            ringbuffer_write_byte(&tmp_rbuf,temp);
         }
     } while (U2STAbits.URXDA);
 }
@@ -342,18 +337,15 @@ void __attribute__((__interrupt__,no_auto_psv)) _U1RXInterrupt(void)
         if (U1STAbits.OERR) {
             U1STAbits.OERR = 0;
         } else {
-            // printf("%.2X\n", temp);
-            // ringbuffer_write_byte(&tmp_rbuf,temp);
-            // printf("recv len = %d\n", IsTmpRingBufferAvailable());
         }
     } while (U1STAbits.URXDA);
 }
 
 int IsTmpRingBufferAvailable(void)
 {
-    int ret;
+    int ret = 0;
 
-    ret = ringbuffer_buf_use_size(&tmp_rbuf);
+    //ret = ringbuffer_buf_use_size(&tmp_rbuf);
 
     return ret;
 }
@@ -361,11 +353,11 @@ int IsTmpRingBufferAvailable(void)
 char ReadByteFromTmpRingBuffer(void)
 {
     char dat = 0;
-    int len = 1;
+
     if(IsTmpRingBufferAvailable()<=0){
         return -1;
     }
-    len = ringbuffer_read_len(&tmp_rbuf,&dat,len);
+    //len = ringbuffer_read_len(&tmp_rbuf,&dat,len);
     return dat;
 }
 
@@ -374,11 +366,11 @@ bool WaitUartTmpRxIdle(void)
     int size1 = 0;
     int size2 = 0;
 
-    size1 = ringbuffer_buf_use_size(&tmp_rbuf);
+    //size1 = ringbuffer_buf_use_size(&tmp_rbuf);
 
     while (1) {
         delay_ms(50);
-        size2 = ringbuffer_buf_use_size(&tmp_rbuf);
+        //size2 = ringbuffer_buf_use_size(&tmp_rbuf);
 
         if ((size1 == size2)) {// RX stopped for 50MS
             break;
@@ -423,21 +415,14 @@ void Uart4_Putc(char ch)
 
 void __attribute__((__interrupt__,no_auto_psv)) _U4RXInterrupt(void)
 {
-    char temp = 0;
-
     do {
 
         if (U4STAbits.OERR) {
             printf("U4 OEER \n");
             U4STAbits.OERR = 0;
-        } else
-        {
+        } else {
             _U4RXIF = 0;
-            //temp = U4RXREG;  
-            //printf("RX[%.2X] ", (u8)temp);            
-            //Uart4_Buffer[Uart4_Use_Len++] = temp;
 			BNO_055_RECV_BUFF[recv_total_len++]=U4RXREG;
-            //printf("recv_total_len=%.2X", (u8)recv_total_len);
         }
     } while (U4STAbits.URXDA);
 }

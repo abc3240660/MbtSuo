@@ -78,6 +78,10 @@ void Beep_High(void);
 u8 IsLockSwitchOpen(void);
 void LockSwitch_Init(void);
 
+void Charge_Init(void);
+void Charge_Disable(void);
+u8 Charge_InsertDetect(void);
+
 #ifdef __cplusplus
 }
 #endif

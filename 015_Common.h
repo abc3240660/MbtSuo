@@ -46,6 +46,8 @@
 #define LEN_CARD_ID      19
 #define LEN_SERIAL_NR    16
 
+#define LEN_NET_TCP      32
+
 #define LEN_COMMON_USE  LEN_BYTE_SZ32
 #define LEN_MD5_HEXSTR  LEN_BYTE_SZ32
 #define LEN_MD5_HEX     LEN_BYTE_SZ16
