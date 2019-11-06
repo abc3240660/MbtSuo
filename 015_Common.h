@@ -229,6 +229,14 @@ typedef struct {
 #define BIN_SIZE_INT   132664
 #define BIN_SIZE_STR  "132664"
 
+#define __DEBUG 1
+
+#ifdef __DEBUG
+#define DEBUG(info)    printf(info)
+#else
+#define DEBUG(info)
+#endif
+
 #endif
 
 //******************************************************************************

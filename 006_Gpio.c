@@ -241,12 +241,13 @@ void LEDs_Ctrl(LED_INDEX led_id,LED_STA led_sta)
 
 void LockSwitch_Init(void)
 {
+    // Default HW Pull Up
     GPIOx_Config(BANKE, 4, INPUT_DIR);
 }
 
 u8 IsLockSwitchOpen(void)
 {
-    if (GPIOx_Input(BANKE, 4)) {
+    if (!GPIOx_Input(BANKE, 4)) {
         return 1;// Open
     } else {
         return 0;// Close

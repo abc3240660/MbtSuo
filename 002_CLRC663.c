@@ -37,7 +37,7 @@ uint8_t Clrc663_Recv(void)
     do{
         len = Uart3_GetSize();
         if((len > 0) && (len > Uart3ReadPostion)){
-            //printf("%.2X\r\n", Uart3_Buffer[Uart3_Read_Postion]);
+            // DEBUG("%.2X\r\n", Uart3_Buffer[Uart3_Read_Postion]);
             temp = Uart3_Read(Uart3ReadPostion);
             return temp;
         }else{

@@ -48,17 +48,17 @@ static void __delay_usx(uint16_t ms)
 
 //      *** *** ***     Print identification numbers     *** *** ***       //
 //      *** *** ***     Card Invalidation     *** *** ***       //
-// Hex print for blocks without printf.
+// Hex print for blocks without DEBUG.
 void print_block(uint8_t * block, uint8_t length)
 {
   int i = 0;
 
   for (i = 0; i < length; i++){
-      if (block[i] < 16){  printf("%02x ",block[i]); }
-      else printf("%02x ",block[i]);
+      if (block[i] < 16){  DEBUG("%02x ",block[i]); }
+      else DEBUG("%02x ",block[i]);
   }
 
-  printf("\r\n");
+  DEBUG("\r\n");
 }
 
 void print_block_01(uint8_t* block, uint8_t lower_lim, uint8_t upper_lim)
@@ -66,49 +66,49 @@ void print_block_01(uint8_t* block, uint8_t lower_lim, uint8_t upper_lim)
   int i = 0;
 
   for(i = lower_lim; i < upper_lim; i++){
-    if (block[i] < 16){ printf("%02x ",block[i]); }
-    else printf("%02x ",block[i]);
+    if (block[i] < 16){ DEBUG("%02x ",block[i]); }
+    else DEBUG("%02x ",block[i]);
   }
 
-  printf(" \r\n");
+  DEBUG(" \r\n");
 }
 
 void print_card_ID_block(uint8_t * block, uint8_t length)
 {
     int i = 0;
 
-    printf("CardId: ");
+    DEBUG("CardId: ");
 
     for (i = 3; i < 12; i++) {
         if (block[i] < 16) {
-            printf("%02x ",block[i]);
+            DEBUG("%02x ",block[i]);
         } else {
-            printf("%02x ",block[i]);
+            DEBUG("%02x ",block[i]);
         }
     }
 
-    printf("%02x ",block[12]>>4);
-    printf(" \r\n");
+    DEBUG("%02x ",block[12]>>4);
+    DEBUG(" \r\n");
 }
 
 //  Card Blacklist and Card Invalidation
 void check_valid_card(uint8_t * buf)
 {
-  if (buf[40] == 0x62 || buf [41] == 0x83) printf(" ----INVALID CARD: card is locked----");
-  else printf("---- VALID CARD ----");
+  if (buf[40] == 0x62 || buf [41] == 0x83) DEBUG(" ----INVALID CARD: card is locked----");
+  else DEBUG("---- VALID CARD ----");
 }
 
 //  Print Pseudo-Unique PICC Identifier, Type B
 void print_PUPI(uint8_t* block)
 {
-  printf("PUPI: ");
+  DEBUG("PUPI: ");
   print_block_01(block, 1, 5);
 }
 
 //  Print MOBIB Hardcoded Serial Number
 void print_serial_nr(uint8_t* block)
 {
-  printf("Serial number: ");
+  DEBUG("Serial number: ");
   print_block_01(block, 23, 31);
 }
 
@@ -158,10 +158,10 @@ void print_card_ID(uint8_t* buf, uint8_t bufsize, u8* card_id, u8* serial_nr)
                 card_id[k++] = tmp-0x0A + 'A';
             }
         }
-//        printf("%02X\n", buf[i]);
+//        DEBUG("%02X\n", buf[i]);
     }
 
-    printf("CardId = %s\n", card_id);
+    DEBUG("CardId = %s\n", card_id);
  //   print_card_ID_block(buf, bufsize);
 }
 
@@ -176,7 +176,7 @@ void read_iso14443A_nfc_card(){
   atqa_length = clrc663_communicate(wupa_buffer, sizeof(wupa_buffer), atqa_buffer);
 
   if(atqa_length != 0) { 
-    printf("\n  *** TYPE A TAG detected ***  \n"); 
+    DEBUG("\n  *** TYPE A TAG detected ***  \n"); 
     
     uint8_t sak;
     uint8_t uid[10] = {0};  // uids are maximum of 10 bytes long.
@@ -185,13 +185,13 @@ void read_iso14443A_nfc_card(){
     uint8_t uid_len = clrc663_iso14443a_select(uid, &sak);
     
     if (uid_len != 0) {  // did we get an UID?
-      printf("UID of ");
-      printf(uid_len);
-      printf(" bytes (SAK: ");
-      printf(sak);
-      printf("): ");
+      DEBUG("UID of ");
+      DEBUG(uid_len);
+      DEBUG(" bytes (SAK: ");
+      DEBUG(sak);
+      DEBUG("): ");
       print_block(uid, uid_len);
-      printf("\n");
+      DEBUG("\n");
     }
   }
 }
@@ -226,22 +226,22 @@ u8 read_iso14443B_nfc_card(u8* card_id, u8* serial_nr)
 
     #ifdef DEBUG_ISO14443B
       //  Print sended en received bytes
-      printf("  ---   WUPB   --- \n");
-      printf("Send: "); print_block(wupb_buffer, sizeof(wupb_buffer));
-      printf("Receive: "); print_block(atqb_buffer, sizeof(atqb_buffer));
-      printf("  ---   ATTRIB   --- \n");
-      printf("Send: "); print_block(transmit_buffer, sizeof(transmit_buffer));
-      printf("Receive: "); print_block(receive_buffer, sizeof(receive_buffer));
-      printf("  ---   CALYPSO --- APDU select global data application   --- \n");
-      printf("Send: "); print_block(apdu_transmit_buffer, sizeof(apdu_transmit_buffer));
-      printf("Receive: "); print_block(apdu_receive_buffer, sizeof(apdu_receive_buffer));
-      printf("  ---   CALYPSO --- APDU read record 1  --- \n");
-      printf("Send: "); print_block(apdu_transmit_buffer_1, sizeof(apdu_transmit_buffer_1));
-      printf("Receive: "); print_block(apdu_receive_buffer_1, sizeof(apdu_receive_buffer_1));
+      DEBUG("  ---   WUPB   --- \n");
+      DEBUG("Send: "); print_block(wupb_buffer, sizeof(wupb_buffer));
+      DEBUG("Receive: "); print_block(atqb_buffer, sizeof(atqb_buffer));
+      DEBUG("  ---   ATTRIB   --- \n");
+      DEBUG("Send: "); print_block(transmit_buffer, sizeof(transmit_buffer));
+      DEBUG("Receive: "); print_block(receive_buffer, sizeof(receive_buffer));
+      DEBUG("  ---   CALYPSO --- APDU select global data application   --- \n");
+      DEBUG("Send: "); print_block(apdu_transmit_buffer, sizeof(apdu_transmit_buffer));
+      DEBUG("Receive: "); print_block(apdu_receive_buffer, sizeof(apdu_receive_buffer));
+      DEBUG("  ---   CALYPSO --- APDU read record 1  --- \n");
+      DEBUG("Send: "); print_block(apdu_transmit_buffer_1, sizeof(apdu_transmit_buffer_1));
+      DEBUG("Receive: "); print_block(apdu_receive_buffer_1, sizeof(apdu_receive_buffer_1));
     #endif
 
     #ifdef PRINT_IDENTIFICATION_NUMBERS
-      printf(" \r\n");
+      DEBUG(" \r\n");
       check_valid_card(apdu_receive_buffer);
       print_PUPI(atqb_buffer);
       print_serial_nr(apdu_receive_buffer);
@@ -274,7 +274,7 @@ u8 ReadMobibNFCCard(void)
     
     u8 version = clrc663_read_reg(CLRC630_REG_VERSION);
     
-    printf("\nCLRC663 VerReg = %.2X\n", version);
+    DEBUG("\nCLRC663 VerReg = %.2X\n", version);
 
     Clrc663_Clear();
 
@@ -322,7 +322,7 @@ u8 AddNewMobibCard(u8* card_id, u8* serial_nr)
 
     for (i=0; i<CNTR_MAX_CARD; i++) {
         if (strlen((const char*)gs_bind_cards[i]) != 0) {
-            printf("Binded CardId[%d]: %s\n", i, gs_bind_cards[i]);
+            DEBUG("Binded CardId[%d]: %s\n", i, gs_bind_cards[i]);
         }
     }
 

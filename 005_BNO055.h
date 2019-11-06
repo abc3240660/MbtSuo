@@ -17,16 +17,17 @@
 #include <stdint.h>
 #include "015_Common.h"
 
-#define SLO_NO_MOT_DUR		15 //16s
-#define SMNM				1
+#define SMNM                1
+#define SLO_NO_MOT_DUR      15 //16s
+
 // BNO055 Register Map
 //
 // BNO055 Page 0
-#define BNO055_CHIP_ID          0x00    // should be 0xA0              
-#define BNO055_ACC_ID           0x01    // should be 0xFB              
-#define BNO055_MAG_ID           0x02    // should be 0x32              
-#define BNO055_GYRO_ID          0x03    // should be 0x0F              
-#define BNO055_SW_REV_ID_LSB    0x04                                                                          
+#define BNO055_CHIP_ID          0x00    // should be 0xA0
+#define BNO055_ACC_ID           0x01    // should be 0xFB
+#define BNO055_MAG_ID           0x02    // should be 0x32
+#define BNO055_GYRO_ID          0x03    // should be 0x0F
+#define BNO055_SW_REV_ID_LSB    0x04
 #define BNO055_SW_REV_ID_MSB    0x05
 #define BNO055_BL_REV_ID        0x06
 #define BNO055_PAGE_ID          0x07
@@ -150,17 +151,17 @@ enum Abw { // ACC Bandwidth
   ABW_15_63Hz,
   ABW_31_25Hz,
   ABW_62_5Hz,
-  ABW_125Hz,    
+  ABW_125Hz,
   ABW_250Hz,
-  ABW_500Hz,     
+  ABW_500Hz,
   ABW_1000Hz,    //0x07
 };
 
 enum APwrMode { // ACC Pwr Mode
-  NormalA = 0,  
+  NormalA = 0,
   SuspendA,
   LowPower1A,
-  StandbyA,        
+  StandbyA,
   LowPower2A,
   DeepSuspendA
 };
@@ -211,20 +212,20 @@ enum OPRMode {  // BNO-55 operation modes
 };
 
 enum PWRMode {
-  Normalpwr = 0,   
-  Lowpower,       
-  Suspendpwr       
+  Normalpwr = 0,
+  Lowpower,
+  Suspendpwr
 };
 
-enum Modr {         // magnetometer output data rate  
-  MODR_2Hz = 0,     
+enum Modr {         // magnetometer output data rate
+  MODR_2Hz = 0,
   MODR_6Hz,
   MODR_8Hz,
-  MODR_10Hz,  
+  MODR_10Hz,
   MODR_15Hz,
   MODR_20Hz,
-  MODR_25Hz, 
-  MODR_30Hz 
+  MODR_25Hz,
+  MODR_30Hz
 };
 
 enum MOpMode { // MAG Op Mode
@@ -235,10 +236,10 @@ enum MOpMode { // MAG Op Mode
 };
 
 enum MPwrMode { // MAG power mode
-  Normal = 0,   
-  Sleep,     
+  Normal = 0,
+  Sleep,
   Suspend,
-  ForceMode  
+  ForceMode
 };
 
 /** Remap settings **/
@@ -295,27 +296,26 @@ u16 bno055_read_lia(u16 *p_out);
 u16 bno055_read_grv(u16 *p_out);;
 
 // change the chip's axis remap
-char bno055_set_axis_remap(u8 mode);
+u16 bno055_set_axis_remap(u8 mode);
 
 // change the chip's axis sign
-char bno055_set_axis_sign(u8 mode);
+u16 bno055_set_axis_sign(u8 mode);
 
-char bno055_enter_suspend_mode(void);
+u16 bno055_enter_suspend_mode(void);
 
-char bno055_enter_normal_mode(void);
-char bno055_enter_lower_mode(void);
+u16 bno055_enter_normal_mode(void);
+u16 bno055_enter_lower_mode(void);
 u16 bno055_read_calibrate_sta(u16 *calib_sta);
 
 u16 bno055_set_ext_crystal(u8 usextal);
 
 // read system status & self test result & system error
-void bno055_read_status(u8 *sys_stat, u8 *st_ret, u8 * sys_err);
+void bno055_read_status(u8 *sys_stat, u8 *st_ret, u8 *sys_err);
 u8 bno055_get_int_src(void);
 u16 bno055_clear_int(void);
 u16 bno055_get_euler(float *cur_pitch, float *cur_yaw, float *cur_roll);
 u16 bno055_euler_check(float init_pitch, float init_yaw, float init_roll);
-int16_t BNO055_init(void);
-
+u16 BNO055_init(void);
 
 void EXT_INT_Initialize(void);
 

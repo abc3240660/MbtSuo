@@ -27,30 +27,20 @@
 #include "016_FlashOta.h"
 #include "017_InnerFlash.h"
 #include "019_ADC0.h"
-u8 bno055_int_flag=0;
+
 // static u8 is_mode_nb = 0;
 static u32 start_time_nfc = 0;
-
 static u8 gs_charge_sta = 0;
 
-u8 g_led_times;
-u8 g_ring_times;
+u8 g_led_times = 0;
+u8 g_ring_times = 0;
+u8 bno055_int_flag = 0;
 
 // 0-normal 1-low power
-u8 g_bno055_sta;
+u8 g_bno055_sta = 0;
 
 // 0-normal 1-move interrupt
-u8 g_bno055_move;
-
-/*
-static void __delay_usx(uint16_t ms)
-{
-    int i=0,j=0;
-    for(i=0;i<ms;i++){
-        for(j=0;j<20;j++);
-    }
-}
-*/
+u8 g_bno055_move = 0;
 
 static void PowerOffBG96Module(void)
 {
@@ -66,11 +56,11 @@ static void PowerOffBG96Module(void)
 
 int main(void)
 {
-	float cur_pitch;
-	float cur_yaw;
-	float cur_roll;
-    u8 onebyte=0;
-    u8 bno055_mode=0;
+    float cur_pitch = 0;
+    float cur_yaw = 0;
+    float cur_roll = 0;
+
+    u8 bno055_intr_mode = 0;
 
     u8 nfc_ret = 0;
     u8 net_sta = 0;
@@ -88,6 +78,7 @@ int main(void)
     LEDs_Init();
     Charge_Init();
     LB1938_Init();
+    LockSwitch_Init();
 
 #if 0
     while (1) {
@@ -103,37 +94,36 @@ int main(void)
     Configure_Tick1_10ms();
     Configure_Tick2_10ms();
 
-//    CLRC663_PowerUp();
+    // CLRC663_PowerUp();
     BNO055_PowerUp();
 
     Uart1_Init();// Debug
     Uart3_Init();// CLRC663
     Uart4_Init();// BNO055
 
-    printf("ART Application running...\r\n");
+    DEBUG("ART Application running...\r\n");
 
-//    while (1) {
-//        printf("ART Application running...\r\n");
-//        delay_ms_nop(1000);
-//    }
+#if 0// soft delay test
+    while (1) {
+        DEBUG("ART Application running...\r\n");
+        delay_ms_nop(1000);
+    }
+#endif
 
 #if 1// BNO055 Testing
     delay_ms(4000);
-	BNO055_init();
-    if(0 == bno055_get_euler(&cur_pitch, &cur_yaw, &cur_roll))
-        printf("base : %f        %f       %f \n",(double)cur_pitch, (double)cur_yaw, (double)cur_roll);
-	else
-	    printf("Get base eurl failed \n");
+    BNO055_init();
+
+    if (0 == bno055_get_euler(&cur_pitch, &cur_yaw, &cur_roll))
+        DEBUG("base : %f        %f       %f \n",(double)cur_pitch, (double)cur_yaw, (double)cur_roll);
+    else
+        DEBUG("Get base eurl failed \n");
+
     EXT_INT_Initialize();
     bno055_clear_int();//clear INT
-    //bno055_enter_normal_mode();//
-    //Configure_BNO055();
-    //printf("After BG96 PowerOn...\r\n");
-    
-//    while(1) {
-//        printf("BNO055 Testing...\r\n");
-//        delay_ms(2000);
-//    }
+    // bno055_enter_normal_mode();//
+    // Configure_BNO055();
+    // DEBUG("After BG96 PowerOn...\r\n");
 #endif
 
 
@@ -237,19 +227,15 @@ int main(void)
         // --
 
         if (0 == (task_cnt%21)) {  // every 1.0s
-            if(bno055_int_flag == 1)//
-            {
-                //INT occur
+            if (bno055_int_flag == 1) {
+                // INT occur
                 bno055_int_flag=0;
-                onebyte = bno055_get_int_src();//get the INT source
-                bno055_clear_int();//clear INT
-                if(onebyte&0x80)
-                {
-                    printf("Enter low power \n");
+                bno055_intr_mode = bno055_get_int_src();// get the INT source
+                bno055_clear_int();// clear INT
+                if (bno055_intr_mode&0x80) {
+                    DEBUG("BNO055 enter low power mode\n");
                     bno055_enter_lower_mode();
-                    bno055_mode=1;
-                    //delay_ms(500);
-                    
+                    // delay_ms(500);
 #if 0
                     PMD1 = 0xFF;
                     PMD2 = 0xFF;
@@ -258,26 +244,38 @@ int main(void)
                     PMD5 = 0xFF;
                     PMD6 = 0xFF;
                     PMD7 = 0xFF;
-                    PMD8 = 0xFF;    
+                    PMD8 = 0xFF;
 
                     _GIE = 0;
-                    __builtin_write_OSCCONH(5);
+                    __builtin_write_OSCCONH(5);// LPRC
                     __builtin_write_OSCCONL(0x01);
                     while(OSCCONbits.OSWEN);
                     _GIE = 1;
 #endif
 
-                    Sleep(); 
-                }else if(onebyte&0x40){
-                    printf("Enter normal \n");
-                    bno055_enter_normal_mode();//
-                    bno055_mode=0;
+                    Sleep();
+
+#if 0
+                    _GIE = 0;
+                    __builtin_write_OSCCONH(3);// PRIPLL
+                    __builtin_write_OSCCONL(0x01);
+                    while(OSCCONbits.OSWEN);
+                    _GIE = 1;
+#endif
+                } else if (bno055_intr_mode&0x40) {
+                    DEBUG("BNO055 enter normal mode\n");
+                    bno055_enter_normal_mode();
                 }
-            }else if(bno055_mode == 0){//
-                if(0 == bno055_euler_check(cur_pitch, cur_yaw, cur_roll))
-                    printf("OK \n");
+            }
+
+            // Normal mode
+            if (bno055_intr_mode&0x40) {
+#if 0
+                if (0 == bno055_euler_check(cur_pitch, cur_yaw, cur_roll))
+                    DEBUG("Euler OK\n");
                 else
-                    printf("NG \n");
+                    DEBUG("Euler NG\n");
+#endif
             }
         }
 
@@ -303,7 +301,7 @@ int main(void)
         // ---------------------- TASK 7 -------------------- //
         // --
         if (0 == (task_cnt%199)) { // every 10.0s
-            printf("task active\n");
+            DEBUG("task active\n");
         }
 
         if (10000 == task_cnt) {

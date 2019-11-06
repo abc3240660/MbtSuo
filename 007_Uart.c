@@ -123,7 +123,7 @@ void Uart2_Init(void)
     _LATB14 = 1;
     _TRISG6 = 1;
     _TRISB14 = 0;
-    
+
     _ANSG6 = 0;
 #endif
     U2MODE = 0X8808;
@@ -159,7 +159,7 @@ void Uart3_Init(void)
     _LATB5 = 1;
     _TRISB2 = 1;
     _TRISB5 = 0;
-    
+
     _ANSB2 = 0;
 #endif
 
@@ -173,7 +173,7 @@ void Uart3_Init(void)
     _LATB5 = 1;
     _TRISB2 = 1;
     _TRISB5 = 0;
-    
+
     _ANSB2 = 0;
 
     U3MODE = 0X8808;
@@ -197,7 +197,7 @@ void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
 
     do {
         temp = U3RXREG;
-        //printf("-%.2X", (u8)temp);
+        //DEBUG("-%.2X", (u8)temp);
         _U3RXIF = 0;
         if (U3STAbits.OERR) {
             U3STAbits.OERR = 0;
@@ -267,7 +267,7 @@ int Uart3_Putc(char ch)
     while(_U3TXIF == 0);
     _U3TXIF = 0;
 
-//    printf("%.2X\r\n", (uint8_t)ch);
+//    DEBUG("%.2X\r\n", (uint8_t)ch);
 
     return ch;
 }
@@ -291,6 +291,7 @@ int Uart2_String(char *ch)
     }
     return len;
 }
+
 int Uart2_Printf(char *fmt,...)
 {
     short i,len;
@@ -314,7 +315,7 @@ void __attribute__((__interrupt__,no_auto_psv)) _U2RXInterrupt(void)
     do {
         temp = U2RXREG;
         //if (rx_debug_flag) {
-        //    printf("%.2X-%c\n", temp, temp);
+        //    DEBUG("%.2X-%c\n", temp, temp);
         //}
         //Uart1_Putc(temp);
         _U2RXIF = 0;
@@ -388,13 +389,13 @@ void Uart4_Init(void)
 {
     RPOR6bits.RP12R = 0x0015;    //RD11->UART4:U4TX
     RPINR27bits.U4RXR = 0x0003;    //RD10->UART4:U4RX
-    
+
     _LATD11 = 1;
     _TRISD10 = 1;
     _TRISD11 = 0;
-    
+
     //_ANSD10 = 0;
-    
+
     U4MODE=0X8808;
     U4STA = 0X2400;
     U4BRG = 34;//34;
@@ -408,7 +409,7 @@ void Uart4_Init(void)
 void Uart4_Putc(char ch)
 {
     U4TXREG = ch;
-    //printf("TX[%.2X] ", (u8)ch);
+    //DEBUG("TX[%.2X] ", (u8)ch);
     while(_U4TXIF == 0);
     _U4TXIF = 0;
 }
@@ -418,11 +419,11 @@ void __attribute__((__interrupt__,no_auto_psv)) _U4RXInterrupt(void)
     do {
 
         if (U4STAbits.OERR) {
-            printf("U4 OEER \n");
+            DEBUG("U4 OEER \n");
             U4STAbits.OERR = 0;
         } else {
             _U4RXIF = 0;
-			BNO_055_RECV_BUFF[recv_total_len++]=U4RXREG;
+            BNO_055_RECV_BUFF[recv_total_len++]=U4RXREG;
         }
     } while (U4STAbits.URXDA);
 }
