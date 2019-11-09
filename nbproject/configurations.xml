@@ -13,7 +13,6 @@
       <itemPath>006_Gpio.h</itemPath>
       <itemPath>008_RingBuffer.h</itemPath>
       <itemPath>009_System.h</itemPath>
-      <itemPath>011_Spi.h</itemPath>
       <itemPath>012_CLRC663_NFC.h</itemPath>
       <itemPath>014_Md5.h</itemPath>
       <itemPath>015_Common.h</itemPath>
@@ -38,7 +37,6 @@
       <itemPath>009_System.c</itemPath>
       <itemPath>012_CLRC663_NFC.c</itemPath>
       <itemPath>014_Md5.c</itemPath>
-      <itemPath>011_Spi.c</itemPath>
       <itemPath>017_InnerFlash.c</itemPath>
       <itemPath>000_Main.c</itemPath>
       <itemPath>016_FlashOta.c</itemPath>

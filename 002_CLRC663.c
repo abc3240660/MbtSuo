@@ -13,6 +13,7 @@
 #include "002_CLRC663.h"
 #include "007_Uart.h"
 #include "001_Tick_10ms.h"
+#include "015_Common.h"
 
 uint16_t Uart3ReadPostion = 0;
 
@@ -41,7 +42,8 @@ uint8_t Clrc663_Recv(void)
             temp = Uart3_Read(Uart3ReadPostion);
             return temp;
         }else{
-            __delayx_us(2);
+            delay_ms(10);
+//            __delayx_us(2);
         }
     }while(--try_cnt);
     return 0xff;

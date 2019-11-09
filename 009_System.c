@@ -90,7 +90,7 @@
 void System_Config(void)
 {
 #if 1//ndef OSC_20M_USE
-    CLKDIV = 0x2100;
+    CLKDIV = 0;
     RCON &= 0xFFEF;
     //RCONbits.SWDTEN = 0;
 #else

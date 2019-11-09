@@ -21,10 +21,10 @@
 #include <stdlib.h>
 
 static u8 cur_pos = 0;
-static u8 BNO_055_SEND_BUFF[LEN_BYTE_SZ64+1] = {0}
+static u8 BNO_055_SEND_BUFF[LEN_BYTE_SZ64+1] = {0};
 
 u16 recv_total_len = 0;
-u8 BNO_055_RECV_BUFF[LEN_BYTE_SZ64+1] = {0}
+u8 BNO_055_RECV_BUFF[LEN_BYTE_SZ64+1] = {0};
 
 extern u8 bno055_int_flag;
 
@@ -74,7 +74,7 @@ void bno055_send_chars(u8 *data, int len)
 
 void bno055_reve_buff_clear(void)
 {
-    memset(BNO_055_RECV_BUFF,0,BUFF_SIZE);
+    memset(BNO_055_RECV_BUFF, 0, LEN_BYTE_SZ64);
     recv_total_len = 0;
     cur_pos = 0;
 }
@@ -85,6 +85,7 @@ u8 bno055_getc_from_reve_buff(void)
 
     do {
         if (recv_total_len > cur_pos) {
+            // DEBUG("[%.2X] ", BNO_055_RECV_BUFF[cur_pos]);
             return BNO_055_RECV_BUFF[cur_pos++];
         } else {
             bno_055_delay_ms(50);
@@ -618,6 +619,8 @@ u16 bno055_enter_normal_mode(void)
     }
 
     bno_055_delay_ms(25);
+	
+	result = bno055_write_byte(BNO055_PWR_MODE, 0x00);
     if (result) {
         return 1;
     }
@@ -635,7 +638,6 @@ u16 bno055_enter_normal_mode(void)
 
 u16 bno055_enter_lower_mode(void)
 {
-    u8 onebyte = 0;
     u16 result = 0;
 
     // Select BNO055 config mode
@@ -732,12 +734,12 @@ u16 bno055_initial(void)
     // Reset        0    0      0          0 
     // Content  CLK_SEL RST_INT RST_SYS    Self_Test 
     // do reset
-    result = bno055_write_byte(BNO055_SYS_TRIGGER, 0x20);
-    if (result) {
-        return 1;
-    }
+    // result = bno055_write_byte(BNO055_SYS_TRIGGER, 0x20);
+    // if (result) {
+    //     return 1;
+    // }
 
-    bno_055_delay_ms(1000);
+    // bno_055_delay_ms(1000);
     while (--try_cnt) {
         onebyte = bno055_read_byte(BNO055_CHIP_ID);
 
@@ -975,11 +977,11 @@ u16 bno055_setup(void)
     return 0;
 }
 
-int bno055_get_euler(float *cur_pitch, float *cur_yaw, float *cur_roll)
+u16 bno055_get_euler(float *cur_pitch, float *cur_yaw, float *cur_roll)
 {
     u16 result = 0;
     int delay_time = 100;
-    u16 raw_data[4] = {0};
+    short raw_data[4] = {0};
 
     float pitch, yaw, roll;// for euler
 

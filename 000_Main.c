@@ -22,7 +22,6 @@
 #include "006_Gpio.h"
 #include "007_Uart.h"
 #include "009_System.h"
-#include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
 #include "016_FlashOta.h"
 #include "017_InnerFlash.h"
@@ -41,6 +40,9 @@ u8 g_bno055_sta = 0;
 
 // 0-normal 1-move interrupt
 u8 g_bno055_move = 0;
+
+extern u16 recv_total_len;
+extern u8 BNO_055_RECV_BUFF[64];
 
 static void PowerOffBG96Module(void)
 {
@@ -62,12 +64,13 @@ int main(void)
 
     u8 bno055_intr_mode = 0;
 
+    u8 try_cnt = 0;
     u8 nfc_ret = 0;
     u8 net_sta = 0;
-    u32 task_cnt = 0;
-    u32 adc_val = 0;
     u8 nfc_enable = 0;
 
+    u32 adc_val = 0;
+    u32 task_cnt = 0;
     u16 nfc_time = 10;
 
     System_Config();
@@ -80,7 +83,7 @@ int main(void)
     LB1938_Init();
     LockSwitch_Init();
 
-#if 0
+#if 0// TypeC Check
     while (1) {
         if (Charge_InsertDetect()) {
             break;
@@ -90,11 +93,22 @@ int main(void)
     }
 #endif
 
-    g_ring_times = 6;
+    g_ring_times = 3;
     Configure_Tick1_10ms();
     Configure_Tick2_10ms();
+    
+    while (0) {
+//        GPIOx_Output(BANKD, MAIN_LED_B, 1);
+        GPIOx_Output(BANKD, MAIN_LED_R, 1);
+        GPIOx_Output(BANKD, MAIN_LED_G, 1);
+        delay_ms(10);
+        GPIOx_Output(BANKD, MAIN_LED_B, 0);
+        GPIOx_Output(BANKD, MAIN_LED_R, 0);
+        GPIOx_Output(BANKD, MAIN_LED_G, 0);
+        delay_ms(990);
+    }
 
-    // CLRC663_PowerUp();
+    CLRC663_PowerUp();
     BNO055_PowerUp();
 
     Uart1_Init();// Debug
@@ -105,8 +119,72 @@ int main(void)
 
 #if 0// soft delay test
     while (1) {
+
         DEBUG("ART Application running...\r\n");
         delay_ms_nop(1000);
+    }
+#endif
+    
+#if 1// CLRC663 LOOP Testing
+    while(1) {
+        nfc_ret = ReadMobibNFCCard();
+        if (0 == nfc_ret) {
+            g_ring_times = 2;
+        }
+
+        // read_iso14443A_nfc_card();
+
+        if (0 == nfc_ret) {
+            LEDs_AllON();
+        }
+        delay_ms(1000);
+
+        if (0 == nfc_ret) {
+            LEDs_AllOff();
+        }
+        delay_ms(1000);
+        
+        if (try_cnt++ >= 5) {
+            break;
+        }
+    }
+#endif
+
+#if 0// Buzzer LOOP Testing
+    GPIOx_Config(BANKB, 13, OUTPUT_DIR);// Beep
+
+    u8 beep_loop = 0;
+
+    while(1)
+    {
+        GPIOx_Output(BANKB, 13, 1);
+        __delay_usx(10);
+        GPIOx_Output(BANKB, 13, 0);
+        __delay_usx(10);
+        
+        if (beep_loop++ >= 100) {
+            beep_loop = 0;
+            DEBUG("XBeep Testing...\r\n");
+        }
+    }
+#endif
+
+#if 0
+    u8 i = 0;
+    u16 len1 = 0;
+    u16 len2 = 0;
+
+    while (1) {
+        len1 = recv_total_len;
+        delay_ms(100);
+        len2 = recv_total_len;
+        
+        if ((len1 == len2) && (len1 != 0)) {
+            recv_total_len = 0;
+            for (i=0; i<len1; i++) {
+                DEBUG("[%.2X] ", BNO_055_RECV_BUFF[i]);
+            }
+        }
     }
 #endif
 

@@ -229,12 +229,14 @@ typedef struct {
 #define BIN_SIZE_INT   132664
 #define BIN_SIZE_STR  "132664"
 
+#define OSC_32M_USE 1
+
 #define __DEBUG 1
 
 #ifdef __DEBUG
-#define DEBUG(info)    printf(info)
+#define DEBUG(format,...) printf(format,##__VA_ARGS__)
 #else
-#define DEBUG(info)
+#define DEBUG(format,...)
 #endif
 
 #endif

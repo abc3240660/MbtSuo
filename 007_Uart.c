@@ -17,6 +17,7 @@
 
 #include "001_Tick_10ms.h"
 #include "007_Uart.h"
+#include "015_Common.h"
 
 #define UART3_BUFFER_MAX_LEN 32
 
@@ -27,6 +28,7 @@ uint8_t Uart4_Buffer[UART3_BUFFER_MAX_LEN] = {0};
 uint16_t Uart4_Use_Len = 0;
 
 static char Uart2_Send_Buf[UART2_BUFFER_MAX_LEN] = {0};
+
 
 //static ringbuffer_t tmp_rbuf;
 
@@ -39,32 +41,14 @@ int Uart3_Use_Len = 0;
 // extern u8 g_ftp_enable;
 
 extern int rx_debug_flag;
+extern u8 BNO_055_RECV_BUFF[64];
+extern u16 recv_total_len;
+
+int Uart1_Putc(char ch);
 
 // 115200 for Debug
 void Uart1_Init(void)
 {
-#ifndef OSC_20M_USE
-#if 0
-    _RP22R = 3;// RD3
-    _U1RXR = 23;// RD2
-
-    _LATD3 = 1;
-    _TRISD2 = 1;
-    _TRISD3 = 0;
-#else
-    _RP22R = 3;// RD3
-    _U1RXR = 24;// RD1
-
-    _LATD3 = 1;
-    _TRISD1 = 1;
-    _TRISD3 = 0;
-#endif
-
-    U1MODE = 0X8808;
-    U1STA = 0X2400;
-    // 4M/(34+1) = 114285
-    U1BRG = 34;
-#else
     _RP22R = 3;// RD3
     _U1RXR = 24;// RD1
 
@@ -72,67 +56,48 @@ void Uart1_Init(void)
     _TRISD1 = 1;
     _TRISD3 = 0;
 
-    U1MODE = 0X8808;
-    U1STA = 0X2400;
+    U1MODE = 0x8808;
+    U1STA = 0x2400;
+
+#ifdef OSC_32M_USE
     // 4M/(34+1) = 114285
     U1BRG = 34;
+#else// OSC_20M_USE
+    U1BRG = 21;
 #endif
 
-//    _U1TXIP = 3;
-    _U1RXIP = IPL_LOW;
+    _U1TXIP = IPL_DIS;
+    _U1RXIP = IPL_DIS;
     _U1TXIF = 0;
     _U1RXIF = 0;
-//    _U1TXIE = 0;
-    _U1RXIE = 1;
+    _U1TXIE = 0;
+    _U1RXIE = 0;
 }
 
 // 115200 for BG96
 void Uart2_Init(void)
 {
-#ifndef OSC_20M_USE
-#if 0
-    _RP17R = 5;// RF5
-    _U2RXR = 10;// RF4
+    _RP14R = 5;// RB14
+    _U2RXR = 21;// RG6
 
-    _LATF5 = 1;
-    _TRISF4 = 1;
-    _TRISF5 = 0;
-    U2MODE = 0X8808;
-    U2STA = 0X2400;
+    _LATB14 = 1;
+    _TRISG6 = 1;
+    _TRISB14 = 0;
+
+    _ANSB14 = 0;
+
+    U2MODE = 0x8808;
+    U2STA = 0x2400;
+
+#ifdef OSC_32M_USE
+    // 4M/(34+1) = 114285
     U2BRG = 34;
-#else
-    _RP14R = 5;// RB14
-    _U2RXR = 21;// RG6
-
-    _LATB14 = 1;
-    _TRISG6 = 1;
-    _TRISB14 = 0;
-#endif
-#else
-#if 0
-    _RP17R = 5;// RF5
-    _U2RXR = 10;// RF4
-
-    _LATF5 = 1;
-    _TRISF4 = 1;
-    _TRISF5 = 0;
-#else
-    _RP14R = 5;// RB14
-    _U2RXR = 21;// RG6
-
-    _LATB14 = 1;
-    _TRISG6 = 1;
-    _TRISB14 = 0;
-
-    _ANSG6 = 0;
-#endif
-    U2MODE = 0X8808;
-    U2STA = 0X2400;
-    U2BRG = 0x15;
+#else// OSC_20M_USE
+    U2BRG = 21;
 #endif
 
-    _U2TXIP = 1;
-    _U2RXIP = 2;
+    _U2TXIP = IPL_DIS;
+    _U2RXIP = IPL_MID;
     _U2TXIF = 0;
     _U2RXIF = 0;
     _U2TXIE = 0;
@@ -142,17 +107,6 @@ void Uart2_Init(void)
 // 115200 for CLRC663
 void Uart3_Init(void)
 {
-    // PIC24FJ256 is 28
-    // PIC24FJ1024 is 19
-#ifndef OSC_20M_USE
-#if 0
-    _RP3R = 19;     //RP3(RD10) = U3TX
-    _U3RXR = 4;     //U3RXR     = RP4(RD9)
-
-    _LATD10 = 1;
-    _TRISD9 = 1;
-    _TRISD10 = 0;
-#else
     _RP18R = 19;     //RB5 = U3TX
     _U3RXR = 13;     //RB2 = U3RXR
 
@@ -161,35 +115,25 @@ void Uart3_Init(void)
     _TRISB5 = 0;
 
     _ANSB2 = 0;
-#endif
+    _ANSB5 = 0;
 
-    U3MODE = 0X8808;
-    U3STA = 0X2400;
+    U3MODE = 0x8808;
+    U3STA = 0x2400;
+
+#ifdef OSC_32M_USE
+    // 4M/(34+1) = 114285
     U3BRG = 34;
-#else
-    _RP18R = 19;     //RB5 = U3TX
-    _U3RXR = 13;     //RB2 = U3RXR
-
-    _LATB5 = 1;
-    _TRISB2 = 1;
-    _TRISB5 = 0;
-
-    _ANSB2 = 0;
-
-    U3MODE = 0X8808;
-    U3STA = 0X2400;
-    U3BRG = 0x15;
+#else// OSC_20M_USE
+    U3BRG = 21;
 #endif
 
-    _U3TXIP = 1;
-    _U3RXIP = 2;
+    _U3TXIP = IPL_DIS;
+    _U3RXIP = IPL_MID;
     _U3TXIF = 0;
     _U3RXIF = 0;
     _U3TXIE = 0;
     _U3RXIE = 1;
 }
-
-int Uart1_Putc(char ch);
 
 void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
 {
@@ -197,7 +141,7 @@ void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
 
     do {
         temp = U3RXREG;
-        //DEBUG("-%.2X", (u8)temp);
+        // DEBUG("-%.2X", (u8)temp);
         _U3RXIF = 0;
         if (U3STAbits.OERR) {
             U3STAbits.OERR = 0;
@@ -267,7 +211,7 @@ int Uart3_Putc(char ch)
     while(_U3TXIF == 0);
     _U3TXIF = 0;
 
-//    DEBUG("%.2X\r\n", (uint8_t)ch);
+	// DEBUG("%.2X\r\n", (uint8_t)ch);
 
     return ch;
 }
@@ -333,7 +277,7 @@ void __attribute__((__interrupt__,no_auto_psv)) _U1RXInterrupt(void)
     do {
         temp = U1RXREG;
         // g_ftp_enable = 1;
-        // Uart1_Putc(temp);
+        // Uart4_Putc(temp);
         _U1RXIF = 0;
         if (U1STAbits.OERR) {
             U1STAbits.OERR = 0;
@@ -354,6 +298,7 @@ int IsTmpRingBufferAvailable(void)
 char ReadByteFromTmpRingBuffer(void)
 {
     char dat = 0;
+    int len = 1;
 
     if(IsTmpRingBufferAvailable()<=0){
         return -1;
@@ -382,9 +327,7 @@ bool WaitUartTmpRxIdle(void)
 
     return true;
 }
-extern u8 BNO_055_RECV_BUFF[64];
 
-extern u16 recv_total_len;
 void Uart4_Init(void)
 {
     RPOR6bits.RP12R = 0x0015;    //RD11->UART4:U4TX
@@ -394,11 +337,15 @@ void Uart4_Init(void)
     _TRISD10 = 1;
     _TRISD11 = 0;
 
-    //_ANSD10 = 0;
+    U4MODE=0x8808;
+    U4STA = 0x2400;
 
-    U4MODE=0X8808;
-    U4STA = 0X2400;
-    U4BRG = 34;//34;
+#ifdef OSC_32M_USE
+    // 4M/(34+1) = 114285
+    U4BRG = 34;
+#else// OSC_20M_USE
+    U4BRG = 21;
+#endif
 
     IPC22bits.U4TXIP = IPL_DIS;
     IPC22bits.U4RXIP = IPL_HIGH;

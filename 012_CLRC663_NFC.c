@@ -16,8 +16,8 @@
 #include "004_LB1938.h"
 #include "006_Gpio.h"
 #include "007_Uart.h"
-#include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
+#include "015_Common.h"
 #include "016_FlashOta.h"
 
 static u8 gs_tmp_card_id[LEN_BYTE_SZ32+1] = {0};
@@ -27,7 +27,7 @@ static u8 gs_bind_index[CNTR_MAX_CARD] = {0};
 
 static u32 gs_start_time_nfc = 0;
 
-void print_block(uint8_t * block, uint8_t length);
+void print_block(u8 * block, u8 length);
 
 // maybe is not correct
 void __delay_us(uint16_t ms)
@@ -38,42 +38,34 @@ void __delay_us(uint16_t ms)
     }
 }
 
-static void __delay_usx(uint16_t ms)
-{
-    int i=0,j=0;
-    for(i=0;i<ms;i++){
-        for(j=0;j<20;j++);
-    }
-}
-
 //      *** *** ***     Print identification numbers     *** *** ***       //
 //      *** *** ***     Card Invalidation     *** *** ***       //
 // Hex print for blocks without DEBUG.
-void print_block(uint8_t * block, uint8_t length)
+void print_block(u8 * block, u8 length)
 {
-  int i = 0;
-
-  for (i = 0; i < length; i++){
-      if (block[i] < 16){  DEBUG("%02x ",block[i]); }
-      else DEBUG("%02x ",block[i]);
-  }
-
-  DEBUG("\r\n");
+	int i = 0;
+	
+	for (i = 0; i < length; i++){
+		if (block[i] < 16){  DEBUG("%02x ",block[i]); }
+		else DEBUG("%02x ",block[i]);
+	}
+	
+	DEBUG("\r\n");
 }
 
-void print_block_01(uint8_t* block, uint8_t lower_lim, uint8_t upper_lim)
+void print_block_01(u8* block, u8 lower_lim, u8 upper_lim)
 {
-  int i = 0;
-
-  for(i = lower_lim; i < upper_lim; i++){
-    if (block[i] < 16){ DEBUG("%02x ",block[i]); }
-    else DEBUG("%02x ",block[i]);
-  }
-
-  DEBUG(" \r\n");
+	int i = 0;
+	
+	for(i = lower_lim; i < upper_lim; i++){
+	if (block[i] < 16){ DEBUG("%02x ",block[i]); }
+	else DEBUG("%02x ",block[i]);
+	}
+	
+	DEBUG(" \r\n");
 }
 
-void print_card_ID_block(uint8_t * block, uint8_t length)
+void print_card_ID_block(u8 * block, u8 length)
 {
     int i = 0;
 
@@ -92,41 +84,41 @@ void print_card_ID_block(uint8_t * block, uint8_t length)
 }
 
 //  Card Blacklist and Card Invalidation
-void check_valid_card(uint8_t * buf)
+void check_valid_card(u8 * buf)
 {
-  if (buf[40] == 0x62 || buf [41] == 0x83) DEBUG(" ----INVALID CARD: card is locked----");
-  else DEBUG("---- VALID CARD ----");
+	if (buf[40] == 0x62 || buf [41] == 0x83) DEBUG(" ----INVALID CARD: card is locked----");
+	else DEBUG("---- VALID CARD ----");
 }
 
 //  Print Pseudo-Unique PICC Identifier, Type B
-void print_PUPI(uint8_t* block)
+void print_PUPI(u8* block)
 {
-  DEBUG("PUPI: ");
-  print_block_01(block, 1, 5);
+	DEBUG("PUPI: ");
+	print_block_01(block, 1, 5);
 }
 
 //  Print MOBIB Hardcoded Serial Number
-void print_serial_nr(uint8_t* block)
+void print_serial_nr(u8* block)
 {
-  DEBUG("Serial number: ");
-  print_block_01(block, 23, 31);
+	DEBUG("Serial number: ");
+	print_block_01(block, 23, 31);
 }
 
-int bitRead(uint8_t value,int pos)
+int bitRead(u8 value,int pos)
 {
-    uint8_t temp;
+    u8 temp;
     temp = (value & (0x01 << pos)) >> pos;
     return temp;
 }
 
 //  Shift buffer with two bits (to determine MOBIB Original Card ID)
-void shift(uint8_t* buf, uint8_t buf_size)
+void shift(u8* buf, u8 buf_size)
 {
     int i = 0;
     buf [3] = buf [3] << 2;
     for(i = 4; i < 13; i++){
-      uint8_t lastbit = bitRead(buf[i], 7);
-      uint8_t secondlastbit = bitRead(buf[i], 6);
+      u8 lastbit = bitRead(buf[i], 7);
+      u8 secondlastbit = bitRead(buf[i], 6);
       if(lastbit == 1) bitSet(buf[i-1], 1);
       if(secondlastbit == 1) bitSet(buf[i-1], 0);
       buf[i] = buf[i] << 2;
@@ -135,7 +127,7 @@ void shift(uint8_t* buf, uint8_t buf_size)
 
 
 //  Print MOBIB Original Card ID
-void print_card_ID(uint8_t* buf, uint8_t bufsize, u8* card_id, u8* serial_nr)
+void print_card_ID(u8* buf, u8 bufsize, u8* card_id, u8* serial_nr)
 {
     u8 i = 0;
     u8 k = 0;
@@ -158,123 +150,114 @@ void print_card_ID(uint8_t* buf, uint8_t bufsize, u8* card_id, u8* serial_nr)
                 card_id[k++] = tmp-0x0A + 'A';
             }
         }
-//        DEBUG("%02X\n", buf[i]);
+		// DEBUG("%02X\n", buf[i]);
     }
 
     DEBUG("CardId = %s\n", card_id);
- //   print_card_ID_block(buf, bufsize);
+	// print_card_ID_block(buf, bufsize);
 }
 
-#if 0
-void read_iso14443A_nfc_card(){ 
-  CLRC663_configure_communication_protocol(CLRC630_PROTO_ISO14443A_106_MILLER_MANCHESTER); // Configure CLRC663
-
-    //  WUPA
-  uint8_t wupa_buffer [] = {CLRC630_ISO14443_CMD_WUPA};
-  uint8_t atqa_buffer [2] = {0};
-  uint8_t atqa_length;
-  atqa_length = clrc663_communicate(wupa_buffer, sizeof(wupa_buffer), atqa_buffer);
-
-  if(atqa_length != 0) { 
-    DEBUG("\n  *** TYPE A TAG detected ***  \n"); 
-    
-    uint8_t sak;
-    uint8_t uid[10] = {0};  // uids are maximum of 10 bytes long.
-    
-    // Select the card and discover its uid.
-    uint8_t uid_len = clrc663_iso14443a_select(uid, &sak);
-    
-    if (uid_len != 0) {  // did we get an UID?
-      DEBUG("UID of ");
-      DEBUG(uid_len);
-      DEBUG(" bytes (SAK: ");
-      DEBUG(sak);
-      DEBUG("): ");
-      print_block(uid, uid_len);
-      DEBUG("\n");
-    }
-  }
+void read_iso14443A_nfc_card()
+{
+	CLRC663_configure_communication_protocol(CLRC630_PROTO_ISO14443A_106_MILLER_MANCHESTER); // Configure CLRC663
+	
+	//  WUPA
+	u8 wupa_buffer [] = {CLRC630_ISO14443_CMD_WUPA};
+	u8 atqa_buffer [2] = {0};
+	u8 atqa_length;
+	atqa_length = clrc663_communicate(wupa_buffer, sizeof(wupa_buffer), atqa_buffer);
+	
+	if (atqa_length != 0) { 
+		DEBUG("\n  *** TYPE A TAG detected ***  \n"); 
+	
+	u8 sak;
+	u8 uid[10] = {0};  // uids are maximum of 10 bytes long.
+	
+	// Select the card and discover its uid.
+	u8 uid_len = clrc663_iso14443a_select(uid, &sak);
+	
+	if (uid_len != 0) {  // did we get an UID?
+		DEBUG("UID of ");
+		DEBUG("%d", uid_len);
+		DEBUG(" bytes (SAK: ");
+		DEBUG("%d", sak);
+		DEBUG("): ");
+		print_block(uid, uid_len);
+		DEBUG("\n");
+	}
+	}
 }
-#endif
 
 u8 read_iso14443B_nfc_card(u8* card_id, u8* serial_nr)
 {
-  //  Configure CLRC663
-  CLRC663_configure_communication_protocol(CLRC630_PROTO_ISO14443B_106_NRZ_BPSK);
+	//  Configure CLRC663
+	CLRC663_configure_communication_protocol(CLRC630_PROTO_ISO14443B_106_NRZ_BPSK);
 
-  //  WUPB
-  uint8_t wupb_buffer [] = {CLRC663_ISO14443B_CMD_APF, CLRC663_ISO14443B_CMD_AFI, CLRC663_ISO14443B_CMD_PARAM};
-  uint8_t atqb_buffer [12] = {0};
-  uint8_t atqb_length = clrc663_communicate(wupb_buffer, sizeof(wupb_buffer), atqb_buffer);
+	//  WUPB
+	u8 wupb_buffer [] = {CLRC663_ISO14443B_CMD_APF, CLRC663_ISO14443B_CMD_AFI, CLRC663_ISO14443B_CMD_PARAM};
+	u8 atqb_buffer [12] = {0};
+	u8 atqb_length = clrc663_communicate(wupb_buffer, sizeof(wupb_buffer), atqb_buffer);
 
-  if(atqb_length != 0) {
-    //  ATTRIB
-    uint8_t transmit_buffer [] = {0x1D, atqb_buffer[1], atqb_buffer[2], atqb_buffer[3], atqb_buffer[4], 0x00, 0x08, 0x01, 0x00};
-    uint8_t receive_buffer [1] = {0};
-    clrc663_communicate(transmit_buffer, sizeof(transmit_buffer), receive_buffer);
+	if (atqb_length != 0) {
+		//  ATTRIB
+		u8 transmit_buffer [] = {0x1D, atqb_buffer[1], atqb_buffer[2], atqb_buffer[3], atqb_buffer[4], 0x00, 0x08, 0x01, 0x00};
+		u8 receive_buffer [1] = {0};
+		clrc663_communicate(transmit_buffer, sizeof(transmit_buffer), receive_buffer);
+		
+		//  CALYPSO --- Select Global Data Application 
+		u8 apdu_transmit_buffer [] = APDU_SELECT_GLOBAL_DATA_APP_MOBIB_CARD;
+		u8 apdu_receive_buffer [42] = {0};
+		clrc663_communicate(apdu_transmit_buffer, sizeof(apdu_transmit_buffer), apdu_receive_buffer);
+		
+		//  CALYPSO --- Read record 1
+		u8 apdu_transmit_buffer_1 [] = CARDISSUING_FILE_READ_RECORD_1;
+		u8 apdu_receive_buffer_1 [32] = {0};
+		clrc663_communicate(apdu_transmit_buffer_1, sizeof(apdu_transmit_buffer_1), apdu_receive_buffer_1);
 
-    //  CALYPSO --- Select Global Data Application 
-    uint8_t apdu_transmit_buffer [] = APDU_SELECT_GLOBAL_DATA_APP_MOBIB_CARD;
-    uint8_t apdu_receive_buffer [42] = {0};
-    clrc663_communicate(apdu_transmit_buffer, sizeof(apdu_transmit_buffer), apdu_receive_buffer);
+#ifdef DEBUG_ISO14443B
+		//  Print sended en received bytes
+		DEBUG("  ---   WUPB   --- \n");
+		DEBUG("Send: "); print_block(wupb_buffer, sizeof(wupb_buffer));
+		DEBUG("Receive: "); print_block(atqb_buffer, sizeof(atqb_buffer));
+		DEBUG("  ---   ATTRIB   --- \n");
+		DEBUG("Send: "); print_block(transmit_buffer, sizeof(transmit_buffer));
+		DEBUG("Receive: "); print_block(receive_buffer, sizeof(receive_buffer));
+		DEBUG("  ---   CALYPSO --- APDU select global data application   --- \n");
+		DEBUG("Send: "); print_block(apdu_transmit_buffer, sizeof(apdu_transmit_buffer));
+		DEBUG("Receive: "); print_block(apdu_receive_buffer, sizeof(apdu_receive_buffer));
+		DEBUG("  ---   CALYPSO --- APDU read record 1  --- \n");
+		DEBUG("Send: "); print_block(apdu_transmit_buffer_1, sizeof(apdu_transmit_buffer_1));
+		DEBUG("Receive: "); print_block(apdu_receive_buffer_1, sizeof(apdu_receive_buffer_1));
+#endif
 
-    //  CALYPSO --- Read record 1
-    uint8_t apdu_transmit_buffer_1 [] = CARDISSUING_FILE_READ_RECORD_1;
-    uint8_t apdu_receive_buffer_1 [32] = {0};
-    clrc663_communicate(apdu_transmit_buffer_1, sizeof(apdu_transmit_buffer_1), apdu_receive_buffer_1);
+#ifdef PRINT_IDENTIFICATION_NUMBERS
+		DEBUG(" \r\n");
+		check_valid_card(apdu_receive_buffer);
+		print_PUPI(atqb_buffer);
+		print_serial_nr(apdu_receive_buffer);
+		print_card_ID(apdu_receive_buffer_1, sizeof(apdu_receive_buffer_1));
+#endif
 
+		print_serial_nr(apdu_receive_buffer);
+		print_card_ID(apdu_receive_buffer_1, sizeof(apdu_receive_buffer_1), card_id, serial_nr);
+	
+		if (('0'==card_id[0]) && ('0'==card_id[1]) && ('0'==card_id[2])) {
+			return 0;
+		}
 
-    #ifdef DEBUG_ISO14443B
-      //  Print sended en received bytes
-      DEBUG("  ---   WUPB   --- \n");
-      DEBUG("Send: "); print_block(wupb_buffer, sizeof(wupb_buffer));
-      DEBUG("Receive: "); print_block(atqb_buffer, sizeof(atqb_buffer));
-      DEBUG("  ---   ATTRIB   --- \n");
-      DEBUG("Send: "); print_block(transmit_buffer, sizeof(transmit_buffer));
-      DEBUG("Receive: "); print_block(receive_buffer, sizeof(receive_buffer));
-      DEBUG("  ---   CALYPSO --- APDU select global data application   --- \n");
-      DEBUG("Send: "); print_block(apdu_transmit_buffer, sizeof(apdu_transmit_buffer));
-      DEBUG("Receive: "); print_block(apdu_receive_buffer, sizeof(apdu_receive_buffer));
-      DEBUG("  ---   CALYPSO --- APDU read record 1  --- \n");
-      DEBUG("Send: "); print_block(apdu_transmit_buffer_1, sizeof(apdu_transmit_buffer_1));
-      DEBUG("Receive: "); print_block(apdu_receive_buffer_1, sizeof(apdu_receive_buffer_1));
-    #endif
+		return 1;
+	}
 
-    #ifdef PRINT_IDENTIFICATION_NUMBERS
-      DEBUG(" \r\n");
-      check_valid_card(apdu_receive_buffer);
-      print_PUPI(atqb_buffer);
-      print_serial_nr(apdu_receive_buffer);
-      print_card_ID(apdu_receive_buffer_1, sizeof(apdu_receive_buffer_1));
-    #endif
-
-      print_serial_nr(apdu_receive_buffer);
-      print_card_ID(apdu_receive_buffer_1, sizeof(apdu_receive_buffer_1), card_id, serial_nr);
-
-      if (('0'==card_id[0]) && ('0'==card_id[1]) && ('0'==card_id[2])) {
-          return 0;
-      }
-
-      return 1;
-  }
-
-  return 0;
+	return 0;
 }
 
 u8 ReadMobibNFCCard(void)
 {
     u8 i = 0;
-    u8 index = 0;
     u8 tmp_len = 0;
-
-    static u8 j = 0;
 
     memset(gs_tmp_card_id, 0, LEN_BYTE_SZ16);
     memset(gs_tmp_serial_nr, 0, LEN_BYTE_SZ16);
-    
-    u8 version = clrc663_read_reg(CLRC630_REG_VERSION);
-    
-    DEBUG("\nCLRC663 VerReg = %.2X\n", version);
 
     Clrc663_Clear();
 

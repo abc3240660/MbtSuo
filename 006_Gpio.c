@@ -15,6 +15,8 @@
 #include "001_Tick_10ms.h"
 #include "006_Gpio.h"
 
+#define LED_DEBUG	1
+
 u8 gs_leds_sta = 0;
 
 // 0-normal 1-blink
@@ -202,6 +204,12 @@ void LEDs_AllON(void)
     SetLedsStatus(MAIN_LED_B, LED_ON);
     SetLedsStatus(MAIN_LED_R, LED_ON);
     SetLedsStatus(MAIN_LED_G, LED_ON);
+	
+#ifdef LED_DEBUG
+    GPIOx_Output(BANKD, MAIN_LED_B, 1);
+    GPIOx_Output(BANKD, MAIN_LED_R, 1);
+    GPIOx_Output(BANKD, MAIN_LED_G, 1);
+#endif
 }
 
 void LEDs_AllOff(void)
@@ -210,6 +218,12 @@ void LEDs_AllOff(void)
     SetLedsStatus(MAIN_LED_B, LED_OFF);
     SetLedsStatus(MAIN_LED_R, LED_OFF);
     SetLedsStatus(MAIN_LED_G, LED_OFF);
+	
+#ifdef LED_DEBUG
+    GPIOx_Output(BANKD, MAIN_LED_B, 0);
+    GPIOx_Output(BANKD, MAIN_LED_R, 0);
+    GPIOx_Output(BANKD, MAIN_LED_G, 0);
+#endif
 }
 
 void LEDs_Init(void)
@@ -269,7 +283,7 @@ void Beep_Low(void)
 
 void Beep_High(void)
 {
-    GPIOx_Output(BANKB, 13, 0);
+    GPIOx_Output(BANKB, 13, 1);
 }
 
 void InOutPurpose_Init(void)

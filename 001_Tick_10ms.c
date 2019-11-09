@@ -14,6 +14,9 @@
 #include "007_Uart.h"
 #include "015_Common.h"
 
+static u32 gs_beep_all_time = 3000;// Beep ON+IDEL time
+static u32 gs_beep_on_time = 2000;// Beep ON time
+
 static unsigned long MobitTimesT1 = 0UL;// unit: ms
 static unsigned long MobitTimesT2 = 0UL;// unit: ms
 // static unsigned long MobitTimesT3 = 0UL;// unit: ms
@@ -30,26 +33,25 @@ extern u8 g_ring_times;
 //******************************************************************************
 void Configure_Tick1_10ms(void)
 {
-#if 0//ndef OSC_20M_USE
-    T1CONbits.TCKPS = 2;  // Select 1:64 Prescaler
-    TMR1 = 0x00;          // Clear timer register
+    TMR1 = 0x00;          		// Clear timer register
+
+#ifdef OSC_32M_USE
+    T1CONbits.TCKPS = 2;  		// Select 1:64 Prescaler
     // Fcy = Fosc/2 = 16M
     // 2500*(1/(16M/64)) = 2500*4us = 10ms
-    PR1 = 2500;           // Load the period value
-    IPC0bits.T1IP = T1IPL;// Set Timer 1 Interrupt Priority Level
-    IFS0bits.T1IF = 0;    // Clear Timer 1 Interrupt Flag
-    IEC0bits.T1IE = 1;    // Enable Timer1 interrupt
-    T1CONbits.TON = 1;    // Start Timer
-#else
-    TMR1 = 0x00;                // Clear timer register
+    PR1 = 2500;           		// Load the period value
+#else// 20MHz
+    T1CONbits.TCKPS = 3;  		// Select 1:256 Prescaler
     // Fcy = Fosc/2 = 10M
     // 390*(1/(10M/256)) = 9984us = 10ms
-    PR1 = 0x186;                //Period = 0.0100096 s; Frequency = 10000000 Hz; PR1 390;
-    T1CON = 0x8030;             //TCKPS 1:256; TON enabled; TSIDL disabled; TCS FOSC/2; TECS SOSC; TSYNC disabled; TGATE disabled;
-    IPC0bits.T1IP = IPL_MID;// Set Timer 1 Interrupt Priority Level
-    IFS0bits.T1IF = false;
-    IEC0bits.T1IE = true;
+    // 3906*(1/(10M/256)) = 100ms
+    PR1 = 390;            		//Period = 0.0100096 s; Frequency = 10000000 Hz; PR1 390;
 #endif
+
+    IPC0bits.T1IP = IPL_MID;	// Set Timer1 Interrupt Priority Level
+    IFS0bits.T1IF = 0;    		// Clear Timer1 Interrupt Flag
+    IEC0bits.T1IE = 1;    		// Enable Timer1 interrupt
+    T1CONbits.TON = 1;    		// Start Timer
 }
 
 //******************************************************************************
@@ -58,36 +60,41 @@ void Configure_Tick1_10ms(void)
 //******************************************************************************
 void Configure_Tick2_10ms(void)
 {
-#if 0//ndef OSC_20M_USE
     T2CONbits.T32 = 0;
-    T2CONbits.TCKPS = 2;  // Select 1:64 Prescaler
-    TMR2 = 0x00;          // Clear timer register
-    PR2 = 2500;           // Load the period value
-    IPC1bits.T2IP = T2IPL;// Set Timer 2 Interrupt Priority Level
-    IFS0bits.T2IF = 0;    // Clear Timer 2 Interrupt Flag
-    IEC0bits.T2IE = 1;    // Enable Timer2 interrupt
-    T2CONbits.TON = 1;    // Start Timer
+    TMR2 = 0x00;          	// Clear timer register
+
+#ifdef OSC_32M_USE
+    T2CONbits.TCKPS = 2;  	// Select 1:64 Prescaler
+    // 36-NG
+    PR2 = 37;          	// Load the period value
 #else
-    TMR2 = 0x00;                // Clear timer register
-    // 3906*(1/(10M/256)) = 100ms
+    T2CONbits.TCKPS = 3;  	// Select 1:256 Prescaler
     PR2 = 3906;
-    T2CON = 0x8038;             //TCKPS 1:256; TON enabled; TSIDL disabled; TCS FOSC/2; TECS SOSC; TSYNC disabled; TGATE disabled;
-    IPC1bits.T2IP = IPL_LOW;// Set Timer 2 Interrupt Priority Level
-    IFS0bits.T2IF = false;
-    IEC0bits.T2IE = true;
 #endif
+
+    IPC1bits.T2IP = IPL_LOW;// Set Timer2 Interrupt Priority Level
+    IFS0bits.T2IF = 0;    	// Clear Timer2 Interrupt Flag
+    IEC0bits.T2IE = 1;    	// Enable Timer2 interrupt
+    T2CONbits.TON = 1;    	// Start Timer
 }
 
 void Enable_Tick2(void)
 {
-    TMR2 = 0x00;// Clear timer register
-    PR2 = 3906; // reload the count
+    return;
+    TMR2 = 0x00;			// Clear timer register
+
+#ifdef OSC_32M_USE
+    PR2 = 25000;           	// Load the period value
+#else
+    PR2 = 3906; 			// reload the count
+#endif
 
     T2CONbits.TON = 1;
 }
 
 void Disable_Tick2(void)
 {
+    return;
     T2CONbits.TON = 0;
 }
 
@@ -149,41 +156,91 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
         }
     }
 
-//    if (0 == MobitTimesT1%1000) {
-//        DEBUG("1000 count...\n");
-//    }
+    if (0 == MobitTimesT1%1000) {
+        DEBUG("T1 1000 count...\n");
+    }
 
     IFS0bits.T1IF = 0;// Clear Timer1 interrupt flag
 }
 
 //******************************************************************************
-//* Timer 2 IRQ: 100ms
+//* Timer 2 IRQ: 168us
 //******************************************************************************
 void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
 {
-    u32 loop_time = 0;
+    static u8 start_flag = 0;
+    static u32 loop_time = 0;
 
     MobitTimesT2 += 1;
-    if(MobitTimesT2 > 100000UL){
+    if(MobitTimesT2 > 10000000UL){
         MobitTimesT2 = 0;
     }
 
-    // 330us * 3000 = 1s
-    loop_time = g_ring_times * 3000;
+#if 0// Orange
+    if (0 == MobitTimesT2%3) {
+        GPIOx_Output(BANKD, MAIN_LED_R, 1);
+    } else {
+        GPIOx_Output(BANKD, MAIN_LED_R, 0);
+    }
+    if (0 == MobitTimesT2%5) {
+        GPIOx_Output(BANKD, MAIN_LED_G, 1);
+    } else {
+        GPIOx_Output(BANKD, MAIN_LED_G, 0);
+    }
+#endif
+#if 1// Purple
+    if (0 == MobitTimesT2%3) {
+        GPIOx_Output(BANKD, MAIN_LED_R, 1);
+    } else {
+        GPIOx_Output(BANKD, MAIN_LED_R, 0);
+    }
+    if (0 == MobitTimesT2%5) {
+        GPIOx_Output(BANKD, MAIN_LED_B, 1);
+    } else {
+        GPIOx_Output(BANKD, MAIN_LED_B, 0);
+    }
+#endif
 
-    // Period 330us -> 3030Hz
-    while (loop_time--) {
+#if 1
+    if (start_flag) {
         // ON 330ms then OFF 660ms
-        if (loop_time%3000 < 1000) {
-            Beep_High();
+        if (loop_time%gs_beep_all_time < gs_beep_on_time) {
+            if (loop_time%2) {
+                Beep_High();
+            } else {
+                Beep_Low();
+            }
+        } else {
+            Beep_Low();
         }
 
-        delay_us_nop(165);
+        loop_time++;
+        
+        if (loop_time >= gs_beep_all_time) {
+            start_flag = 0;
+            loop_time = 0;
+        }
+    } else {
         Beep_Low();
-        delay_us_nop(165);
+        loop_time = 0;
+    }
+    
+    // 148*1500 = 222ms
+    // 168*1500 = 252ms
+    if (0 == MobitTimesT2%gs_beep_all_time) {
+        if (g_ring_times > 0) {
+            g_ring_times--;
+            loop_time = 0;
+            start_flag = 1;
+        }
     }
 
     Disable_Tick2();
+#endif
+
+    if (0 == MobitTimesT2%6000) {
+        DEBUG("T2 1000 count...\n");
+    }
 
     IFS0bits.T2IF = 0;// Clear Timer2 interrupt flag
 }
@@ -233,7 +290,6 @@ void delay_us_nop(u32 cnt)
         for (j=0; j<1; j++);
 }
 
-
 //******************************************************************************************
 // FuncName: GetTimeStamp
 // Descriptions: get the time stamp after program started
@@ -243,7 +299,6 @@ unsigned long GetTimeStamp()
 {
     return MobitTimesT1;
 }
-
 //******************************************************************************************
 // FuncName: isDelayTimeout
 // Descriptions: determine whether the timeout
