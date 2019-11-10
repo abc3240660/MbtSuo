@@ -317,9 +317,10 @@ u16 bno055_get_euler(float *cur_pitch, float *cur_yaw, float *cur_roll);
 u16 bno055_euler_check(float init_pitch, float init_yaw, float init_roll);
 u16 BNO055_init(void);
 
-void EXT_INT_Initialize(void);
-
 void BNO055_PowerUp(void);
+
+u8 GetBNOIntrFlag(void);
+void ClearBNOIntrFlag(void);
 
 #endif //__BNO055_H
 

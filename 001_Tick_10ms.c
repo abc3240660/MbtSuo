@@ -14,8 +14,11 @@
 #include "007_Uart.h"
 #include "015_Common.h"
 
-static u32 gs_beep_all_time = 3000;// Beep ON+IDEL time
-static u32 gs_beep_on_time = 2000;// Beep ON time
+static u32 gs_beep_all_time = 3000;// Beep PWM ON+IDEL time
+static u32 gs_beep_on_time  = 2000;// Beep PWM ON time
+
+static u32 gs_leds_all_time = 1360;// LED PWM ON+IDEL time
+static u32 gs_leds_on_time  = 680; // LED PWM ON time
 
 static unsigned long MobitTimesT1 = 0UL;// unit: ms
 static unsigned long MobitTimesT2 = 0UL;// unit: ms
@@ -33,25 +36,25 @@ extern u8 g_ring_times;
 //******************************************************************************
 void Configure_Tick1_10ms(void)
 {
-    TMR1 = 0x00;          		// Clear timer register
+    TMR1 = 0x00;                  // Clear timer register
 
 #ifdef OSC_32M_USE
-    T1CONbits.TCKPS = 2;  		// Select 1:64 Prescaler
+    T1CONbits.TCKPS = 2;          // Select 1:64 Prescaler
     // Fcy = Fosc/2 = 16M
     // 2500*(1/(16M/64)) = 2500*4us = 10ms
-    PR1 = 2500;           		// Load the period value
+    PR1 = 2500;                   // Load the period value
 #else// 20MHz
-    T1CONbits.TCKPS = 3;  		// Select 1:256 Prescaler
+    T1CONbits.TCKPS = 3;          // Select 1:256 Prescaler
     // Fcy = Fosc/2 = 10M
     // 390*(1/(10M/256)) = 9984us = 10ms
     // 3906*(1/(10M/256)) = 100ms
-    PR1 = 390;            		//Period = 0.0100096 s; Frequency = 10000000 Hz; PR1 390;
+    PR1 = 390;                    //Period = 0.0100096 s; Frequency = 10000000 Hz; PR1 390;
 #endif
 
-    IPC0bits.T1IP = IPL_MID;	// Set Timer1 Interrupt Priority Level
-    IFS0bits.T1IF = 0;    		// Clear Timer1 Interrupt Flag
-    IEC0bits.T1IE = 1;    		// Enable Timer1 interrupt
-    T1CONbits.TON = 1;    		// Start Timer
+    IPC0bits.T1IP = IPL_MID;      // Set Timer1 Interrupt Priority Level
+    IFS0bits.T1IF = 0;            // Clear Timer1 Interrupt Flag
+    IEC0bits.T1IE = 1;            // Enable Timer1 interrupt
+    T1CONbits.TON = 1;            // Start Timer
 }
 
 //******************************************************************************
@@ -61,32 +64,33 @@ void Configure_Tick1_10ms(void)
 void Configure_Tick2_10ms(void)
 {
     T2CONbits.T32 = 0;
-    TMR2 = 0x00;          	// Clear timer register
+    TMR2 = 0x00;              // Clear timer register
 
 #ifdef OSC_32M_USE
-    T2CONbits.TCKPS = 2;  	// Select 1:64 Prescaler
+    T2CONbits.TCKPS = 2;      // Select 1:64 Prescaler
     // 36-NG
-    PR2 = 37;          	// Load the period value
+    // 37*4 = 148us
+    PR2 = 37;                 // Load the period value
 #else
-    T2CONbits.TCKPS = 3;  	// Select 1:256 Prescaler
+    T2CONbits.TCKPS = 3;      // Select 1:256 Prescaler
     PR2 = 3906;
 #endif
 
-    IPC1bits.T2IP = IPL_LOW;// Set Timer2 Interrupt Priority Level
-    IFS0bits.T2IF = 0;    	// Clear Timer2 Interrupt Flag
-    IEC0bits.T2IE = 1;    	// Enable Timer2 interrupt
-    T2CONbits.TON = 1;    	// Start Timer
+    IPC1bits.T2IP = IPL_LOW;  // Set Timer2 Interrupt Priority Level
+    IFS0bits.T2IF = 0;        // Clear Timer2 Interrupt Flag
+    IEC0bits.T2IE = 1;        // Enable Timer2 interrupt
+    T2CONbits.TON = 1;        // Start Timer
 }
 
 void Enable_Tick2(void)
 {
     return;
-    TMR2 = 0x00;			// Clear timer register
+    TMR2 = 0x00;            // Clear timer register
 
 #ifdef OSC_32M_USE
-    PR2 = 25000;           	// Load the period value
+    PR2 = 25000;            // Load the period value
 #else
-    PR2 = 3906; 			// reload the count
+    PR2 = 3906;             // reload the count
 #endif
 
     T2CONbits.TON = 1;
@@ -106,54 +110,6 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
     MobitTimesT1 += 1;
     if(MobitTimesT1 > 100000UL){
         MobitTimesT1 = 0;
-    }
-
-    // LED: ON 10ms then OFF 40ms
-    if (GetLedsStatus(MAIN_LED_B)) {
-        if (0 == (MobitTimesT1%5)) {
-            // Blink: ON 200ms then OFF 800ms
-            if (GetLedsMode(MAIN_LED_B)) {
-                if ((MobitTimesT1%100 < 20)) {
-                    LEDs_Ctrl(MAIN_LED_B, LED_ON);
-                }
-            } else {
-                LEDs_Ctrl(MAIN_LED_B, LED_ON);
-            }
-        } else {
-            LEDs_Ctrl(MAIN_LED_B, LED_OFF);
-        }
-    }
-
-    // LED: ON 10ms then OFF 40ms
-    if (GetLedsStatus(MAIN_LED_R)) {
-        if (0 == (MobitTimesT1%5)) {
-            // Blink: ON 200ms then OFF 800ms
-            if (GetLedsMode(MAIN_LED_R)) {
-                if ((MobitTimesT1%100 < 20)) {
-                    LEDs_Ctrl(MAIN_LED_R, LED_ON);
-                }
-            } else {
-                LEDs_Ctrl(MAIN_LED_R, LED_ON);
-            }
-        } else {
-            LEDs_Ctrl(MAIN_LED_R, LED_OFF);
-        }
-    }
-
-    // LED: ON 10ms then OFF 40ms
-    if (GetLedsStatus(MAIN_LED_G)) {
-        if (0 == (MobitTimesT1%5)) {
-            // Blink: ON 200ms then OFF 800ms
-            if (GetLedsMode(MAIN_LED_G)) {
-                if ((MobitTimesT1%100 < 20)) {
-                    LEDs_Ctrl(MAIN_LED_G, LED_ON);
-                }
-            } else {
-                LEDs_Ctrl(MAIN_LED_G, LED_ON);
-            }
-        } else {
-            LEDs_Ctrl(MAIN_LED_G, LED_OFF);
-        }
     }
 
     if (0 == MobitTimesT1%1000) {
@@ -176,6 +132,47 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
         MobitTimesT2 = 0;
     }
 
+    // every 68*148us = 10ms H->L or L->H
+    // ===> Period = 136*148us = 20ms -> PWM 50Hz
+    if (0 == MobitTimesT2%136) {
+        if (GetLedsStatus(MAIN_LED_B)) {
+            // Blink: 50Hz PWM ON 100ms then OFF 100ms
+            if (GetLedsMode(MAIN_LED_B)) {
+                if ((MobitTimesT2%1360 < 680)) {
+                    LEDs_Ctrl(MAIN_LED_B, LED_ON);
+                }
+            } else {
+                LEDs_Ctrl(MAIN_LED_B, LED_ON);
+            }
+        }
+
+        if (GetLedsStatus(MAIN_LED_R)) {
+            // Blink: 50Hz PWM ON 100ms then OFF 100ms
+            if (GetLedsMode(MAIN_LED_R)) {
+                if ((MobitTimesT2%1360 < 680)) {
+                    LEDs_Ctrl(MAIN_LED_R, LED_ON);
+                }
+            } else {
+                LEDs_Ctrl(MAIN_LED_R, LED_ON);
+            }
+        }
+
+        if (GetLedsStatus(MAIN_LED_G)) {
+            // Blink: 50Hz PWM ON 100ms then OFF 100ms
+            if (GetLedsMode(MAIN_LED_G)) {
+                if ((MobitTimesT2%gs_leds_all_time < gs_leds_on_time)) {
+                    LEDs_Ctrl(MAIN_LED_G, LED_ON);
+                }
+            } else {
+                LEDs_Ctrl(MAIN_LED_G, LED_ON);
+            }
+        }
+    } else if (68 == MobitTimesT2%136) {
+        LEDs_Ctrl(MAIN_LED_B, LED_OFF);
+        LEDs_Ctrl(MAIN_LED_R, LED_OFF);
+        LEDs_Ctrl(MAIN_LED_G, LED_OFF);
+    }
+
 #if 0// Orange
     if (0 == MobitTimesT2%3) {
         GPIOx_Output(BANKD, MAIN_LED_R, 1);
@@ -188,7 +185,8 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
         GPIOx_Output(BANKD, MAIN_LED_G, 0);
     }
 #endif
-#if 1// Purple
+
+#if 0// Purple
     if (0 == MobitTimesT2%3) {
         GPIOx_Output(BANKD, MAIN_LED_R, 1);
     } else {
@@ -215,7 +213,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
         }
 
         loop_time++;
-        
+
         if (loop_time >= gs_beep_all_time) {
             start_flag = 0;
             loop_time = 0;
@@ -224,7 +222,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
         Beep_Low();
         loop_time = 0;
     }
-    
+
     // 148*1500 = 222ms
     // 168*1500 = 252ms
     if (0 == MobitTimesT2%gs_beep_all_time) {

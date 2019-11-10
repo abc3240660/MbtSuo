@@ -20,31 +20,17 @@
 #include "015_Common.h"
 
 #define UART3_BUFFER_MAX_LEN 32
+#define UART4_BUFFER_MAX_LEN 32
 
-static uint8_t Uart3Buffer[UART3_BUFFER_MAX_LEN] = {0};
-static uint16_t Uart3Length = 0;
+static u16 Uart3_Rx_Len = 0;
+static u8 Uart3_Rx_Buffer[UART3_BUFFER_MAX_LEN] = {0};
 
-uint8_t Uart4_Buffer[UART3_BUFFER_MAX_LEN] = {0};
-uint16_t Uart4_Use_Len = 0;
+static u16 Uart4_Rx_Len = 0;
+static u8 Uart4_Rx_Buffer[UART3_BUFFER_MAX_LEN] = {0};
 
 static char Uart2_Send_Buf[UART2_BUFFER_MAX_LEN] = {0};
 
-
-//static ringbuffer_t tmp_rbuf;
-
-// ringbuf for temp recved
-// static char tmpRingbuf[RX_RINGBUF_MAX_LEN] = {0};
-
-uint8_t Uart3_Buffer[64] = {0};
-int Uart3_Use_Len = 0;
-
-// extern u8 g_ftp_enable;
-
 extern int rx_debug_flag;
-extern u8 BNO_055_RECV_BUFF[64];
-extern u16 recv_total_len;
-
-int Uart1_Putc(char ch);
 
 // 115200 for Debug
 void Uart1_Init(void)
@@ -146,28 +132,49 @@ void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
         if (U3STAbits.OERR) {
             U3STAbits.OERR = 0;
         } else {
-            Uart3Buffer[Uart3Length++] = temp;
+            Uart3_Rx_Buffer[Uart3_Rx_Len++] = temp;
         }
     } while (U3STAbits.URXDA);
 }
 
 void Uart3_Clear(void)
 {
-    memset(Uart3Buffer,0,UART3_BUFFER_MAX_LEN);
-    Uart3Length = 0;
+    Uart3_Rx_Len = 0;
+    memset(Uart3_Rx_Buffer, 0, UART3_BUFFER_MAX_LEN);
 }
 
-uint8_t Uart3_Read(uint16_t postion)
+u8 Uart3_Read(u16 postion)
 {
-    if(postion > Uart3Length){
+    if (postion > Uart3_Rx_Len) {
         return 0x00;
     }
-    return Uart3Buffer[postion];
+
+    return Uart3_Rx_Buffer[postion];
 }
 
-uint16_t Uart3_GetSize(void)
+u16 Uart3_GetSize(void)
 {
-    return Uart3Length;
+    return Uart3_Rx_Len;
+}
+
+void Uart4_Clear(void)
+{
+    Uart4_Rx_Len = 0;
+    memset(Uart4_Rx_Buffer, 0, UART4_BUFFER_MAX_LEN);
+}
+
+u8 Uart4_Read(u16 postion)
+{
+    if (postion > Uart4_Rx_Len) {
+        return 0x00;
+    }
+
+    return Uart4_Rx_Buffer[postion];
+}
+
+u16 Uart4_GetSize(void)
+{
+    return Uart4_Rx_Len;
 }
 
 int fputc(int ch,FILE * f)
@@ -186,18 +193,7 @@ int Uart1_Putc(char ch)
     return ch;
 }
 
-u8 SCISendDataOnISR(u8 *sendbuf,u16 size)
-{
-    while(size--)
-    {
-        Uart1_Putc(*sendbuf);
-        sendbuf++;
-    }
-
-    return 1;
-}
-
-int Uart2_Putc(char ch)
+u8 int Uart2_Putc(char ch)
 {
     U2TXREG = ch;
     while(_U2TXIF == 0);
@@ -211,18 +207,9 @@ int Uart3_Putc(char ch)
     while(_U3TXIF == 0);
     _U3TXIF = 0;
 
-	// DEBUG("%.2X\r\n", (uint8_t)ch);
+    // DEBUG("%.2X\r\n", (u8)ch);
 
     return ch;
-}
-
-int uart3_write_bytes(char * buf,int len)
-{
-    int i = 0;
-    for(i=0;i<len;i++){
-        Uart3_Putc(buf[i]);
-    }
-    return len;
 }
 
 int Uart2_String(char *ch)
@@ -370,7 +357,7 @@ void __attribute__((__interrupt__,no_auto_psv)) _U4RXInterrupt(void)
             U4STAbits.OERR = 0;
         } else {
             _U4RXIF = 0;
-            BNO_055_RECV_BUFF[recv_total_len++]=U4RXREG;
+            Uart4_Rx_Buffer[Uart4_Rx_Len++]=U4RXREG;
         }
     } while (U4STAbits.URXDA);
 }

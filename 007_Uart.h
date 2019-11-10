@@ -25,14 +25,9 @@ extern "C" {
 
 #define RX_RINGBUF_MAX_LEN 1280
 
-uint8_t Uart3_Read(uint16_t postion);
-uint16_t Uart3_GetSize(void);
-    
 // for debug
 void Uart1_Init(void);
 void Uart2_Init(void);
-
-u8 SCISendDataOnISR(u8 *sendbuf,u16 size);
 
 // for BG96
 int Uart2_Putc(char ch);
@@ -46,11 +41,16 @@ bool WaitUartTmpRxIdle(void);
 void Uart3_Init(void);
 int Uart3_Putc(char ch);
 void Uart3_Clear(void);
+u8 Uart3_Read(u16 postion);
+u16 Uart3_GetSize(void);
+
 
 // for BNO055
 void Uart4_Init(void);
 void Uart4_Putc(char ch);
-// void Uart4_Clear(void);
+void Uart4_Clear(void);
+u8 Uart4_Read(u16 postion);
+u16 Uart4_GetSize(void);
 
 #ifdef __cplusplus
 }

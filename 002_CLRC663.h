@@ -60,7 +60,7 @@ extern "C" {
   \param [out] rx The bytes received during transmission are written into this array, `len` bytes are always written.
                (MISO)
  */
-extern uint16_t clrc663_SPI_transfer(const uint8_t* tx, uint8_t* rx, uint16_t len);
+extern u16 clrc663_SPI_transfer(const u8* tx, u8* rx, u16 len);
 
 /*!
   @brief Selects the CLRC630 to accept data from the SPI bus.
@@ -100,7 +100,7 @@ extern void clrc663_SPI_unselect();
   \param [in] reg Specifies which register to read.
   \return the value of the register to be read.
  */
-uint8_t clrc663_read_reg(uint8_t reg);
+u8 clrc663_read_reg(u8 reg);
 
 /*!
   @brief Write a register.
@@ -109,7 +109,7 @@ uint8_t clrc663_read_reg(uint8_t reg);
   \param [in] reg Specifies which register to write.
   \param [in] value Specifies the value to write to that register.
  */
-void clrc663_write_reg(uint8_t reg, uint8_t value);
+void clrc663_write_reg(u8 reg, u8 value);
 
 
 /*!
@@ -121,7 +121,7 @@ void clrc663_write_reg(uint8_t reg, uint8_t value);
               The first value (`values[0]`) gets written to `reg`, the second (`values[1]`) to `reg+1`, and so on.
   \param [in] len The number of register to write.
  */
-void clrc663_write_regs(uint8_t reg, const uint8_t* values, uint8_t len);
+void clrc663_write_regs(u8 reg, const u8* values, u8 len);
 
 /*!
   @brief Write data to FIFO.
@@ -135,7 +135,7 @@ void clrc663_write_regs(uint8_t reg, const uint8_t* values, uint8_t len);
   \param [in] len The number of bytes to be written into the FIFO.
  */
 
-void clrc663_write_fifo(const uint8_t* data, uint16_t len);
+void clrc663_write_fifo(const u8* data, u16 len);
 
 /*!
   @brief Read data from FIFO.
@@ -149,14 +149,14 @@ void clrc663_write_fifo(const uint8_t* data, uint16_t len);
            are read from the chip anyway, these bytes should not be used. (The returned bytes from an empty FIFO are
            often identical to the last valid byte that was read from it.)
  */
-void clrc663_read_fifo(uint8_t* rx, uint16_t len);
+void clrc663_read_fifo(u8* rx, u16 len);
 
 /*!
   @brief Read data from ERROR REGISTER.
   
   This function reads data from the ERROR REGISTER.
  */
-uint8_t clrc663_read_error();
+u8 clrc663_read_error();
 //! @}
 
 // ---------------------------------------------------------------------------
@@ -180,7 +180,7 @@ uint8_t clrc663_read_error();
   \param [in] address The start address in the EEPROM to start reading from.
   \param [in] length The number of bytes to read from the EEPROM into the FIFO buffer.
  */
-void clrc663_cmd_read_E2(uint16_t address, uint16_t length);
+void clrc663_cmd_read_E2(u16 address, u16 length);
 
 /*!
   @brief Read data from EEPROM into the registers.
@@ -191,7 +191,7 @@ void clrc663_cmd_read_E2(uint16_t address, uint16_t length);
   \param [in] regaddr The start address of the register to start writing into.
   \param [in] length The number of bytes to read and registers to write consecutively from `regaddr`.
  */
-void clrc663_cmd_load_reg(uint16_t address, uint8_t regaddr, uint16_t length);
+void clrc663_cmd_load_reg(u16 address, u8 regaddr, u16 length);
 
 /*!
   @brief Load protocol settings.
@@ -206,7 +206,7 @@ void clrc663_cmd_load_reg(uint16_t address, uint8_t regaddr, uint16_t length);
   \param [in] tx The protocol number to load for the tranmitting frontend.
 
  */
-void clrc663_cmd_load_protocol(uint8_t rx, uint8_t tx);
+void clrc663_cmd_load_protocol(u8 rx, u8 tx);
 
 /*!
   @brief Transmit the bytes provided and go into receive mode.
@@ -217,7 +217,7 @@ void clrc663_cmd_load_protocol(uint8_t rx, uint8_t tx);
   \param [in] data The data to be transmitted.
   \param [in] len The numeber of bytes to be read from `data` and be transmitted..
  */
-void clrc663_cmd_transceive(const uint8_t* data, uint16_t len);
+void clrc663_cmd_transceive(const u8* data, u16 len);
 
 /*!
   @brief Set the device into idle mode.
@@ -234,7 +234,7 @@ void clrc663_cmd_idle();
 
   \param [in] key_nr Loads the key stored for this index.
  */
-void clrc663_cmd_load_key_E2(uint8_t key_nr);
+void clrc663_cmd_load_key_E2(u8 key_nr);
 
 /*!
   @brief Loads the provided key into the key buffer.
@@ -243,7 +243,7 @@ void clrc663_cmd_load_key_E2(uint8_t key_nr);
 
   \param [in] key Array which holds the MIFARE key, it is always 6 bytes long.
  */
-void clrc663_cmd_load_key(const uint8_t* key);
+void clrc663_cmd_load_key(const u8* key);
 
 /*!
   @brief Perform MIFARE authentication procedure with a card.
@@ -255,7 +255,7 @@ void clrc663_cmd_load_key(const uint8_t* key);
   \param [in] block_address The block on which to authenticate.
   \param [in] card_uid The authentication procedure required the first four bytes of the card's UID to authenticate.
  */
-void clrc663_cmd_auth(uint8_t key_type, uint8_t block_address, const uint8_t* card_uid);
+void clrc663_cmd_auth(u8 key_type, u8 block_address, const u8* card_uid);
 
 //! @}
 
@@ -287,7 +287,7 @@ void clrc663_flush_fifo();
   
   \return The number of bytes currently in the FIFO.
  */
-uint16_t clrc663_fifo_length();
+u16 clrc663_fifo_length();
 
 
 /*!
@@ -309,14 +309,14 @@ void clrc663_clear_irq1();
 
   \return The value of the `CLRC630_REG_IRQ0` register.
  */
-uint8_t clrc663_irq0();
+u8 clrc663_irq0();
 
 /*!
   @brief Get the value of the interrupt 1 register.
 
   \return The value of the `CLRC630_REG_IRQ1` register.
  */
-uint8_t clrc663_irq1();
+u8 clrc663_irq1();
 
 /*!
   @brief Print an array in hexadecimal format using `CLRC630_PRINTF`.
@@ -326,7 +326,7 @@ uint8_t clrc663_irq1();
   \param [in] data The array to be printed.
   \param [in] len The number of bytes to print..
  */
-void clrc663_print_block(const uint8_t* data, uint16_t len);
+void clrc663_print_block(const u8* data, u16 len);
 
 /*!
   @brief Copy a page from EEPROM into an array on the MCU.
@@ -341,7 +341,7 @@ void clrc663_print_block(const uint8_t* data, uint16_t len);
   \param [in] page The page to read from the EEPROM. (This gets multiplied by 64 to obtain the start address).
   \return The number of bytes transmitted from the FIFO into `dest`.
  */
-uint8_t clrc663_transfer_E2_page(uint8_t* dest, uint8_t page);
+u8 clrc663_transfer_E2_page(u8* dest, u8 page);
 
 //!  @}
 
@@ -373,7 +373,7 @@ uint8_t clrc663_transfer_E2_page(uint8_t* dest, uint8_t page);
   \param [in] timer Specifies which timer to use (0, 1, 2 or 3).
   \param [in] active Should be `0` to deactivate the timer, `1` to activate it.
  */
-void clrc663_activate_timer(uint8_t timer, uint8_t active);
+void clrc663_activate_timer(u8 timer, u8 active);
 
 // Set the timer control field of the timer.
 // value: the value to set the timer's control field to.
@@ -390,7 +390,7 @@ void clrc663_activate_timer(uint8_t timer, uint8_t active);
        CLRC630_TCONTROL_START_LFO_WITH
   \see CLRC630_TCONTROL_CLK_13MHZ, CLRC630_TCONTROL_CLK_211KHZ, CLRC630_TCONTROL_CLK_UF_TA1, CLRC630_TCONTROL_CLK_UF_TA2
  */
-void clrc663_timer_set_control(uint8_t timer, uint8_t value);
+void clrc663_timer_set_control(u8 timer, u8 value);
 
 /*!
   @brief Sets the reload value of the timer.
@@ -400,7 +400,7 @@ void clrc663_timer_set_control(uint8_t timer, uint8_t value);
   \param [in] timer Specifies which timer to use (0, 1, 2 or 3).
   \param [in] value The value from which to start the counter. 
  */
-void clrc663_timer_set_reload(uint8_t timer, uint16_t value);
+void clrc663_timer_set_reload(u8 timer, u16 value);
 
 /*!
   @brief Sets the current value of this timer..
@@ -410,7 +410,7 @@ void clrc663_timer_set_reload(uint8_t timer, uint16_t value);
   \param [in] timer Specifies which timer to use (0, 1, 2 or 3).
   \param [in] value The value to set the counter to. 
  */
-void clrc663_timer_set_value(uint8_t timer, uint16_t value);
+void clrc663_timer_set_value(u8 timer, u16 value);
 
 
 /*!
@@ -421,7 +421,7 @@ void clrc663_timer_set_value(uint8_t timer, uint16_t value);
   \param [in] timer Specifies which timer to use (0, 1, 2 or 3).
   \return The current value of this timer.
  */
-uint16_t clrc663_timer_get_value(uint8_t timer);
+u16 clrc663_timer_get_value(u8 timer);
 //!  @}
 
 // ---------------------------------------------------------------------------
@@ -462,8 +462,8 @@ void clrc663_AN11145_start_IQ_measurement();
 
     The actual vaues can be retrieved with:
     \code
-      uint8_t I_value = clrc663_read_reg(CLRC630_REG_LPCD_I_RESULT) & 0x3F
-      uint8_t Q_value = clrc663_read_reg(CLRC630_REG_LPCD_Q_RESULT) & 0x3F
+      u8 I_value = clrc663_read_reg(CLRC630_REG_LPCD_I_RESULT) & 0x3F
+      u8 Q_value = clrc663_read_reg(CLRC630_REG_LPCD_Q_RESULT) & 0x3F
     \endcode
 */
 void clrc663_AN11145_stop_IQ_measurement();
@@ -483,7 +483,7 @@ void clrc663_AN11145_stop_IQ_measurement();
            `CLRC630_PROTO_ISO14443A_424_MILLER_BPSK` and `CLRC630_PROTO_ISO14443A_848_MILLER_BPSK` were copied. The
             recommended values for the other protocols can be found in the application note.
 */
-void clrc663_AN1102_recommended_registers(uint8_t protocol);
+void clrc663_AN1102_recommended_registers(u8 protocol);
 
 /*! \brief Set the registers to the recommended values starting from `CLRC630_REG_TXCRCPRESET`.
 
@@ -495,7 +495,7 @@ void clrc663_AN1102_recommended_registers(uint8_t protocol);
            `CLRC630_PROTO_ISO14443A_424_MILLER_BPSK` and `CLRC630_PROTO_ISO14443A_848_MILLER_BPSK` were copied. The
             recommended values for the other protocols can be found in the application note.
 */
-void clrc663_AN1102_recommended_registers_no_transmitter(uint8_t protocol);
+void clrc663_AN1102_recommended_registers_no_transmitter(u8 protocol);
 
 /*! \brief Set the registers to the recommended values, skipping the first `skip` registers.
 
@@ -507,11 +507,11 @@ void clrc663_AN1102_recommended_registers_no_transmitter(uint8_t protocol);
             recommended values for the other protocols can be found in the application note.
     \param [in] skip The number of registers to skip from the start.
 */
-void clrc663_AN1102_recommended_registers_skip(uint8_t protocol, uint8_t skip);
+void clrc663_AN1102_recommended_registers_skip(u8 protocol, u8 skip);
 //!  @}
 
 
-void CLRC663_configure_communication_protocol(uint8_t protocol);
+void CLRC663_configure_communication_protocol(u8 protocol);
 
 
 // ---------------------------------------------------------------------------
@@ -537,7 +537,7 @@ void CLRC663_configure_communication_protocol(uint8_t protocol);
 
     \return The Answer to request A byte (ATQA), or zero in case of no answer.
 */
-uint16_t clrc663_iso14443a_REQA();
+u16 clrc663_iso14443a_REQA();
 
 /*! \brief Sends an Wake-Up Command, Type A.
 
@@ -545,7 +545,7 @@ uint16_t clrc663_iso14443a_REQA();
 
     \return The Answer to request A byte (ATQA), or zero in case of no answer.
 */
-uint16_t clrc663_iso14443a_WUPA();
+u16 clrc663_iso14443a_WUPA();
 
 /*! \brief Used to send WUPA and REQA.
 
@@ -553,9 +553,9 @@ uint16_t clrc663_iso14443a_WUPA();
 
     \return The Answer to request A byte (ATQA), or zero in case of no answer.
 */
-uint16_t clrc663_iso14443a_WUPA_REQA(uint8_t instruction);
+u16 clrc663_iso14443a_WUPA_REQA(u8 instruction);
 
-uint8_t clrc663_communicate(uint8_t* tx_buffer, uint8_t tx_buffer_len, uint8_t* rx_buffer);
+u8 clrc663_communicate(u8* tx_buffer, u8 tx_buffer_len, u8* rx_buffer);
 
 /*! \brief Performs the SELECT procedure to discover a card's UID.
 
@@ -582,7 +582,7 @@ uint8_t clrc663_communicate(uint8_t* tx_buffer, uint8_t tx_buffer_len, uint8_t* 
                     about the type of card.
   \return The length of the UID in bytes (4, 7, 10), or 0 in case of failure.
 */
-uint8_t clrc663_iso14443a_select(uint8_t* uid, uint8_t* sak);
+u8 clrc663_iso14443a_select(u8* uid, u8* sak);
 //!  @}
 
 // ---------------------------------------------------------------------------
@@ -606,8 +606,8 @@ uint8_t clrc663_iso14443a_select(uint8_t* uid, uint8_t* sak);
 
     The key must be loaded into the key buffer, by one of the following functions:
     \code
-         void clrc663_cmd_load_key_E2(uint8_t key_nr);
-         void clrc663_cmd_load_key(uint8_t* key);
+         void clrc663_cmd_load_key_E2(u8 key_nr);
+         void clrc663_cmd_load_key(u8* key);
     \endcode
 
     Once authenticated, the authentication MUST be stopped manually by calling
@@ -620,7 +620,7 @@ uint8_t clrc663_iso14443a_select(uint8_t* uid, uint8_t* sak);
     \param [in] uid The authentication procedure required the first four bytes of the card's UID to authenticate.
     \return 0 in case of failure, nonzero in case of success.
 */
-uint8_t clrc663_MF_auth(const uint8_t* uid, uint8_t key_type, uint8_t block);
+u8 clrc663_MF_auth(const u8* uid, u8 key_type, u8 block);
 
 /*! \brief Disables MIFARE authentication.
 
@@ -638,7 +638,7 @@ void clrc663_MF_deauth();
     \param [out] dest The array in which to write the 16 bytes read from the card.
     \return 0 for failure, otherwise the number of bytes received.
 */
-uint8_t clrc663_MF_read_block(uint8_t block_address, uint8_t* dest);
+u8 clrc663_MF_read_block(u8 block_address, u8* dest);
 
 /*! \brief Write a block of memory to an authenticated card.
 
@@ -648,7 +648,7 @@ uint8_t clrc663_MF_read_block(uint8_t block_address, uint8_t* dest);
     \param [in] source The array containing the 16 bytes to be written to this block.
     \return 0 for failure, nonzero means success.
 */
-uint8_t clrc663_MF_write_block(uint8_t block_address, const uint8_t* source);
+u8 clrc663_MF_write_block(u8 block_address, const u8* source);
 
 
 /*! \brief An example to read the first four blocks.
@@ -667,14 +667,14 @@ uint8_t clrc663_MF_write_block(uint8_t block_address, const uint8_t* source);
 
   If there is a response, start the SELECT procedure with 
     \code
-      uint8_t uid_len = clrc663_iso14443a_select(uid, &sak);
+      u8 uid_len = clrc663_iso14443a_select(uid, &sak);
     \endcode
 
   If uid_len is nonzero, we have found a card and UID. We can attempt to
   authenticate with it, for example with the default key:
     
     \code
-      uint8_t FFkey[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+      u8 FFkey[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
       clrc663_cmd_load_key(FFkey); // load into the key buffer
     \endcode
 
@@ -698,7 +698,7 @@ void clrc663_MF_example_dump();
 //!  @}
 
 
-uint8_t Clrc663_Recv(void);
+u8 Clrc663_Recv(void);
 
 void Clrc663_Clear(void);
 

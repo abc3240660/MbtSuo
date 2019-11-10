@@ -33,7 +33,6 @@ static u8 gs_charge_sta = 0;
 
 u8 g_led_times = 0;
 u8 g_ring_times = 0;
-u8 bno055_int_flag = 0;
 
 // 0-normal 1-low power
 u8 g_bno055_sta = 0;
@@ -93,10 +92,11 @@ int main(void)
     }
 #endif
 
-    g_ring_times = 3;
+    // If TypeC-Power detect, beep*1
+    g_ring_times = 1;
     Configure_Tick1_10ms();
     Configure_Tick2_10ms();
-    
+
     while (0) {
 //        GPIOx_Output(BANKD, MAIN_LED_B, 1);
         GPIOx_Output(BANKD, MAIN_LED_R, 1);
@@ -124,7 +124,7 @@ int main(void)
         delay_ms_nop(1000);
     }
 #endif
-    
+
 #if 1// CLRC663 LOOP Testing
     while(1) {
         nfc_ret = ReadMobibNFCCard();
@@ -143,7 +143,7 @@ int main(void)
             LEDs_AllOff();
         }
         delay_ms(1000);
-        
+
         if (try_cnt++ >= 5) {
             break;
         }
@@ -161,7 +161,7 @@ int main(void)
         __delay_usx(10);
         GPIOx_Output(BANKB, 13, 0);
         __delay_usx(10);
-        
+
         if (beep_loop++ >= 100) {
             beep_loop = 0;
             DEBUG("XBeep Testing...\r\n");
@@ -178,7 +178,7 @@ int main(void)
         len1 = recv_total_len;
         delay_ms(100);
         len2 = recv_total_len;
-        
+
         if ((len1 == len2) && (len1 != 0)) {
             recv_total_len = 0;
             for (i=0; i<len1; i++) {
@@ -305,9 +305,9 @@ int main(void)
         // --
 
         if (0 == (task_cnt%21)) {  // every 1.0s
-            if (bno055_int_flag == 1) {
+            if (1 == GetBNOIntrFlag()) {
                 // INT occur
-                bno055_int_flag=0;
+                ClearBNOIntrFlag();
                 bno055_intr_mode = bno055_get_int_src();// get the INT source
                 bno055_clear_int();// clear INT
                 if (bno055_intr_mode&0x80) {

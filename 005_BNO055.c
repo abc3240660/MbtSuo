@@ -9,6 +9,9 @@
 // Date 26/12/2018
 //******************************************************************************
 
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include <string.h>
 #include <p24fxxxx.h>
 
@@ -16,21 +19,22 @@
 #include "001_Tick_10ms.h"
 #include "007_Uart.h"
 #include "006_Gpio.h"
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 
-static u8 cur_pos = 0;
-static u8 BNO_055_SEND_BUFF[LEN_BYTE_SZ64+1] = {0};
+static u8 bno055_int_flag = 0;
+static u8 bno_send_buf[LEN_BYTE_SZ64+1] = {0};
 
-u16 recv_total_len = 0;
-u8 BNO_055_RECV_BUFF[LEN_BYTE_SZ64+1] = {0};
+u8 GetBNOIntrFlag(void)
+{
+    return bno055_int_flag;
+}
 
-extern u8 bno055_int_flag;
+void ClearBNOIntrFlag(void)
+{
+    bno055_int_flag = 0;
+}
 
 void __attribute__ ((weak)) EX_INT1_CallBack(void)
 {
-    DEBUG("!!!!!!!!!!!!!!!!!!!!!!!INT occur \n");
     bno055_int_flag = 1;
 }
 
@@ -41,7 +45,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _INT1Interrupt(void)
     IFS1bits.INT1IF = 0;// Clear INT Flag
 }
 
-void EXT_INT_Initialize(void)
+void ExtIntr_Initialize(void)
 {
     _TRISD0 = 1;
     RPINR0bits.INT1R = 0x00B;// RD0->EXT_INT:INT1
@@ -72,44 +76,41 @@ void bno055_send_chars(u8 *data, int len)
     }
 }
 
-void bno055_reve_buff_clear(void)
-{
-    memset(BNO_055_RECV_BUFF, 0, LEN_BYTE_SZ64);
-    recv_total_len = 0;
-    cur_pos = 0;
-}
-
 u8 bno055_getc_from_reve_buff(void)
 {
+    u8 temp = 0;
+    u16 len = 0;
     u8 try_cnt = 20;
 
     do {
-        if (recv_total_len > cur_pos) {
-            // DEBUG("[%.2X] ", BNO_055_RECV_BUFF[cur_pos]);
-            return BNO_055_RECV_BUFF[cur_pos++];
+        len = Uart3_GetSize();
+
+        if (len > 0) {
+            temp = Uart4_Read(0);// alway read index 0
+            return temp;
         } else {
             bno_055_delay_ms(50);
         }
-    } while(--try_cnt);
+    } while (--try_cnt);
 
-    return 0;
+    return 0xFF;
 }
 
 static u16 bno055_write_byte(u8 reg_addr, u8 reg_data)
 {
 
     u8 onebyte = 0;
-    bno055_reve_buff_clear();
-    memset(BNO_055_SEND_BUFF, 0, LEN_BYTE_SZ64);
+    Uart4_Clear();
+    memset(bno_send_buf, 0, LEN_BYTE_SZ64);
 
-    BNO_055_SEND_BUFF[0] = 0xAA;
-    BNO_055_SEND_BUFF[1] = 0x00;// WR
-    BNO_055_SEND_BUFF[2] = reg_addr;
-    BNO_055_SEND_BUFF[3] = 0x01;// LEN
-    BNO_055_SEND_BUFF[4] = reg_data;
+    bno_send_buf[0] = 0xAA;
+    bno_send_buf[1] = 0x00;// WR
+    bno_send_buf[2] = reg_addr;
+    bno_send_buf[3] = 0x01;// LEN
+    bno_send_buf[4] = reg_data;
 
     // send data
-    bno055_send_chars(BNO_055_SEND_BUFF, 5);
+    bno055_send_chars(bno_send_buf, 5);
 
     // wait
     bno_055_delay_ms(20);
@@ -136,24 +137,24 @@ static u16 bno055_write_bytes(u8 reg_addr, u8 *p_in, u8 len)
     u16 i = 0;
     u8 onebyte = 0;
 
-    bno055_reve_buff_clear();
+    Uart4_Clear();
     if ((!p_in) || (len<=0)) {
         return 1;
     }
 
-    memset(BNO_055_SEND_BUFF, 0, LEN_BYTE_SZ64);
+    memset(bno_send_buf, 0, LEN_BYTE_SZ64);
 
-    BNO_055_SEND_BUFF[0] = 0xAA;
-    BNO_055_SEND_BUFF[1] = 0x00;// WR
-    BNO_055_SEND_BUFF[2] = reg_addr;
-    BNO_055_SEND_BUFF[3] = len;// LEN
+    bno_send_buf[0] = 0xAA;
+    bno_send_buf[1] = 0x00;// WR
+    bno_send_buf[2] = reg_addr;
+    bno_send_buf[3] = len;// LEN
 
     for (i=0; i<len; i++) {
-        BNO_055_SEND_BUFF[4+i] = p_in[i];
+        bno_send_buf[4+i] = p_in[i];
     }
 
     // send data
-    bno055_send_chars(BNO_055_SEND_BUFF, len+4);
+    bno055_send_chars(bno_send_buf, len+4);
 
     // wait
     bno_055_delay_ms(100);
@@ -180,16 +181,16 @@ static u8 bno055_read_byte(u8 reg_addr)
 {
     u8 onebyte = 0;
 
-    bno055_reve_buff_clear();
-    memset(BNO_055_SEND_BUFF, 0, LEN_BYTE_SZ64);
+    Uart4_Clear();
+    memset(bno_send_buf, 0, LEN_BYTE_SZ64);
 
-    BNO_055_SEND_BUFF[0] = 0xAA;
-    BNO_055_SEND_BUFF[1] = 0x01;// RD
-    BNO_055_SEND_BUFF[2] = reg_addr;
-    BNO_055_SEND_BUFF[3] = 0x01;// LEN
+    bno_send_buf[0] = 0xAA;
+    bno_send_buf[1] = 0x01;// RD
+    bno_send_buf[2] = reg_addr;
+    bno_send_buf[3] = 0x01;// LEN
 
     // send data
-    bno055_send_chars(BNO_055_SEND_BUFF, 4);
+    bno055_send_chars(bno_send_buf, 4);
 
     // wait
     bno_055_delay_ms(50);
@@ -229,16 +230,16 @@ static u16 bno055_read_bytes(u8 reg_addr, u8 len, u8 *p_out)
     }
 
     bno_055_delay_ms(25);
-    bno055_reve_buff_clear();
-    memset(BNO_055_SEND_BUFF, 0, LEN_BYTE_SZ64);
+    Uart4_Clear();
+    memset(bno_send_buf, 0, LEN_BYTE_SZ64);
 
-    BNO_055_SEND_BUFF[0] = 0xAA;
-    BNO_055_SEND_BUFF[1] = 0x01;// RD
-    BNO_055_SEND_BUFF[2] = reg_addr;
-    BNO_055_SEND_BUFF[3] = len;// LEN
+    bno_send_buf[0] = 0xAA;
+    bno_send_buf[1] = 0x01;// RD
+    bno_send_buf[2] = reg_addr;
+    bno_send_buf[3] = len;// LEN
 
     // send data
-    bno055_send_chars(BNO_055_SEND_BUFF, 4);
+    bno055_send_chars(bno_send_buf, 4);
 
     // wait
     bno_055_delay_ms(25);
@@ -1059,6 +1060,8 @@ u16 Configure_BNO055(void)
 
 u16 BNO055_init(void)
 {
+    ExtIntr_Initialize();
+
     Configure_BNO055();
 
     // bno055_clear_int();
