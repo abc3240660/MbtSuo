@@ -74,7 +74,7 @@ static u8 gs_alarm_level[LEN_COMMON_USE+1] = "80";
 
 static u8 gs_iap_waiting = 0;
 static u8 gs_iap_md5[LEN_MD5_HEXSTR+1] = "";
-static u8 gs_iap_file[LEN_DW_URL+1] = "Mbtsuo_0915.bin";
+static u8 gs_iap_file[LEN_DW_URL+1] = "Mbtsuo_V2.bin";
 
 static u16 gs_hbeat_gap = DEFAULT_HBEAT_GAP;
 
@@ -104,7 +104,7 @@ static u32 gs_ftp_offset = 0;
 //static u8 gs_ftp_port[LEN_NET_TCP] = "10218";
 
 // "101.132.150.94" "21"
-static u8 gs_ftp_ip[LEN_NET_TCP+1]  = "192.168.1.105";
+static u8 gs_ftp_ip[LEN_NET_TCP+1]  = "192.168.1.107";
 static u8 gs_ftp_port[LEN_NET_TCP+1] = "21";
 
 // TODO: Need to reset into 0 if IAP failed for ReIAP Request
@@ -1033,6 +1033,13 @@ bool IsIapRequested(void)
     }
 }
 
+bool ManualIapRequested(void)
+{
+    gs_iap_waiting = 1;
+
+    return true;
+}
+
 void ReportFinishAddNFC(u8 gs_bind_cards[][LEN_BYTE_SZ64], u8* index_array)
 {
     u8 i = 0;
@@ -1307,14 +1314,14 @@ void ProcessIapRequest(void)
 
             // DEBUG("flash_offset = %.8lX, %ld\n", flash_offset, flash_offset);
             DEBUG("WR flash_address = 0x%X-%.8lX\n", flash_page, flash_offset);
-            FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 128);
+            // FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 128);
 
             gs_ftp_sum_got += got_size;
         }
 
         if (gs_ftp_offset >= iap_total_size) {
             u8 j = 0;
-            u8 tmp_value = 10;
+            u32 tmp_value = 10;
             u8 num_count = 0;
             u8 iap_size_str[8] = {0};
 
@@ -1340,7 +1347,7 @@ void ProcessIapRequest(void)
                 for (j=0; j<(num_count-i-1); j++) {
                     tmp_value *= 10;
                 }
-                iap_size_str[i] = '0' + (iap_total_size/tmp_value);
+                iap_size_str[i] = '0' + ((iap_total_size/tmp_value)%10);
             }
 
             DEBUG("iap_size_str = %s\n", iap_size_str);

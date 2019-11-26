@@ -45,7 +45,7 @@ u8 g_svr_apn[LEN_NET_TCP+1] = "sentinel.m2mmobi.be";
 u32 g_led_times = 0;
 u8 g_ring_times = 0;
 
-#define GPS_DEBUG 1
+// #define GPS_DEBUG 1
 
 static void SwitchToLowClock(void)
 {
@@ -179,7 +179,7 @@ int main(void)
     InitRingBuffers();
 #endif
 
-#if 1// BNO055 Testing
+#if 0// BNO055 Testing
 	if (0 == bno055_get_euler(&cur_pitch, &cur_yaw, &cur_roll)) {
 		DEBUG("Euler Base: %f %f %f\n", (double)cur_pitch, (double)cur_yaw, (double)cur_roll);
 	} else {
@@ -318,6 +318,8 @@ int main(void)
                     TcpReportGPS();
 #endif
                     TcpHeartBeat();
+                    
+                    ManualIapRequested();
                 }
             }
         } else {
@@ -393,7 +395,7 @@ int main(void)
         // ---------------------- TASK 7 -------------------- //
         // --
         if (0 == (task_cnt%199)) { // every 10.0s
-            g_ring_times = 2;
+            // g_ring_times = 2;
             DEBUG("task active\n");
 #if 0
             if (0x81 == net_sta) {
