@@ -45,7 +45,7 @@ u8 g_svr_apn[LEN_NET_TCP+1] = "sentinel.m2mmobi.be";
 u32 g_led_times = 0;
 u8 g_ring_times = 0;
 
-// #define GPS_DEBUG 1
+#define GPS_DEBUG 1
 
 static void SwitchToLowClock(void)
 {
@@ -89,7 +89,7 @@ int main(void)
     u8 trycnt = 0;
     u32 adcValue = 0;
 #ifdef GPS_DEBUG
-    u16 hbeat_gap = 5;
+    u16 hbeat_gap = 30;
 #else
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
 #endif
