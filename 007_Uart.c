@@ -20,13 +20,12 @@
 #include "007_Uart.h"
 #include "008_RingBuffer.h"
 
-#define UART3_BUFFER_MAX_LEN 32
+static u16 Uart3_Rx_Len = 0;
+static u8 Uart3_Rx_Buffer[LEN_BYTE_SZ64+1] = {0};
 
-static uint8_t Uart3Buffer[UART3_BUFFER_MAX_LEN] = {0};
-static uint16_t Uart3Length = 0;
+static u16 Uart4_Rx_Len = 0;
+static u8 Uart4_Rx_Buffer[LEN_BYTE_SZ64+1] = {0};
 
-uint8_t Uart4_Buffer[UART3_BUFFER_MAX_LEN] = {0};
-uint16_t Uart4_Use_Len = 0;
 
 static char Uart2_Send_Buf[UART2_BUFFER_MAX_LEN] = {0};
 
@@ -35,9 +34,6 @@ static ringbuffer_t tmp_rbuf;
 // ringbuf for temp recved
 static char tmpRingbuf[RX_RINGBUF_MAX_LEN] = {0};
 
-uint8_t Uart3_Buffer[64] = {0};
-int Uart3_Use_Len = 0;
-
 // extern u8 g_ftp_enable;
 
 extern int rx_debug_flag;
@@ -45,155 +41,101 @@ extern int rx_debug_flag;
 // 115200 for Debug
 void Uart1_Init(void)
 {
-#ifndef OSC_20M_USE
-#if 0
     _RP22R = 3;// RD3
-    _U1RXR = 23;// RD2
-
-    _LATD3 = 1;
-    _TRISD2 = 1;
-    _TRISD3 = 0;
-#else
-    _RP22R = 3;// RD3
+#if UART1_MANUAL_DBG
     _U1RXR = 24;// RD1
-
-    _LATD3 = 1;
-    _TRISD1 = 1;
-    _TRISD3 = 0;
 #endif
+    _LATD3 = 1;
+#if UART1_MANUAL_DBG
+    _TRISD1 = 1;
+#endif
+    _TRISD3 = 0;
 
-    U1MODE = 0X8808;
-    U1STA = 0X2400;
+    U1MODE = 0x8808;
+    U1STA = 0x2400;
+
+#ifdef OSC_32M_USE
     // 4M/(34+1) = 114285
     U1BRG = 34;
-#else
-    _RP22R = 3;// RD3
-    _U1RXR = 24;// RD1
-
-    _LATD3 = 1;
-    _TRISD1 = 1;
-    _TRISD3 = 0;
-
-    U1MODE = 0X8808;
-    U1STA = 0X2400;
-    // 4M/(34+1) = 114285
-    U1BRG = 0x15;
+#else// OSC_20M_USE
+    U1BRG = 21;
 #endif
 
-    _U1TXIP = 3;
-    _U1RXIP = 7;
+    _U1TXIP = IPL_DIS;
+#if UART1_MANUAL_DBG
+    _U1RXIP = IPL_MID;
+#endif
     _U1TXIF = 0;
     _U1RXIF = 0;
     _U1TXIE = 0;
+#if UART1_MANUAL_DBG
     _U1RXIE = 1;
+#endif
 }
 
 // 115200 for BG96
 void Uart2_Init(void)
 {
-#ifndef OSC_20M_USE
-#if 0
-    _RP17R = 5;// RF5
-    _U2RXR = 10;// RF4
-
-    _LATF5 = 1;
-    _TRISF4 = 1;
-    _TRISF5 = 0;
-    U2MODE = 0X8808;
-    U2STA = 0X2400;
-    U2BRG = 34;
-#else
     _RP14R = 5;// RB14
     _U2RXR = 21;// RG6
 
     _LATB14 = 1;
     _TRISG6 = 1;
     _TRISB14 = 0;
-#endif
-#else
-#if 0
-    _RP17R = 5;// RF5
-    _U2RXR = 10;// RF4
 
-    _LATF5 = 1;
-    _TRISF4 = 1;
-    _TRISF5 = 0;
-#else
-    _RP14R = 5;// RB14
-    _U2RXR = 21;// RG6
-
-    _LATB14 = 1;
-    _TRISG6 = 1;
-    _TRISB14 = 0;
-    
     _ANSG6 = 0;
-#endif
-    U2MODE = 0X8808;
-    U2STA = 0X2400;
-    U2BRG = 0x15;
+    _ANSB14 = 0;
+
+    U2MODE = 0x8808;
+    U2STA = 0x2400;
+
+#ifdef OSC_32M_USE
+    // 4M/(34+1) = 114285
+    U2BRG = 34;
+#else// OSC_20M_USE
+    U2BRG = 21;
 #endif
 
-    _U2TXIP = 1;
-    _U2RXIP = 2;
+    _U2TXIP = IPL_DIS;
+    _U2RXIP = IPL_MID;
     _U2TXIF = 0;
     _U2RXIF = 0;
     _U2TXIE = 0;
     _U2RXIE = 1;
-
+    
     ringbuffer_init(&tmp_rbuf,tmpRingbuf,RX_RINGBUF_MAX_LEN);
 }
 
 // 115200 for CLRC663
 void Uart3_Init(void)
 {
-    // PIC24FJ256 is 28
-    // PIC24FJ1024 is 19
-#ifndef OSC_20M_USE
-#if 0
-    _RP3R = 19;     //RP3(RD10) = U3TX
-    _U3RXR = 4;     //U3RXR     = RP4(RD9)
-
-    _LATD10 = 1;
-    _TRISD9 = 1;
-    _TRISD10 = 0;
-#else
     _RP18R = 19;     //RB5 = U3TX
     _U3RXR = 13;     //RB2 = U3RXR
 
     _LATB5 = 1;
     _TRISB2 = 1;
     _TRISB5 = 0;
-    
-    _ANSB2 = 0;
-#endif
 
-    U3MODE = 0X8808;
-    U3STA = 0X2400;
+    _ANSB2 = 0;
+    _ANSB5 = 0;
+
+    U3MODE = 0x8808;
+    U3STA = 0x2400;
+
+#ifdef OSC_32M_USE
+    // 4M/(34+1) = 114285
     U3BRG = 34;
-#else
-    _RP18R = 19;     //RB5 = U3TX
-    _U3RXR = 13;     //RB2 = U3RXR
-
-    _LATB5 = 1;
-    _TRISB2 = 1;
-    _TRISB5 = 0;
-    
-    _ANSB2 = 0;
-
-    U3MODE = 0X8808;
-    U3STA = 0X2400;
-    U3BRG = 0x15;
+#else// OSC_20M_USE
+    U3BRG = 21;
 #endif
 
-    _U3TXIP = 1;
-    _U3RXIP = 2;
+    _U3TXIP = IPL_DIS;
+    _U3RXIP = IPL_MID;
     _U3TXIF = 0;
     _U3RXIF = 0;
     _U3TXIE = 0;
     _U3RXIE = 1;
 }
-
-int Uart1_Putc(char ch);
 
 void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
 {
@@ -201,33 +143,54 @@ void __attribute__((__interrupt__,no_auto_psv)) _U3RXInterrupt(void)
 
     do {
         temp = U3RXREG;
-        printf("-%.2X", (u8)temp);
+        // DEBUG("-%.2X", (u8)temp);
         _U3RXIF = 0;
         if (U3STAbits.OERR) {
             U3STAbits.OERR = 0;
         } else {
-            Uart3Buffer[Uart3Length++] = temp;
+            Uart3_Rx_Buffer[Uart3_Rx_Len++] = temp;
         }
     } while (U3STAbits.URXDA);
 }
 
 void Uart3_Clear(void)
 {
-    memset(Uart3Buffer,0,UART3_BUFFER_MAX_LEN);
-    Uart3Length = 0;
+    Uart3_Rx_Len = 0;
+    memset(Uart3_Rx_Buffer, 0, LEN_BYTE_SZ64);
 }
 
-uint8_t Uart3_Read(uint16_t postion)
+u8 Uart3_Read(u16 postion)
 {
-    if(postion > Uart3Length){
+    if (postion > Uart3_Rx_Len) {
         return 0x00;
     }
-    return Uart3Buffer[postion];
+
+    return Uart3_Rx_Buffer[postion];
 }
 
-uint16_t Uart3_GetSize(void)
+u16 Uart3_GetSize(void)
 {
-    return Uart3Length;
+    return Uart3_Rx_Len;
+}
+
+void Uart4_Clear(void)
+{
+    Uart4_Rx_Len = 0;
+    memset(Uart4_Rx_Buffer, 0, LEN_BYTE_SZ64);
+}
+
+u8 Uart4_Read(u16 postion)
+{
+    if (postion > Uart4_Rx_Len) {
+        return 0x00;
+    }
+
+    return Uart4_Rx_Buffer[postion];
+}
+
+u16 Uart4_GetSize(void)
+{
+    return Uart4_Rx_Len;
 }
 
 int fputc(int ch,FILE * f)
@@ -246,17 +209,6 @@ int Uart1_Putc(char ch)
     return ch;
 }
 
-u8 SCISendDataOnISR(u8 *sendbuf,u16 size)
-{
-    while(size--)
-    {
-        Uart1_Putc(*sendbuf);
-        sendbuf++;
-    }
-
-    return 1;
-}
-
 int Uart2_Putc(char ch)
 {
     U2TXREG = ch;
@@ -271,18 +223,9 @@ int Uart3_Putc(char ch)
     while(_U3TXIF == 0);
     _U3TXIF = 0;
 
-//    printf("%.2X\r\n", (uint8_t)ch);
+    // DEBUG("%.2X\r\n", (u8)ch);
 
     return ch;
-}
-
-int uart3_write_bytes(char * buf,int len)
-{
-    int i = 0;
-    for(i=0;i<len;i++){
-        Uart3_Putc(buf[i]);
-    }
-    return len;
 }
 
 int Uart2_String(char *ch)
@@ -295,6 +238,7 @@ int Uart2_String(char *ch)
     }
     return len;
 }
+
 int Uart2_Printf(char *fmt,...)
 {
     short i,len;
@@ -317,10 +261,9 @@ void __attribute__((__interrupt__,no_auto_psv)) _U2RXInterrupt(void)
 
     do {
         temp = U2RXREG;
-        //if (rx_debug_flag) {
-        //    printf("%.2X-%c\n", temp, temp);
-        //}
-        //Uart1_Putc(temp);
+#ifdef BG96_MANUAL_DBG
+        Uart1_Putc(temp);
+#endif
         _U2RXIF = 0;
         if (U2STAbits.OERR) {
             U2STAbits.OERR = 0;
@@ -337,14 +280,13 @@ void __attribute__((__interrupt__,no_auto_psv)) _U1RXInterrupt(void)
     do {
         temp = U1RXREG;
         // g_ftp_enable = 1;
-        // Uart1_Putc(temp);
+#ifdef BG96_MANUAL_DBG
+        Uart2_Putc(temp);
+#endif
         _U1RXIF = 0;
         if (U1STAbits.OERR) {
             U1STAbits.OERR = 0;
         } else {
-            // printf("%.2X\n", temp);
-            // ringbuffer_write_byte(&tmp_rbuf,temp);
-            // printf("recv len = %d\n", IsTmpRingBufferAvailable());
         }
     } while (U1STAbits.URXDA);
 }
@@ -377,7 +319,7 @@ bool WaitUartTmpRxIdle(void)
     size1 = ringbuffer_buf_use_size(&tmp_rbuf);
 
     while (1) {
-        delay_ms(50);
+        delay_ms(2);
         size2 = ringbuffer_buf_use_size(&tmp_rbuf);
 
         if ((size1 == size2)) {// RX stopped for 50MS
@@ -394,41 +336,48 @@ void Uart4_Init(void)
 {
     RPOR6bits.RP12R = 0x0015;    //RD11->UART4:U4TX
     RPINR27bits.U4RXR = 0x0003;    //RD10->UART4:U4RX
-    
+
     _LATD11 = 1;
     _TRISD10 = 1;
     _TRISD11 = 0;
-    
-//    _ANSD10 = 0;
-    
-    U4MODE=0X8808;
-    U4STA = 0X2400;
-    U4BRG = 0x15;//34;
 
-    IPC22bits.U4TXIP = 0;
-    IPC22bits.U4RXIP = 1;
-    IEC5bits.U4RXIE = 1;
+    U4MODE=0x8808;
+    U4STA = 0x2400;
+
+#ifdef OSC_32M_USE
+    // 4M/(34+1) = 114285
+    U4BRG = 34;
+#else// OSC_20M_USE
+    U4BRG = 21;
+#endif
+
+    _U4TXIP = IPL_DIS;
+    _U4RXIP = IPL_HIGH;
+    _U4TXIF = 0;
+    _U4RXIF = 0;
+    _U4TXIE = 0;
+    _U4RXIE = 1;
+
 }
 
 void Uart4_Putc(char ch)
 {
     U4TXREG = ch;
+    // DEBUG("TX[%.2X] ", (u8)ch);
     while(_U4TXIF == 0);
     _U4TXIF = 0;
 }
 
 void __attribute__((__interrupt__,no_auto_psv)) _U4RXInterrupt(void)
 {
-    char temp = 0;
-
     do {
-        temp = U4RXREG;
-        printf("+%.2X", (u8)temp);
-        _U4RXIF = 0;
+
         if (U4STAbits.OERR) {
+            DEBUG("U4 OEER \n");
             U4STAbits.OERR = 0;
         } else {
-            Uart4_Buffer[Uart4_Use_Len++] = temp;
+            _U4RXIF = 0;
+            Uart4_Rx_Buffer[Uart4_Rx_Len++]=U4RXREG;
         }
     } while (U4STAbits.URXDA);
 }

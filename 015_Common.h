@@ -21,6 +21,11 @@
 #define         HW_VER                  "201910041950"
 #define         SW_VER                  "201910041950"
 
+#define         IPL_HIGH                7
+#define         IPL_MID                 5
+#define         IPL_LOW                 3
+#define         IPL_DIS                 0
+
 #define         T1IPL                   5                                       // define Timer 1 IRQ priority levell for real tome Tick
 #define         T2IPL                   1                                       // define Timer 2 IRQ priority levell for real tome Tick
 
@@ -40,6 +45,10 @@
 
 #define LEN_CARD_ID      19
 #define LEN_SERIAL_NR    16
+
+#ifndef LEN_NET_TCP
+#define LEN_NET_TCP      32
+#endif
 
 #define LEN_COMMON_USE  LEN_BYTE_SZ32
 #define LEN_MD5_HEXSTR  LEN_BYTE_SZ32
@@ -216,11 +225,24 @@ typedef struct {
 
 #define FOR_DEBUG_USE 0
 
-#define OSC_20M_USE 1
-// #define DEMO_BOARD 1
+// External OSC
+// #define EXT_OSC_4M_USE 1
+#define EXT_OSC_20M_USE 1
+// #define EXT_OSC_NONE_USE 1
 
-#define BIN_SIZE_INT   132664
-#define BIN_SIZE_STR  "132664"
+#define OSC_32M_USE 1
+
+#define EXT_CRYSTAL 1
+
+#define UART1_MANUAL_DBG 1
+
+#define __DEBUG 1
+
+#ifdef __DEBUG
+#define DEBUG(format,...) printf(format,##__VA_ARGS__)
+#else
+#define DEBUG(format,...)
+#endif
 
 #endif
 

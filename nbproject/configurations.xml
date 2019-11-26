@@ -14,7 +14,6 @@
       <itemPath>006_Gpio.h</itemPath>
       <itemPath>008_RingBuffer.h</itemPath>
       <itemPath>009_System.h</itemPath>
-      <itemPath>011_Spi.h</itemPath>
       <itemPath>012_CLRC663_NFC.h</itemPath>
       <itemPath>013_Protocol.h</itemPath>
       <itemPath>014_Md5.h</itemPath>
@@ -42,7 +41,6 @@
       <itemPath>012_CLRC663_NFC.c</itemPath>
       <itemPath>013_Protocol.c</itemPath>
       <itemPath>014_Md5.c</itemPath>
-      <itemPath>011_Spi.c</itemPath>
       <itemPath>017_InnerFlash.c</itemPath>
       <itemPath>000_Main.c</itemPath>
       <itemPath>016_FlashOta.c</itemPath>
@@ -74,7 +72,7 @@
         <platform>3</platform>
       </toolsSet>
       <packs>
-        <pack name="PIC24F-GA-GB_DFP" vendor="Microchip" version="1.0.58"/>
+        <pack name="PIC24F-GA-GB_DFP" vendor="Microchip" version="1.0.28"/>
       </packs>
       <compileType>
         <linkerTool>

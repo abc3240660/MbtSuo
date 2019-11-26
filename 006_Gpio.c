@@ -12,44 +12,15 @@
 
 #include <stdio.h>
 #include <p24fxxxx.h>
-
+#include "001_Tick_10ms.h"
 #include "006_Gpio.h"
 
-void GPIOB_Init(void)
-{
-#ifdef DEMO_BOARD
-    CM2CON = 0;
-    ODCB &= 0xFFF0;// Open-Drain Control
-    // AD1PCFGL |= 0x000F;
-    LATB |= 0X0000;// Output Value:0-OFF 1-ON
-    TRISB &= 0XFF00;// Direction:0-OUT 1-IN
-#else
-    CM2CON = 0;
-    ODCD &= 0xFFF0;// Open-Drain Control
-    // AD1PCFGL |= 0x000F;
-    LATD |= 0X0000;// Output Value:0-OFF 1-ON
-    TRISD &= 0X0000;// Direction:0-OUT 1-IN
-#endif
-}
+// #define LED_DEBUG	1
 
-void GPIOB_SetPin(short pin,char value)
-{
-#ifdef DEMO_BOARD
-    // BANKB: for read
-    // LATB: for read -> modify -> write
-    if(value){
-        LATB |= (1<<pin);
-    }else{
-        LATB &= ~(1<<pin);
-    }
-#else
-    if(value){
-        LATD |= (1<<pin);
-    }else{
-        LATD &= ~(1<<pin);
-    }
-#endif
-}
+u8 gs_leds_sta = 0;
+
+// 0-normal 1-blink
+u8 gs_leds_mod = 0;
 
 void GPIOx_Config(GPIO_BANKx port, u8 pin, GPIO_DIR dir)
 {
@@ -88,6 +59,59 @@ void GPIOx_Config(GPIO_BANKx port, u8 pin, GPIO_DIR dir)
             TRISG |= (1<<pin);
         } else {
             TRISG &= ~(1<<pin);
+        }
+    }
+}
+
+void GPIOx_Pull(GPIO_BANKx port, u8 pin, GPIO_PUL value)
+{
+    if (BANKB == port) {
+        if(PULL_UP == value){
+            IOCPDB &= ~(1<<pin);
+            IOCPUB |= (1<<pin);
+        } else {
+            IOCPUB &= ~(1<<pin);
+            IOCPDB |= (1<<pin);
+        }
+    } else if (BANKC == port) {
+        if(PULL_UP == value){
+            IOCPDC &= ~(1<<pin);
+            IOCPUC |= (1<<pin);
+        } else {
+            IOCPUC &= ~(1<<pin);
+            IOCPDC |= (1<<pin);
+        }
+    } else if (BANKD == port) {
+        if(PULL_UP == value){
+            IOCPDD &= ~(1<<pin);
+            IOCPUD |= (1<<pin);
+        } else {
+            IOCPUD &= ~(1<<pin);
+            IOCPDD |= (1<<pin);
+        }
+    } else if (BANKE == port) {
+        if(PULL_UP == value){
+            IOCPDE &= ~(1<<pin);
+            IOCPUE |= (1<<pin);
+        } else {
+            IOCPUE &= ~(1<<pin);
+            IOCPDE |= (1<<pin);
+        }
+    } else if (BANKF == port) {
+        if(PULL_UP == value){
+            IOCPDF &= ~(1<<pin);
+            IOCPUF |= (1<<pin);
+        } else {
+            IOCPUF &= ~(1<<pin);
+            IOCPDF |= (1<<pin);
+        }
+    } else if (BANKG == port) {
+        if(PULL_UP == value){
+            IOCPDG &= ~(1<<pin);
+            IOCPUG |= (1<<pin);
+        } else {
+            IOCPUG &= ~(1<<pin);
+            IOCPDG |= (1<<pin);
         }
     }
 }
@@ -176,21 +200,48 @@ RD4 -> LED_BLUE
 
 void LEDs_AllON(void)
 {
-    LATD |= ~0xFF8F;// Output Value:0-OFF 1-ON
+    // Output Value:0-OFF 1-ON
+    SetLedsStatus(MAIN_LED_B, LED_ON);
+    SetLedsStatus(MAIN_LED_R, LED_ON);
+    SetLedsStatus(MAIN_LED_G, LED_ON);
+	
+#ifdef LED_DEBUG
+    GPIOx_Output(BANKD, MAIN_LED_B, 1);
+    GPIOx_Output(BANKD, MAIN_LED_R, 1);
+    GPIOx_Output(BANKD, MAIN_LED_G, 1);
+#endif
 }
 
 void LEDs_AllOff(void)
 {
-    LATD &= 0xFF8F;// Output Value:0-OFF 1-ON
+    // Output Value:0-OFF 1-ON
+    SetLedsStatus(MAIN_LED_B, LED_OFF);
+    SetLedsStatus(MAIN_LED_R, LED_OFF);
+    SetLedsStatus(MAIN_LED_G, LED_OFF);
+	
+#ifdef LED_DEBUG
+    GPIOx_Output(BANKD, MAIN_LED_B, 0);
+    GPIOx_Output(BANKD, MAIN_LED_R, 0);
+    GPIOx_Output(BANKD, MAIN_LED_G, 0);
+#endif
 }
 
 void LEDs_Init(void)
 {
-    // config RD1/2/3/4/5/6 into output
-    TRISD &= 0xFF8F;// Direction:0-OUT 1-IN
+    GPIOx_Config(BANKD, MAIN_LED_B, OUTPUT_DIR);
+    GPIOx_Config(BANKD, MAIN_LED_R, OUTPUT_DIR);
+    GPIOx_Config(BANKD, MAIN_LED_G, OUTPUT_DIR);
 
-    // ON all to indicate powerup
-    LEDs_AllON();
+#ifdef LED_DEBUG
+    // Green LED ON to indicate powerup
+    GPIOx_Output(BANKD, MAIN_LED_G, 1);
+    delay_ms_nop(10);
+
+    // Disable all LEDs
+    GPIOx_Output(BANKD, MAIN_LED_B, 0);
+    GPIOx_Output(BANKD, MAIN_LED_R, 0);
+    GPIOx_Output(BANKD, MAIN_LED_G, 0);
+#endif
 }
 
 // PORTx: just for read
@@ -204,6 +255,39 @@ void LEDs_Ctrl(LED_INDEX led_id,LED_STA led_sta)
     }
 }
 
+void LockSwitch_Init(void)
+{
+    _ANSE4 = 0;
+    // Default HW Pull Up
+    GPIOx_Config(BANKE, 4, INPUT_DIR);
+}
+
+u8 IsLockSwitchOpen(void)
+{
+    if (!GPIOx_Input(BANKE, 4)) {
+        return 1;// Open
+    } else {
+        return 0;// Close
+    }
+}
+
+void Beep_Init(void)
+{
+    _ANSB13 = 0;
+
+    GPIOx_Config(BANKB, 13, OUTPUT_DIR);
+    GPIOx_Output(BANKB, 13, 0);// default low -> poweroff
+}
+
+void Beep_Low(void)
+{
+    GPIOx_Output(BANKB, 13, 0);
+}
+
+void Beep_High(void)
+{
+    GPIOx_Output(BANKB, 13, 1);
+}
 
 void InOutPurpose_Init(void)
 {
@@ -276,4 +360,123 @@ void InOutPurpose_Init(void)
     // OUT: RG9 for TouchPad: sensitivity PWM
     // XX:  RG10~RG15 for unused
     TRISG &= 0xFF81;// Direction:0-OUT 1-IN
+}
+
+void ExtIntr2_Enable(void)
+{
+    GPIOx_Pull(BANKF, 2, PULL_UP);
+    GPIOx_Config(BANKF, 2, INPUT_DIR);
+
+    _INT2R = 30;// RF2->EXT_INT:INT2
+
+    _INT2IP = IPL_MID;
+    _INT2IF = 0;// Clear INT Flag
+    _INT2EP = 1;// Fall Edge
+    _INT2IE = 1;// Enable INT1 Interrupt
+}
+
+void ExtIntr2_Enable_RD1(void)
+{
+    GPIOx_Pull(BANKD, 1, PULL_UP);
+    GPIOx_Config(BANKD, 1, INPUT_DIR);
+
+    _INT2R = 24;// RD1->EXT_INT:INT2
+
+    _INT2IP = IPL_MID;
+    _INT2IF = 0;// Clear INT Flag
+    _INT2EP = 0;// Rise Edge
+    _INT2IE = 1;// Enable INT1 Interrupt
+}
+
+void ExtIntr2_Disable(void)
+{
+    _INT2IF = 0;// Clear INT Flag
+    _INT2IE = 0;// Enable INT1 Interrupt
+}
+
+void Charge_Init(void)
+{
+    // Charge Status
+    GPIOx_Pull(BANKF, 2, PULL_UP);
+    GPIOx_Config(BANKF, 2, INPUT_DIR);
+
+    // Charge Enable
+    GPIOx_Config(BANKG, 3, OUTPUT_DIR);
+    GPIOx_Output(BANKG, 3, 0);// allow charge
+}
+
+void Charge_Disable(void)
+{
+    GPIOx_Output(BANKG, 3, 1);// disable charge
+}
+
+u8 Charge_InsertDetect(void)
+{
+    if (!GPIOx_Input(BANKF, 2)) {
+        DEBUG("Charge Status Level = 0 -> Charging Mode...\n");
+        return 1;// charging mode
+    } else {
+        DEBUG("Charge Status Level = 1 -> Normal Mode...\n");
+        return 0;// normal mode
+    }
+}
+
+u8 GetLedsStatus(LED_INDEX led_id)
+{
+    return (gs_leds_sta&(1<<led_id)) ? 1 : 0;
+}
+
+void SetLedsStatus(LED_INDEX led_id, LED_STA led_sta)
+{
+    if (LED_ON == led_sta) {
+        if (MAIN_LED_P == led_id) {
+            gs_leds_sta |= (1<<MAIN_LED_R);
+            gs_leds_sta |= (1<<MAIN_LED_B);
+        } else if (MAIN_LED_O == led_id) {
+            gs_leds_sta |= (1<<MAIN_LED_R);
+            gs_leds_sta |= (1<<MAIN_LED_G);
+        } else {
+            gs_leds_sta |= (1<<led_id);
+        }
+    } else {
+        if (MAIN_LED_P == led_id) {
+            gs_leds_sta &= ~(1<<MAIN_LED_R);
+            gs_leds_sta &= ~(1<<MAIN_LED_B);
+        } else if (MAIN_LED_O == led_id) {
+            gs_leds_sta &= ~(1<<MAIN_LED_R);
+            gs_leds_sta &= ~(1<<MAIN_LED_G);
+        } else {
+            gs_leds_sta &= ~(1<<led_id);
+        }
+    }
+}
+
+void SetLedsMode(LED_INDEX led_id, LED_MOD led_mod)
+{
+    if (LED_BLINK == led_mod) {
+        if (MAIN_LED_P == led_id) {
+            gs_leds_mod |= (1<<MAIN_LED_R);
+            gs_leds_mod |= (1<<MAIN_LED_B);
+        } else if (MAIN_LED_O == led_id) {
+            gs_leds_mod |= (1<<MAIN_LED_R);
+            gs_leds_mod |= (1<<MAIN_LED_G);
+        } else {
+            gs_leds_mod |= (1<<led_id);
+        }
+    } else {
+        if (MAIN_LED_P == led_id) {
+            gs_leds_mod &= ~(1<<MAIN_LED_R);
+            gs_leds_mod &= ~(1<<MAIN_LED_B);
+        } else if (MAIN_LED_O == led_id) {
+            gs_leds_mod &= ~(1<<MAIN_LED_R);
+            gs_leds_mod &= ~(1<<MAIN_LED_G);
+        } else {
+            gs_leds_mod &= ~(1<<led_id);
+        }
+    }
+}
+
+u8 GetLedsMode(LED_INDEX led_id)
+{
+    return (gs_leds_mod&(1<<led_id)) ? 1 : 0;
 }

@@ -23,9 +23,9 @@
 #include "006_Gpio.h"
 #include "007_Uart.h"
 #include "009_System.h"
-#include "011_Spi.h"
 #include "012_CLRC663_NFC.h"
 #include "013_Protocol.h"
+#include "015_Common.h"
 #include "016_FlashOta.h"
 #include "017_InnerFlash.h"
 #include "019_ADC0.h"
@@ -42,120 +42,46 @@ u8 g_svr_ip[LEN_NET_TCP+1]  = "192.168.1.105";
 u8 g_svr_port[LEN_NET_TCP+1] = "10212";// 10211-TCP 10212-UDP
 u8 g_svr_apn[LEN_NET_TCP+1] = "sentinel.m2mmobi.be";
 
-extern u8 g_ring_times;
-
-/*
-static void __delay_usx(uint16_t ms)
-{
-    int i=0,j=0;
-    for(i=0;i<ms;i++){
-        for(j=0;j<20;j++);
-    }
-}
-*/
-
-void delay_debug(u32 cnt)
-{
-    u32 i = 0;
-    u32 j = 0;
-    
-    for (i=0; i<cnt; i++)
-        for (j=0; j<1000; j++);
-}
+u32 g_led_times = 0;
+u8 g_ring_times = 0;
 
 #define GPS_DEBUG 1
 
-int main(void)
+static void SwitchToLowClock(void)
 {
-#if 0
-#if 0
-    _ANSB0 = 0;
-    _ANSB1 = 0;
-    _ANSB2 = 0;
-    _ANSB3 = 0;
+    _GIE = 0;
+    __builtin_write_OSCCONH(5);// LPRC
+    __builtin_write_OSCCONL(1);// 32MHz change to 32KHz
+    while(OSCCONbits.OSWEN);
+    _GIE = 1;
+}
 
-    _ANSB10 = 0;
-    _ANSB11 = 0;
-    _ANSB12 = 0;
-    _ANSB13 = 0;
+static void SwitchToNormalClock(void)
+{
+    _GIE = 0;
+
+#ifdef EXT_CRYSTAL
+    __builtin_write_OSCCONH(3);// PRIPLL
 #else
-    ANSB = 0;
-    ANSC = 0;
-    ANSD = 0;
-    ANSE = 0;
-    ANSF = 0;
-    ANSG = 0;
+    __builtin_write_OSCCONH(1);// FRCPLL
 #endif
 
-#if 0
-    GPIOx_Config(BANKB, 0, OUTPUT_DIR);// Beep
-    GPIOx_Config(BANKB, 1, OUTPUT_DIR);// Beep
-    GPIOx_Config(BANKB, 2, OUTPUT_DIR);// Beep
-    GPIOx_Config(BANKB, 3, OUTPUT_DIR);// Beep
+    __builtin_write_OSCCONL(1);// 32KHz change to 32MHz
+    while(OSCCONbits.OSWEN);
+    _GIE = 1;
+}
 
-    GPIOx_Config(BANKB, 10, OUTPUT_DIR);// Beep
-    GPIOx_Config(BANKB, 11, OUTPUT_DIR);// Beep
-    GPIOx_Config(BANKB, 12, OUTPUT_DIR);// Beep
-    GPIOx_Config(BANKB, 13, OUTPUT_DIR);// Beep
-    
-    IOCPDB = 0xF + (0xF<<10);
-
-#if 0
-    GPIOx_Output(BANKB, 0, 0);
-    GPIOx_Output(BANKB, 1, 0);
-    GPIOx_Output(BANKB, 2, 0);
-    GPIOx_Output(BANKB, 3, 0);
-
-    GPIOx_Output(BANKB, 10, 0);
-    GPIOx_Output(BANKB, 11, 0);
-    GPIOx_Output(BANKB, 12, 0);
-    GPIOx_Output(BANKB, 13, 0);
-#endif
-#else
-    TRISB = 0xFF;
-    TRISC = 0xFF;
-    TRISD = 0xFF;
-    TRISE = 0xFF;
-    TRISF = 0xFF;
-    TRISG = 0xFF;
-    
-    IOCPDB = 0xFF;
-    IOCPDC = 0xFF;
-    IOCPDD = 0xFF;
-    IOCPDE = 0xFF;
-    IOCPDF = 0xFF;
-    IOCPDG = 0xFF;
-    
-    PMD1 = 0xFF;
-    PMD2 = 0xFF;
-    PMD3 = 0xFF;
-    PMD4 = 0xFF;
-    PMD5 = 0xFF;
-    PMD6 = 0xFF;
-    PMD7 = 0xFF;
-    PMD8 = 0xFF;
-#endif
-#if 0
-    while(1) {
-#if 0
-        GPIOx_Output(BANKB, 12, 0);
-        GPIOx_Output(BANKB, 13, 1);
-//        delay_debug(1);// LPRC
-//        delay_debug(100);// FRC
-        delay_debug(300);// PRI 20MHz
-        GPIOx_Output(BANKB, 12, 1);
-        GPIOx_Output(BANKB, 13, 0);
-//        delay_debug(1);// LPRC
-//        delay_debug(100);// FRC
-        delay_debug(300);// PRI 20MHz
-#endif
-    }
-#endif
-
+static void EnterToSleep(void)
+{
     Sleep();
     Nop();
-    while(1);
-#endif
+}
+
+int main(void)
+{
+    float cur_pitch = 0;
+    float cur_yaw = 0;
+    float cur_roll = 0;
     u8 nfc_ret = 0;
     u8 net_sta = 0;
 //    u32 boot_times = 0;
@@ -172,60 +98,49 @@ int main(void)
 
 //    u8 params_dat[LEN_BYTE_SZ64+1] = "";
 
-#if 1
-    _ANSB13 = 0;
-    GPIOx_Config(BANKB, 13, OUTPUT_DIR);// Beep
-    GPIOx_Output(BANKB, 13, 0);
-#endif
-
     System_Config();
-//    GPIOB_Init();
-    LEDs_Init();
-    ADC0_Init();
-    Configure_Tick_10ms();
-    Configure_Tick2_10ms();
-//    Configure_Tick3_10ms();
-//    Configure_Tick4_10ms();
 
     Uart1_Init();
-    LEDs_AllOff();
+    Uart2_Init();
+    Configure_Tick1();
 
-#ifndef DEMO_BOARD
-    CLRC663_PowerUp();
+    delay_ms(1000);
+    DEBUG("Ver11261313V2 Application running...\r\n");
+    
     BG96_PowerUp();
 
-    gs_bg96_sta = 0;
-#endif
+//    delay_ms(5000);
+    LEDs_Init();
+    ADC0_Init();
+    Beep_Init();
+    Charge_Init();
+    LB1938_Init();
+    LockSwitch_Init();
 
-#if 0
-    while(1) {
-        printf("test001XApplication running......\n");
-        delay_ms(1000);
-        LEDs_AllOff();
-        delay_ms(1000);
-        LEDs_AllON();
-        delay_ms(10);
-        LEDs_AllOff();
-    }
-#endif
-    Uart2_Init();
+    Configure_Tick2();
+    Configure_Tick3();
+
+    CLRC663_PowerUp();
+
+    gs_bg96_sta = 0;
+
     Uart3_Init();
     Uart4_Init();
     
-    LEDs_AllOff();
+    BNO055_init();
 
-#if 0
+#if 0// ADC Battery Voltage Testing
     while(1) {
         if(ADC0_GetValue(&adcValue)){
-            printf("ADC0:%ld\r\n",adcValue);
+            DEBUG("ADC0:%ld\r\n",adcValue);
         }
         
-        printf("test...\n");
+        DEBUG("test...\n");
         delay_ms(5000);
     }
 #endif
 
-#if 0
+#if 0// GPS Locate Testing
     TurnOffGNSS();
     TurnOnGNSSDamon();
 
@@ -236,20 +151,6 @@ int main(void)
 #endif
 
 #if 0
-//    LB1938_Init();
-//    SPI2_Init();
-
-    // BNO055 Testing
-    // Configure_BNO055();
-    // bno055_calibrate_demo();
-    // bno055_demo();
-
-    delay_ms(3000);
-
-    printf("Application running...\r\n");
-
-    InitRingBuffers();
-
     // Write params into flash when the first time boot
     FlashRead_SysParams(PARAM_ID_1ST_BOOT, params_dat, 64);
     if (strncmp((const char*)params_dat, (const char*)"1", 1) != 0) {
@@ -276,22 +177,24 @@ int main(void)
     gs_charge_sta = GPIOx_Input(BANKG, 3);
 #else
     InitRingBuffers();
-    printf("XApplication running...\r\n");
 #endif
 
-#if 0// BNO055 Testing
-    GPIOx_Config(BANKC, 13, OUTPUT_DIR);// BNO055
-    GPIOx_Config(BANKC, 14, OUTPUT_DIR);// BNO055
-    GPIOx_Output(BANKC, 13, 1);
-    GPIOx_Output(BANKC, 14, 1);
+#if 1// BNO055 Testing
+	if (0 == bno055_get_euler(&cur_pitch, &cur_yaw, &cur_roll)) {
+		DEBUG("Euler Base: %f %f %f\n", (double)cur_pitch, (double)cur_yaw, (double)cur_roll);
+	} else {
+		DEBUG("Get base eurl failed \n");
+    }
 
-    delay_ms(2000);
-    Configure_BNO055();
-    printf("After BG96 PowerOn...\r\n");
+    ExtIntr_Initialize();
+    bno055_clear_int();// clear INT
     
     while(1) {
-        printf("BNO055 Testing...\r\n");
-        delay_ms(2000);
+        DEBUG("BNO055 Testing...\r\n");
+        
+        ReadMobibNFCCard();
+
+        delay_ms(5000);
     }
 #endif
 
@@ -336,7 +239,7 @@ int main(void)
         
         if (beep_loop++ >= 100) {
             beep_loop = 0;
-            printf("XBeep Testing...\r\n");
+            DEBUG("XBeep Testing...\r\n");
         }
     }
 #endif
@@ -356,7 +259,7 @@ int main(void)
 
         // If detect uncharge->charge, do reset once
         if ((0==gs_charge_sta) && (1==GPIOx_Input(BANKG, 3))) {
-            printf("Charge Reset...\n");
+            DEBUG("Charge Reset...\n");
             asm("reset");
         }
 
@@ -490,7 +393,8 @@ int main(void)
         // ---------------------- TASK 7 -------------------- //
         // --
         if (0 == (task_cnt%199)) { // every 10.0s
-            printf("task active\n");
+            g_ring_times = 2;
+            DEBUG("task active\n");
 #if 0
             if (0x81 == net_sta) {
                 // Auto Dev Send Test

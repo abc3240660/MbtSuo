@@ -20,6 +20,7 @@
 #include "007_Uart.h"
 #include "008_RingBuffer.h"
 #include "013_Protocol.h"
+#include "015_Common.h"
 
 // --
 // ---------------------- local variables -------------------- //
@@ -101,7 +102,7 @@ void SetPinVal(u8 pin_num, u8 val)
 //******************************************************************************************
 static int WriteToBG96(const char *data_buf)
 {
-    printf("%s", data_buf);
+    DEBUG("%s", data_buf);
 
     return Uart2_Printf("%s",data_buf);
 }
@@ -190,17 +191,17 @@ unsigned int ReadResponseByteToBuffer()
     rxBuffer[bufferHead] = c;
     
     if (1 == gs_ftp_test) {
-        printf("rxBuffer = %s\n", rxBuffer);
+        DEBUG("rxBuffer = %s\n", rxBuffer);
     }
     
     bufferHead = (bufferHead + 1) % RX_BUFFER_LENGTH;
 
 #if 0// defined UART_DEBUG
     if (c == '\n'){
-        printf("%c", c);
-        printf("<--- ");
+        DEBUG("%c", c);
+        DEBUG("<--- ");
     } else {
-        printf("%c", c);
+        DEBUG("%c", c);
     }
 #endif
 
@@ -367,10 +368,10 @@ static Cmd_Response_t ReadResponseAndSearch(const char *test_str, unsigned int t
         }
     }
     if (recv_len > 0) {
-        printf("UNKNOWN_RESPONSE = %s\n", rxBuffer);
+        DEBUG("UNKNOWN_RESPONSE = %s\n", rxBuffer);
         return UNKNOWN_RESPONSE;
     } else {
-        printf("TIMEOUT_RESPONSE...\n");
+        DEBUG("TIMEOUT_RESPONSE...\n");
         return TIMEOUT_RESPONSE;
     }
 }
@@ -386,11 +387,11 @@ static Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const ch
     while (!isDelayTimeout(start_time,timeout*1000UL)) {
         if (IsRingBufferAvailable()) {
             temp_len = ReadResponseByteToBuffer();
-//            printf("temp_len = %d\n", temp_len);
+//            DEBUG("temp_len = %d\n", temp_len);
             recv_len += temp_len;
-//            printf("recv_len = %d\n", recv_len);
+//            DEBUG("recv_len = %d\n", recv_len);
             if (SearchStrBuffer(test_str)) {
-                printf("\nSuccess Response\n");
+                DEBUG("\nSuccess Response\n");
                 return SUCCESS_RESPONSE;
             } else if (SearchStrBuffer(e_test_str)) {
                 start_time = GetTimeStamp();
@@ -409,7 +410,7 @@ static Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const ch
                     *end_buf = '\0';
                     errorCode = atoi(err_code);
                 }
-                printf("\nFail Response P1\n");
+                DEBUG("\nFail Response P1\n");
                 return FAIL_RESPONSE;
             }
 
@@ -433,19 +434,19 @@ static Cmd_Response_t ReadResponseAndSearch_multi(const char *test_str, const ch
                         *end_buf = '\0';
                         errorCode = atoi(err_code);
                     }
-                    printf("\nError Response\n");
+                    DEBUG("\nError Response\n");
                     return FAIL_RESPONSE;
                 }
             }
         }
     }
 
-    printf("recv_len = %d\n", recv_len);
+    DEBUG("recv_len = %d\n", recv_len);
     if (recv_len > 0){
-        printf("\nFail Response P2\n");
+        DEBUG("\nFail Response P2\n");
         return FAIL_RESPONSE;
     } else {
-        printf("\nTimeout Response\n");
+        DEBUG("\nTimeout Response\n");
         return TIMEOUT_RESPONSE;
     }
 }
@@ -511,7 +512,7 @@ static bool GetDevIMEI(void)
         *end_buf = '\0';
         memset(g_imei_str, 0, LEN_COMMON_USE);
         strncpy((char*)g_imei_str, (const char*)rxBuffer+2, LEN_COMMON_USE);
-        printf("g_imei_str = %s\n", g_imei_str);
+        DEBUG("g_imei_str = %s\n", g_imei_str);
 
         return true;
     }
@@ -566,7 +567,7 @@ bool GetDevRSSI(void)
             g_rssi_str[i] = sta_buf[i+2];
         }
 
-        printf("g_rssi_str = %s\n", g_rssi_str);
+        DEBUG("g_rssi_str = %s\n", g_rssi_str);
 
         return true;
     }
@@ -616,8 +617,8 @@ bool GetDevNetModeRSSI(void)
             }
         }
 
-        printf("g_net_mode = %s\n", g_net_mode);
-        printf("g_rssi_str = %s\n", g_rssi_str);
+        DEBUG("g_net_mode = %s\n", g_net_mode);
+        DEBUG("g_rssi_str = %s\n", g_rssi_str);
 
         return true;
     }
@@ -633,7 +634,7 @@ static bool GetDevSimICCID(void)
         char *sta_buf = SearchStrBuffer(": ");
         memset(g_iccid_str, 0, LEN_COMMON_USE);
         strncpy((char*)g_iccid_str, sta_buf+2, LEN_COMMON_USE);
-        printf("g_iccid_str = %s\n", g_iccid_str);
+        DEBUG("g_iccid_str = %s\n", g_iccid_str);
 
         return true;
     }
@@ -682,8 +683,8 @@ static bool GetCurrentTimeZone(void)
             }
         }
 
-        printf("\ndevzone = %s\n", g_devzone_str);
-        printf("devtime = %s\n", g_devtime_str);
+        DEBUG("\ndevzone = %s\n", g_devzone_str);
+        DEBUG("devtime = %s\n", g_devtime_str);
 
         return true;
     }
@@ -863,7 +864,7 @@ static bool OpenSocketService(unsigned int pdp_index, unsigned int socket_index,
                 errorCode = -1;
                 char *sta_buf = SearchChrBuffer(',');
 
-                printf("sta_buf:%s\r\n",sta_buf);
+                DEBUG("sta_buf:%s\r\n",sta_buf);
                 if (0 == atoi(sta_buf + 1)) {
                     return true;
                 } else {
@@ -994,23 +995,23 @@ void InitSerial()
 
 bool SendDataAndCheck(const char *data_buf, const char *ok_str, const char *err_str, unsigned int timeout)
 {
-    DelayMs(100);
+    delay_ms(100);
 
     // to read recv fifo till empty
     while (ReadByteFromRingBuffer() >= 0);
 
     int data_len = strlen(data_buf);
 
-    printf("SND: ");
+    DEBUG("SND: ");
     int send_bytes = WriteToBG96(data_buf);
-    printf("===\r\n");
+    DEBUG("===\r\n");
 #ifdef UART_DEBUG
-    printf("\r\n");
-    printf("%s", data_buf);
-    printf("\r\n");
-    printf("Send Data len :");
-    printf("%d", send_bytes);
-    printf("\r\n");
+    DEBUG("\r\n");
+    DEBUG("%s", data_buf);
+    DEBUG("\r\n");
+    DEBUG("Send Data len :");
+    DEBUG("%d", send_bytes);
+    DEBUG("\r\n");
 #endif
 
     if (send_bytes == data_len) {
@@ -1025,28 +1026,28 @@ bool SendDataAndCheck(const char *data_buf, const char *ok_str, const char *err_
 
 bool SendATcommand(const char *command)
 {
-    DelayMs(100);
+    delay_ms(100);
     // to read recv fifo till empty
     while (ReadByteFromRingBuffer() >= 0);
-    printf("SND: ");
+    DEBUG("SND: ");
     WriteToBG96("AT");
 
     int cmd_len = strlen(command);
     int send_bytes = WriteToBG96(command);
 
 #if defined UART_DEBUG
-    printf("\r\n");
-    printf("-> ");
-    printf("AT");
-    printf("%s", command);
-    printf("\r\n");
+    DEBUG("\r\n");
+    DEBUG("-> ");
+    DEBUG("AT");
+    DEBUG("%s", command);
+    DEBUG("\r\n");
 #endif
     if (send_bytes != cmd_len){
         return false;
     }
     WriteToBG96("\r\n");
 
-    printf("===\r\n");
+    DEBUG("===\r\n");
 
     return true;
 }
@@ -1209,7 +1210,7 @@ bool QueryNetMode(void)
             }
         }
 
-        printf("g_net_mode = %s\n", g_net_mode);
+        DEBUG("g_net_mode = %s\n", g_net_mode);
 
         return true;
     }
@@ -1292,7 +1293,7 @@ bool DumpNetMode(void)
     sta_buf = SearchStrBuffer(",");
     if (sta_buf != NULL) {
         mode_cfg[0] = sta_buf[1];
-        printf("mode_cfg = %s\n", mode_cfg);
+        DEBUG("mode_cfg = %s\n", mode_cfg);
         
         if (mode_cfg[0] != '2') {
             // 0-LTE CAT M1
@@ -1384,7 +1385,7 @@ bool BG96TcpSend(char* send_buf)
     Socket_Type_t socket = TCP_CLIENT;
 
     if(SocketSendData(comm_socket_index, socket, (char *)send_buf, "", 88)){
-        printf("Socket Send Data Success!\n");
+        DEBUG("Socket Send Data Success!\n");
 
         return true;
     } else {
@@ -1408,7 +1409,7 @@ bool ConnectToTcpServer(u8* svr_ip, u8* svr_port, u8* svr_apn)
             break;
         }
 
-        printf("apn_error :%s\n", apn_error);
+        DEBUG("apn_error :%s\n", apn_error);
     }
 
     if (trycnt < 1) {
@@ -1423,7 +1424,7 @@ bool ConnectToTcpServer(u8* svr_ip, u8* svr_port, u8* svr_apn)
             break;
         }
 
-        printf("Open Socket Service Fail!\n");
+        DEBUG("Open Socket Service Fail!\n");
         CloseTcpService();
     }
 
@@ -1432,7 +1433,7 @@ bool ConnectToTcpServer(u8* svr_ip, u8* svr_port, u8* svr_apn)
     }
 
     gs_net_sta = 0x81;
-    printf("Open Socket Service Success!\n");
+    DEBUG("Open Socket Service Success!\n");
 
     GetCurrentTimeZone();
     StartCommunication();
@@ -1494,7 +1495,7 @@ bool OpenFtpSession(unsigned int pdp_index, u8* ftp_ip, u8* ftp_port)
     sprintf(buf, "=\"%s\",%s", ftp_ip, ftp_port);
     strcat(cmd, buf);
     if(SendAndSearch_multi(cmd, "+QFTPOPEN: 0,0", RESPONSE_ERROR, 30) != SUCCESS_RESPONSE){
-        printf("FTPOPEN failed...\n");
+        DEBUG("FTPOPEN failed...\n");
         return false;
     }
 
@@ -1521,7 +1522,7 @@ bool ConnectToFtpServer(u8* iap_file, u8* ftp_ip, u8* ftp_port)
             break;
         }
 
-        printf("Open FTP Service Fail!\n");
+        DEBUG("Open FTP Service Fail!\n");
         CloseFtpService();
     }
 
@@ -1536,7 +1537,7 @@ bool ConnectToFtpServer(u8* iap_file, u8* ftp_ip, u8* ftp_port)
 
     gs_ftp_sta = 0x81;
 
-    printf("Open FTP Service Success!\n");
+    DEBUG("Open FTP Service Success!\n");
 
     return true;
 }
@@ -1567,7 +1568,7 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf, u8* iap_file)
     if(!SendAndSearch_multi(cmd, "CONNECT\r\n", RESPONSE_ERROR, 30)){
         // ftp error
         if (errorCode > 600) {
-            printf("---------errorCode = %d\n", errorCode);
+            DEBUG("---------errorCode = %d\n", errorCode);
             gs_ftp_sta = 0;
         }
 
@@ -1583,14 +1584,14 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf, u8* iap_file)
     trycnt = 0;
     ReadResponseToBuffer(888);
 
-    printf("FTPGET Recv %d Bytes: %.2X%.2X%.2X\n", bufferHead, rxBuffer[0], rxBuffer[1], rxBuffer[2]);
+    DEBUG("FTPGET Recv %d Bytes: %.2X%.2X%.2X\n", bufferHead, rxBuffer[0], rxBuffer[1], rxBuffer[2]);
 
     memset(size_str, 0, 8);
     for (i=0; i<bufferHead; i++) {
         if (('F'==rxBuffer[i+0]) && ('T'==rxBuffer[i+1]) && ('P'==rxBuffer[i+2]) &&
             ('G'==rxBuffer[i+3]) && (':'==rxBuffer[i+6]) && ('0'==rxBuffer[i+8])) {
             size_pos = i+10;
-            printf("FTP DW size=%s\n", rxBuffer+size_pos);
+            DEBUG("FTP DW size=%s\n", rxBuffer+size_pos);
         }
 
         if ((size_pos!=0) && (i>=size_pos)) {
@@ -1606,7 +1607,7 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf, u8* iap_file)
         memcpy((char*)iap_buf, (const char*)rxBuffer, size_got);
     }
 
-    printf("FTP Got Firm size: %d Bytes\n", size_got);
+    DEBUG("FTP Got Firm size: %d Bytes\n", size_got);
 
     return size_got;
 }
@@ -1638,17 +1639,17 @@ void GetGPSInfo(char* gnss_part)
 
     memset(gs_gnss_pos, 0, LEN_BYTE_SZ128);
     if (!GetGNSSPositionInformation((char *)gs_gnss_pos)){
-        printf("Get the GNSS Position Fail!\n");
+        DEBUG("Get the GNSS Position Fail!\n");
         int e_code;
         if (ReturnErrorCode(&e_code)){
-            printf("ERROR CODE: %d\n", e_code);
-            printf("Please check the documentation for error details.\n");
+            DEBUG("ERROR CODE: %d\n", e_code);
+            DEBUG("Please check the documentation for error details.\n");
         }
 
         return;
     }
 
-    printf("Get the GNSS Position Success!\n");
+    DEBUG("Get the GNSS Position Success!\n");
 
     memset(gnss_part, 0, LEN_BYTE_SZ128);
     for (i=0; i<strlen((const char*)gs_gnss_pos); i++) {
@@ -1671,8 +1672,8 @@ void GetGPSInfo(char* gnss_part)
         }
     }
 
-    printf("gs_gnss_pos = %s\n", gs_gnss_pos);
-    printf("gnss_defi = %s\n", gnss_part);
+    DEBUG("gs_gnss_pos = %s\n", gs_gnss_pos);
+    DEBUG("gnss_defi = %s\n", gnss_part);
 }
 
 /////////////////////////////////// BG96 Common ///////////////////////////////////
@@ -1725,11 +1726,14 @@ static bool InitModule(void)
 //    GPIOx_Output(BANKB, 8, 0);
 
     if (GPIOx_Input(BANKB, 3)) {// default HIGH: Power off
-        printf("BG96 Boot Off -> Power on...\n");
+        DEBUG("BG96 Boot Off -> Power on...\n");
         PowerOnBG96Module();
     } else {// Already Power on
-        printf("BG96 Boot On -> Reset...\n");
-        ResetBG96Module();
+        DEBUG("BG96 Boot On -> Reset...\n");
+        PowerOffBG96Module();
+        delay_ms(1000);
+        PowerOnBG96Module();
+        // ResetBG96Module();
     }
 
     for (i=0; i<15; i++) {
@@ -1741,9 +1745,9 @@ static bool InitModule(void)
     }
     
     if (15 == i) {
-        printf("BG96 Power on failed\n");
+        DEBUG("BG96 Power on failed\n");
     } else {
-        printf("BG96 Power on success\n");
+        DEBUG("BG96 Power on success\n");
     }
 
     return true;
@@ -1765,9 +1769,9 @@ void Configure_BG96(void)
     while(trycnt--) {
 //        resultBool = InitModule();
 //        if(resultBool){
-//            printf("init bg96 success!\r\n");
+//            DEBUG("init bg96 success!\r\n");
 //        }else{
-//            printf("init bg96 failure!\r\n");
+//            DEBUG("init bg96 failure!\r\n");
 //        }
 
         if (BG96ATInitialize()) {
@@ -1786,12 +1790,12 @@ static u32 ParseFTPFileSize(void)
     char size_str[LEN_BYTE_SZ8+1] = "";
 
     memset(size_str, 0, 8);
-    printf("FTP DW size=%s\n", rxBuffer);
+    DEBUG("FTP DW size=%s\n", rxBuffer);
     for (i=0; i<bufferHead; i++) {
         if (('F'==rxBuffer[i+0]) && ('T'==rxBuffer[i+1]) && ('P'==rxBuffer[i+2]) &&
             ('S'==rxBuffer[i+3]) && (':'==rxBuffer[i+7]) && ('0'==rxBuffer[i+9])) {
             size_pos = i+11;
-            printf("FTP DW size=%s\n", rxBuffer+size_pos);
+            DEBUG("FTP DW size=%s\n", rxBuffer+size_pos);
         }
 
         if ((size_pos!=0) && (i>=size_pos)) {
@@ -1802,7 +1806,7 @@ static u32 ParseFTPFileSize(void)
         }
     }
 
-    printf("iap_size1 = %s\n", size_str);
+    DEBUG("iap_size1 = %s\n", size_str);
     if (size_pos != 0) {
         for (i=0; i<strlen(size_str); i++) {
             if ((size_str[i]<'0') || (size_str[i]>'9')) {
@@ -1813,7 +1817,7 @@ static u32 ParseFTPFileSize(void)
         }
     }
 
-    printf("iap_size2 = %ld\n", size_got);
+    DEBUG("iap_size2 = %ld\n", size_got);
 
     return size_got;
 }

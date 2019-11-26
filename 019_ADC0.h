@@ -5,10 +5,10 @@
  * Created on August 11, 2019, 10:05 PM
  */
 
-#ifndef ADC0_H
-#define	ADC0_H
+#ifndef __ADC0_H
+#define __ADC0_H
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -16,11 +16,13 @@ extern "C" {
 #include <stdbool.h>
 
 void ADC0_Init(void);
-bool ADC0_GetValue(uint32_t *value);
+void ADC0_Enable(void);
+void ADC0_Disable(void);
+bool ADC0_GetValue(u32 *value);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 
-#endif	/* ADC0_H */
+#endif /* __ADC0_H */
 

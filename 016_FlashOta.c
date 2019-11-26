@@ -67,7 +67,7 @@ u16 FlashRead_AllNFCCards(u8 card_dat[][LEN_BYTE_SZ64])
         tmp_card[LEN_CARD_ID] = 0;
 
         if ((tmp_card[0]!=0x00) && (tmp_card[0]!=0xFF)) {
-            printf("Found CARD ID: %s from 0x1-%.4X\n", (char*)tmp_card, FLASH_BASE_CARD_ID+CNTR_INWORD_PER_CARD*2*i);
+            DEBUG("Found CARD ID: %s from 0x1-%.4X\n", (char*)tmp_card, FLASH_BASE_CARD_ID+CNTR_INWORD_PER_CARD*2*i);
 
             if (card_dat[card_cnt] != NULL) {
                 memcpy(card_dat[card_cnt], tmp_card, LEN_CARD_ID+1);
@@ -149,7 +149,7 @@ u16 FlashWrite_OneNFCCard(u8 *card_dat)
         }
     }
 
-    printf("Store CardID %s into 0x1-%.4X\n", (char*)card_dat, FLASH_BASE_CARD_ID+CNTR_INWORD_PER_CARD*2*i);
+    DEBUG("Store CardID %s into 0x1-%.4X\n", (char*)card_dat, FLASH_BASE_CARD_ID+CNTR_INWORD_PER_CARD*2*i);
     InnerFlash_WriteInstructionsToFlash(flashAddr,pageData,1024);
 
     return 0;
@@ -201,7 +201,7 @@ u16 FlashWrite_DeleteOneCard(u8 *card_dat)
                     pageData[i*CNTR_INWORD_PER_CARD+j].HighLowUINT16s.HighWord = 0;
                 }
 
-                printf("Delete CardID %s from 0x1-%.4X\n", (char*)card_dat, FLASH_BASE_CARD_ID+CNTR_INWORD_PER_CARD*2*i);
+                DEBUG("Delete CardID %s from 0x1-%.4X\n", (char*)card_dat, FLASH_BASE_CARD_ID+CNTR_INWORD_PER_CARD*2*i);
             }
         }
     }
@@ -323,7 +323,7 @@ u16 FlashWrite_SysParams(PARAM_ID params_id, u8 *data, u16 length)
 
     flashAddr.Uint16Addr.LowAddr = flash_offset;
 
-    printf("flash_offset = 0x%.4X, flash_length = %d, index = %d\n", flash_offset, flash_length, (flash_offset-FLASH_BASE_IP)/2);
+    DEBUG("flash_offset = 0x%.4X, flash_length = %d, index = %d\n", flash_offset, flash_length, (flash_offset-FLASH_BASE_IP)/2);
 
     // Modify from the pointed offset
     // index maybe >= 1024, so need to ensure that not overflow pageData's size
@@ -499,7 +499,7 @@ u16 FlashRead_SysParams(PARAM_ID params_id, u8 *data, u8 length)
 
     data[dat_len] = 0;
 
-    printf("ReadOut Params(%dB): %s from 0x1-%.4X\n", dat_len, data, flash_offset);
+    DEBUG("ReadOut Params(%dB): %s from 0x1-%.4X\n", dat_len, data, flash_offset);
 
     return dat_len;
 }
@@ -531,7 +531,7 @@ u16 FlashWrite_InstructionWords(u16 flash_base, u16 flash_offset, OneInstruction
     // index maybe >= 1024, so need to ensure that not overflow pageData's size
     for(i=0;i<length;i++)
     {
-        //printf("XDAT = %.4X,%.4X\n", data[i].HighLowUINT16s.HighWord, data[i].HighLowUINT16s.LowWord);
+        //DEBUG("XDAT = %.4X,%.4X\n", data[i].HighLowUINT16s.HighWord, data[i].HighLowUINT16s.LowWord);
         pageData[i].UINT32 = data[i].UINT32;
     }
 

@@ -11,7 +11,7 @@
 ******************************************************************************/
 #include <stdio.h>
 #include <string.h>
-
+#include "015_Common.h"
 
 #include "001_Tick_10ms.h"
 #include "003_BG96.h"
@@ -25,7 +25,7 @@
 #include "016_FlashOta.h"
 
 // ring times = X / 2
-u8 g_ring_times = 6;// 6-DD 200-Alarm
+extern u8 g_ring_times;// 6-DD 200-Alarm
 static u8 special_test = 0;
 
 static const char* cmd_list[] = {
@@ -156,7 +156,7 @@ void CalcRegisterKey(void)
         sprintf((char*)gs_communit_key+2*i, "%.2X", reg_md5_hex[i]);
     }
 
-    printf("MD5 = %s\n", gs_communit_key);
+    DEBUG("MD5 = %s\n", gs_communit_key);
 }
 
 static void EncodeTcpPacket(u8* in_dat)
@@ -177,7 +177,7 @@ static void EncodeTcpPacket(u8* in_dat)
         sprintf(gs_send_md5+2*i, "%.2X", encoded_md5_hex[i]);
     }
 
-    printf("MD5 = %s\n", gs_send_md5);
+    DEBUG("MD5 = %s\n", gs_send_md5);
 }
 #endif
 
@@ -199,7 +199,7 @@ u8 is_supported_mobit_cmd(u8 pos, char* str)
     u8 i = 0;
     u8 cmd_count = get_mobit_cmd_count();
 
-    printf("pos = %d\n", pos);
+    DEBUG("pos = %d\n", pos);
     for (i=pos; i<cmd_count; i++) {
         if ((0==pos) && (i>=QUERY_PARAMS)) {
             break;
@@ -211,7 +211,7 @@ u8 is_supported_mobit_cmd(u8 pos, char* str)
     }
 
     if (i != UNKNOWN_CMD) {
-        printf("Recved CMD/ACK %s\n", str);
+        DEBUG("Recved CMD/ACK %s\n", str);
     }
 
     return i;
@@ -233,7 +233,7 @@ static bool ValidateTcpMsg(char* msg)
     // MD5 Validation
     memset(gs_msg_md5, 0, LEN_MD5_HEXSTR);
     memcpy(gs_msg_md5, msg+strlen(msg)-LEN_MD5_HEXSTR, LEN_MD5_HEXSTR);
-    printf("gs_msg_md5 = %s\n", gs_msg_md5);
+    DEBUG("gs_msg_md5 = %s\n", gs_msg_md5);
 
     for (i=0; i<strlen(msg); i++) {
         if (',' == msg[i]) {
@@ -255,7 +255,7 @@ static bool ValidateTcpMsg(char* msg)
         sprintf((char*)calc_msg_md5+2*i, "%.2X", msg_md5_hex[i]);
     }
 
-    printf("MD5 = %s\n", calc_msg_md5);
+    DEBUG("MD5 = %s\n", calc_msg_md5);
 
     msg[end_pos] = ',';
 
@@ -288,7 +288,7 @@ void ParseMobitMsg(char* msg)
     }
 
 #ifdef DEBUG_USE
-    //printf("Support %d CMDs\n", cmd_count);
+    //DEBUG("Support %d CMDs\n", cmd_count);
 #endif
 
 //    if (false == ValidateTcpMsg(msg)) {// MD5 is invalid
@@ -298,7 +298,7 @@ void ParseMobitMsg(char* msg)
     split_str = strtok(msg, delims);
     while(split_str != NULL) {
 #ifdef DEBUG_USE
-        //printf("split_str = %s\n", split_str);
+        //DEBUG("split_str = %s\n", split_str);
 #endif
         // index = 3: SVR CMD
         // index = 4: SVR ACK
@@ -307,7 +307,7 @@ void ParseMobitMsg(char* msg)
                 is_run = 1;
             }
 
-            printf("is_run = %d\n", is_run);
+            DEBUG("is_run = %d\n", is_run);
         } else if (2 == index) {
             cmd_type =  UNKNOWN_CMD;
 
@@ -322,7 +322,7 @@ void ParseMobitMsg(char* msg)
                 }
             }
 
-            printf("cmd_type = %d\r\n", cmd_type);
+            DEBUG("cmd_type = %d\r\n", cmd_type);
 
             if (UNKNOWN_CMD == cmd_type) {
                 break;
@@ -378,15 +378,15 @@ void ParseMobitMsg(char* msg)
                     gs_till_svr_ack &= ~(temp<<cmd_type);
 
                     gs_hbeat_gap = atoi(split_str);
-                    printf("gs_hbeat_gap = %d\n", gs_hbeat_gap);
+                    DEBUG("gs_hbeat_gap = %d\n", gs_hbeat_gap);
                     if (gs_hbeat_gap < 5) {
                         gs_hbeat_gap = 5;
-                        printf("change gs_hbeat_gap = %d\n", gs_hbeat_gap);
+                        DEBUG("change gs_hbeat_gap = %d\n", gs_hbeat_gap);
                     }
                 } else if (4 == index) {
                     memset(gs_communit_key, 0, LEN_MD5_HEXSTR);
                     strncpy((char*)gs_communit_key, split_str, LEN_MD5_HEXSTR);
-                    printf("gs_communit_key = %s\n", gs_communit_key);
+                    DEBUG("gs_communit_key = %s\n", gs_communit_key);
                 }
             // below is all SVR CMDs with params
             } else if (IAP_UPGRADE == cmd_type) {
@@ -394,25 +394,25 @@ void ParseMobitMsg(char* msg)
                     gs_iap_waiting = 1;
                     memset(gs_iap_file, 0, LEN_DW_URL);
                     strncpy((char*)gs_iap_file, split_str, LEN_DW_URL);
-                    printf("gs_iap_file = %s\n", gs_iap_file);
+                    DEBUG("gs_iap_file = %s\n", gs_iap_file);
                 } else if (4 == index) {
                     memset(gs_iap_md5, 0, LEN_DW_URL);
                     strncpy((char*)gs_iap_md5, split_str, LEN_DW_URL);
-                    printf("gs_iap_md5 = %s\n", gs_iap_md5);
+                    DEBUG("gs_iap_md5 = %s\n", gs_iap_md5);
                 }
             } else if (CHANGE_APN == cmd_type) {
                 if (3 == index) {
                     memset(g_svr_ip, 0, LEN_NET_TCP);
                     strncpy((char*)g_svr_ip, split_str, LEN_NET_TCP);
-                    printf("g_svr_ip = %s\n", g_svr_ip);
+                    DEBUG("g_svr_ip = %s\n", g_svr_ip);
                 } else if (4 == index) {
                     memset(g_svr_port, 0, LEN_NET_TCP);
                     strncpy((char*)g_svr_port, split_str, LEN_NET_TCP);
-                    printf("g_svr_port = %s\n", g_svr_port);
+                    DEBUG("g_svr_port = %s\n", g_svr_port);
                 } else if (5 == index) {
                     memset(g_svr_apn, 0, LEN_NET_TCP);
                     strncpy((char*)g_svr_apn, split_str, LEN_NET_TCP);
-                    printf("g_svr_apn = %s\n", g_svr_apn);
+                    DEBUG("g_svr_apn = %s\n", g_svr_apn);
 
                     gs_change_apn = 1;
                 }
@@ -423,12 +423,12 @@ void ParseMobitMsg(char* msg)
                     u8 tmp_card[LEN_BYTE_SZ32+1] = "";
                     memset(gs_tmp_buf_big, 0, LEN_BYTE_SZ512);
                     strncpy((char*)gs_tmp_buf_big, split_str, LEN_BYTE_SZ512);
-                    printf("gs_delete_cards = %s\n", gs_tmp_buf_big);
+                    DEBUG("gs_delete_cards = %s\n", gs_tmp_buf_big);
 
                     for (i=0; i<strlen((char*)gs_tmp_buf_big);i++) {
                         if ('|' == gs_tmp_buf_big[i]) {
                             DeleteMobibCard(tmp_card, NULL);
-                            printf("To deleteX %s\n", tmp_card);
+                            DEBUG("To deleteX %s\n", tmp_card);
 
                             offset = strlen((const char*)gs_addordel_cards);
 
@@ -462,21 +462,21 @@ void ParseMobitMsg(char* msg)
                     }
 
                     DeleteMobibCard(tmp_card, NULL);
-                    printf("To delete %s\n", tmp_card);
+                    DEBUG("To delete %s\n", tmp_card);
                 }
             } else if (MODIFY_ALARM == cmd_type) {
                 if (3 == index) {
                     memset(gs_alarm_on, 0, LEN_NET_TCP);
                     strncpy((char*)gs_alarm_on, split_str, LEN_NET_TCP);
-                    printf("gs_alarm_on = %s\n", gs_alarm_on);
+                    DEBUG("gs_alarm_on = %s\n", gs_alarm_on);
                 } else if (4 == index) {
                     memset(gs_beep_on, 0, LEN_NET_TCP);
                     strncpy((char*)gs_beep_on, split_str, LEN_NET_TCP);
-                    printf("gs_beep_on = %s\n", gs_beep_on);
+                    DEBUG("gs_beep_on = %s\n", gs_beep_on);
                 } else if (5 == index) {
                     memset(gs_alarm_level, 0, LEN_NET_TCP);
                     strncpy((char*)gs_alarm_level, split_str, LEN_NET_TCP);
-                    printf("gs_alarm_level = %s\n", gs_alarm_level);
+                    DEBUG("gs_alarm_level = %s\n", gs_alarm_level);
                 }
             }
         }
@@ -928,7 +928,7 @@ bool DoUnLockTheLockerFast(void)
         __delay_usx(25UL);
     }
 
-    printf("DoUnLockTheLockerFast...\n");
+    DEBUG("DoUnLockTheLockerFast...\n");
 
     return true;
 }
@@ -948,14 +948,14 @@ bool DoRingAlarmFast(void)
     }
 #endif
     g_ring_times = 6;// ring 3 times
-    printf("DoRingAlarmFast...\n");
+    DEBUG("DoRingAlarmFast...\n");
 
     return true;
 }
 
 bool DoFactoryResetFast(void)
 {
-    printf("DoFactoryResetFast...\n");
+    DEBUG("DoFactoryResetFast...\n");
 
     // DeleteAllMobibCard();
 
@@ -975,7 +975,7 @@ bool DoFactoryResetFast(void)
 
 bool DoEnterSleepFast(void)
 {
-    printf("DoEnterSleepFast...\n");
+    DEBUG("DoEnterSleepFast...\n");
 
     LB1938_MotorCtrl(MOTOR_LEFT, MOTOR_HOLD_TIME);
 
@@ -984,7 +984,7 @@ bool DoEnterSleepFast(void)
 
 bool DoQueryGPSFast(void)
 {
-    printf("DoQueryGPSFast...\n");
+    DEBUG("DoQueryGPSFast...\n");
 
     GetGPSInfo(gs_gnss_part);
 
@@ -993,14 +993,14 @@ bool DoQueryGPSFast(void)
 
 bool DoQueryNFCFast(void)
 {
-    printf("DoQueryNFCFast...\n");
+    DEBUG("DoQueryNFCFast...\n");
 
     return true;
 }
 
 bool DoAddNFCFast(void)
 {
-    printf("DoAddNFCFast...\n");
+    DEBUG("DoAddNFCFast...\n");
 
     gs_during_bind = 1;
 
@@ -1009,7 +1009,7 @@ bool DoAddNFCFast(void)
 
 bool DoFtpIAP(void)
 {
-    printf("DoFtpIAP...\n");
+    DEBUG("DoFtpIAP...\n");
 
     return true;
 }
@@ -1040,7 +1040,7 @@ void ReportFinishAddNFC(u8 gs_bind_cards[][LEN_BYTE_SZ64], u8* index_array)
     u16 offset = 0;
     unsigned long temp = 1;
 
-    printf("ReportFinishAddNFC...\n");
+    DEBUG("ReportFinishAddNFC...\n");
 
     for (i=0; i<CNTR_MAX_CARD; i++) {
         if ((index_array[i]<1) || (index_array[i]>20)) {
@@ -1135,7 +1135,7 @@ void ProcessTcpSvrCmds(void)
             if ((gs_one_tcpcmds[i-3]=='E')&&(gs_one_tcpcmds[i-2]=='N')&&(gs_one_tcpcmds[i-1]=='D')) {
                 if ((gs_one_tcpcmds[0]=='S')&&(gs_one_tcpcmds[1]=='T')&&(gs_one_tcpcmds[2]=='A')) {
                     // process the valid MSGs
-                    printf("process MSGs: %s\n", gs_one_tcpcmds);
+                    DEBUG("process MSGs: %s\n", gs_one_tcpcmds);
                     gs_one_tcpcmds[i-3] = '\0';// D
                     gs_one_tcpcmds[i-2] = '\0';// N
                     gs_one_tcpcmds[i-1] = '\0';// E
@@ -1143,7 +1143,7 @@ void ProcessTcpSvrCmds(void)
                         gs_one_tcpcmds[i-4] = '\0';// $
                         ParseMobitMsg(gs_one_tcpcmds+3);
                     } else {
-                        printf("Error MSGs %c:%c\n", gs_one_tcpcmds[3], gs_one_tcpcmds[i-4]);
+                        DEBUG("Error MSGs %c:%c\n", gs_one_tcpcmds[3], gs_one_tcpcmds[i-4]);
                     }
                 } else {
                     // skip the invalid MSGs
@@ -1271,12 +1271,12 @@ void ProcessIapRequest(void)
             OneInstruction_t dat[1024];
 
             gs_ftp_offset += got_size;
-            printf("gs_ftp_offset = %ld\n", gs_ftp_offset);
+            DEBUG("gs_ftp_offset = %ld\n", gs_ftp_offset);
 
             GAgent_MD5Update(&g_ftp_md5_ctx, iap_buf, got_size);
 
             //for (i=0; i<got_size/4; i++) {
-            //    printf("=%.2X-%.2X-%.2X-%.2X\n", (u8)iap_buf[4*i], (u8)iap_buf[4*i+1], (u8)iap_buf[4*i+2], (u8)iap_buf[4*i+3]);
+            //    DEBUG("=%.2X-%.2X-%.2X-%.2X\n", (u8)iap_buf[4*i], (u8)iap_buf[4*i+1], (u8)iap_buf[4*i+2], (u8)iap_buf[4*i+3]);
             //}
 
             for(i=0;i<(got_size/4);i++)
@@ -1305,29 +1305,49 @@ void ProcessIapRequest(void)
                 flash_page = FLASH_PAGE_BAK + (flash_offset / 0x10000);
             }
 
-            // printf("flash_offset = %.8lX, %ld\n", flash_offset, flash_offset);
-            printf("WR flash_address = 0x%X-%.8lX\n", flash_page, flash_offset);
+            // DEBUG("flash_offset = %.8lX, %ld\n", flash_offset, flash_offset);
+            DEBUG("WR flash_address = 0x%X-%.8lX\n", flash_page, flash_offset);
             FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 128);
 
             gs_ftp_sum_got += got_size;
         }
 
         if (gs_ftp_offset >= iap_total_size) {
+            u8 j = 0;
+            u8 tmp_value = 10;
+            u8 num_count = 0;
+            u8 iap_size_str[8] = {0};
+
             gs_iap_waiting = 0;
             GAgent_MD5Final(&g_ftp_md5_ctx, gs_ftp_res_md5);
 
-            printf("FTP MD5 = ");
+            DEBUG("FTP MD5 = ");
             for (i=0; i<16; i++) {
-                printf("%.2X", gs_ftp_res_md5[i]);
+                DEBUG("%.2X", gs_ftp_res_md5[i]);
             }
-            printf("\r\n");
+            DEBUG("\r\n");
 
-            printf("FTP DW Finished...\n");
+            DEBUG("FTP DW Finished...\n");
 
+            tmp_value = iap_total_size;
+            do {
+                tmp_value /= 10;
+                num_count++;
+            } while(tmp_value != 0);
+
+            for (i=0; i<num_count; i++) {
+                tmp_value = 1;
+                for (j=0; j<(num_count-i-1); j++) {
+                    tmp_value *= 10;
+                }
+                iap_size_str[i] = '0' + (iap_total_size/tmp_value);
+            }
+
+            DEBUG("iap_size_str = %s\n", iap_size_str);
             FlashWrite_SysParams(PARAM_ID_IAP_FLAG, (u8*)IAP_REQ_ON, 4);
-            FlashWrite_SysParams(PARAM_ID_RSVD_U1, (u8*)BIN_SIZE_STR, 6);
+            FlashWrite_SysParams(PARAM_ID_RSVD_U1, (u8*)iap_size_str, 6);
 
-            printf("Before APP Reset...\n");
+            DEBUG("Before APP Reset...\n");
             asm("reset");
         }
     }
