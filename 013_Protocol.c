@@ -28,6 +28,8 @@
 extern u8 g_ring_times;// 6-DD 200-Alarm
 static u8 special_test = 0;
 
+static u8 gs_iap_buf[LEN_BYTE_SZ2048] = "";
+
 static const char* cmd_list[] = {
     // DEV Auto CMDs
     CMD_DEV_REGISTER,
@@ -1236,10 +1238,9 @@ void ProcessIapRequest(void)
     u16 i = 0;
     u8 ftp_sta = 0;
     u16 got_size = 0;
-    u32 ftp_len_per = 512;
+    u32 ftp_len_per = 1024;
     static u32 iap_total_size = 0;
-
-    u8 iap_buf[LEN_BYTE_SZ1024] = "";
+	static u8 trycnt = 0;
 
     ftp_sta = GetFtpStatus();
 
@@ -1258,6 +1259,13 @@ void ProcessIapRequest(void)
     // --------
     // Start first Connect or Re-Connect
     if (0 == ftp_sta) {
+		// re-connect 5 times, if all failed, abort IAP and report to TcpServer
+		// TODO: Report IAP Failed into TcpServer
+        if (++trycnt > 5) {
+            trycnt = 0;
+            // gs_ftp_sta = 0;
+			gs_iap_waiting = 0;
+        }
         ConnectToFtpServer(gs_iap_file, gs_ftp_ip, gs_ftp_port);
 
         iap_total_size = GetFTPFileSize(gs_iap_file);
@@ -1267,9 +1275,9 @@ void ProcessIapRequest(void)
         }
     }
 
-    memset(iap_buf, 0, LEN_BYTE_SZ1024);
+    memset(gs_iap_buf, 0, LEN_BYTE_SZ2048);
     if (0x81 == ftp_sta) {
-        got_size = BG96FtpGetData(gs_ftp_offset, ftp_len_per, iap_buf, gs_iap_file);
+        got_size = BG96FtpGetData(gs_ftp_offset, ftp_len_per, gs_iap_buf, gs_iap_file);
 
         if (got_size > 0) {
             u16 flash_page = FLASH_PAGE_BAK;// 0x2,2000
@@ -1279,11 +1287,11 @@ void ProcessIapRequest(void)
 
             gs_ftp_offset += got_size;
             DEBUG("gs_ftp_offset = %ld\n", gs_ftp_offset);
-
-            GAgent_MD5Update(&g_ftp_md5_ctx, iap_buf, got_size);
+#if 0
+            GAgent_MD5Update(&g_ftp_md5_ctx, gs_iap_buf, got_size);
 
             //for (i=0; i<got_size/4; i++) {
-            //    DEBUG("=%.2X-%.2X-%.2X-%.2X\n", (u8)iap_buf[4*i], (u8)iap_buf[4*i+1], (u8)iap_buf[4*i+2], (u8)iap_buf[4*i+3]);
+            //    DEBUG("=%.2X-%.2X-%.2X-%.2X\n", (u8)gs_iap_buf[4*i], (u8)gs_iap_buf[4*i+1], (u8)gs_iap_buf[4*i+2], (u8)gs_iap_buf[4*i+3]);
             //}
 
             for(i=0;i<(got_size/4);i++)
@@ -1291,15 +1299,15 @@ void ProcessIapRequest(void)
                 if ((i*4+2) >= got_size) {
                     break;
                 }
-                dat[i].HighLowUINT16s.HighWord = (u8)iap_buf[i*4+2];
+                dat[i].HighLowUINT16s.HighWord = (u8)gs_iap_buf[i*4+2];
                 if ((i*4+1) >= got_size) {
                     break;
                 }
-                dat[i].HighLowUINT16s.LowWord = (u8)iap_buf[i*4+1] << 8;
+                dat[i].HighLowUINT16s.LowWord = (u8)gs_iap_buf[i*4+1] << 8;
                 if ((i*4+0) >= got_size) {
                     break;
                 }
-                dat[i].HighLowUINT16s.LowWord += (u8)iap_buf[i*4+0];
+                dat[i].HighLowUINT16s.LowWord += (u8)gs_iap_buf[i*4+0];
             }
 
             if ((0==gs_ftp_sum_got) && (0x200==got_size)) {
@@ -1311,7 +1319,7 @@ void ProcessIapRequest(void)
                 flash_offset -= 0x100;
                 flash_page = FLASH_PAGE_BAK + (flash_offset / 0x10000);
             }
-
+#endif
             // DEBUG("flash_offset = %.8lX, %ld\n", flash_offset, flash_offset);
             DEBUG("WR flash_address = 0x%X-%.8lX\n", flash_page, flash_offset);
             // FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 128);
@@ -1319,7 +1327,7 @@ void ProcessIapRequest(void)
             gs_ftp_sum_got += got_size;
         }
 
-        if (gs_ftp_offset >= iap_total_size) {
+        if ((gs_ftp_offset>=iap_total_size) && (iap_total_size!=0)) {
             u8 j = 0;
             u32 tmp_value = 10;
             u8 num_count = 0;

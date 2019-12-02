@@ -23,7 +23,8 @@ extern "C" {
 
 #define UART2_BUFFER_MAX_LEN 512
 
-#define RX_RINGBUF_MAX_LEN 1280
+#define RX_RINGBUF_MAX_LEN 1280// short
+#define RX_RINGBUF_MAX_LEN_L 2304// long
 
 // for debug
 void Uart1_Init(void);

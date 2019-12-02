@@ -30,9 +30,11 @@ void LB1938_Init(void)
     GPIOx_Output(BANKD, 9, 0);
 }
 
-void LB1938_MotorCtrl(MOTOR_FWD motor_fwd, u8 hold_ms)
+void LB1938_MotorCtrl(MOTOR_FWD motor_fwd, u16 hold_ms)
 {
     u8 pin = 0;
+	u8 sw_sta = 0;
+	u16 time_delay = 0;
 
     if (MOTOR_LEFT == motor_fwd) {
         pin = 8;
@@ -41,13 +43,42 @@ void LB1938_MotorCtrl(MOTOR_FWD motor_fwd, u8 hold_ms)
     }
 
     GPIOx_Output(BANKD, pin, 1);
-    delay_ms(hold_ms);
-    GPIOx_Output(BANKD, pin, 0);
+	
+	while (1) {
+		if (!GPIOx_Input(BANKF, 5)) {
+			if (1 == sw_sta) {
+				GPIOx_Output(BANKD, pin, 0);
+			}
+		} else {
+			sw_sta = 1;
+		}
+		
+		delay_ms(2);
+	}
+
+    // delay_ms(hold_ms);
+    // GPIOx_Output(BANKD, pin, 0);
 }
 
 void LB1938_OpenLock(void)
 {
-    LB1938_MotorCtrl(MOTOR_LEFT, 10);
+    // Mbtsuo_OpenClockTestV1
+    // LB1938_MotorCtrl(MOTOR_LEFT, 100);
+    
+    // Mbtsuo_OpenClockTestV2
+    // LB1938_MotorCtrl(MOTOR_LEFT, 1000);
+
+    // Mbtsuo_OpenClockTestV3
+    // LB1938_MotorCtrl(MOTOR_RIGHT, 100);
+
+    // Mbtsuo_OpenClockTestV4
+    // LB1938_MotorCtrl(MOTOR_RIGHT, 1000);
+
+    // Mbtsuo_OpenClockTestV5
+    // LB1938_MotorCtrl(MOTOR_LEFT, 5000);
+
+    // Mbtsuo_OpenClockTestV6
+    LB1938_MotorCtrl(MOTOR_RIGHT, 5000);
 }
 
 //******************************************************************************

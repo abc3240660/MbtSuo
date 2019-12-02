@@ -105,7 +105,7 @@ int main(void)
     Configure_Tick1();
 
     delay_ms(1000);
-    DEBUG("Ver11261313V2 Application running...\r\n");
+    DEBUG("Test11272208 Application running...\r\n");
     
     BG96_PowerUp();
 
@@ -128,6 +128,17 @@ int main(void)
     Uart4_Init();
     
     BNO055_init();
+
+#if 0
+    LB1938_OpenLock();
+    
+    while(1) {
+        printf("test000......................\n");
+        LB1938_OpenLock();
+        printf("test001......................\n");
+        delay_ms(5000);
+    }
+#endif
 
 #if 0// ADC Battery Voltage Testing
     while(1) {
@@ -179,7 +190,7 @@ int main(void)
     InitRingBuffers();
 #endif
 
-#if 0// BNO055 Testing
+#if 1// BNO055 Testing
 	if (0 == bno055_get_euler(&cur_pitch, &cur_yaw, &cur_roll)) {
 		DEBUG("Euler Base: %f %f %f\n", (double)cur_pitch, (double)cur_yaw, (double)cur_roll);
 	} else {
@@ -222,25 +233,6 @@ int main(void)
             LEDs_AllOff();
         }
         delay_ms(1000);
-    }
-#endif
-
-#if 0// Buzzer LOOP Testing
-    GPIOx_Config(BANKB, 13, OUTPUT_DIR);// Beep
-
-    u8 beep_loop = 0;
-
-    while(1)
-    {
-        GPIOx_Output(BANKB, 13, 1);
-        __delay_usx(10);
-        GPIOx_Output(BANKB, 13, 0);
-        __delay_usx(10);
-        
-        if (beep_loop++ >= 100) {
-            beep_loop = 0;
-            DEBUG("XBeep Testing...\r\n");
-        }
     }
 #endif
 
@@ -397,63 +389,11 @@ int main(void)
         if (0 == (task_cnt%199)) { // every 10.0s
             // g_ring_times = 2;
             DEBUG("task active\n");
-#if 0
-            if (0x81 == net_sta) {
-                // Auto Dev Send Test
-                if (0 ==  test_cnt) {
-                    TcpHeartBeat();
-                } else if (1 ==  test_cnt) {
-                    TcpExitCarriageSleep();
-                } else if (2 ==  test_cnt) {
-                    DoQueryGPSFast();
-                    TcpReportGPS();
-                } else if (3 ==  test_cnt) {
-                    TcpInvalidMovingAlarm();
-                } else if (4 ==  test_cnt) {
-                    TcpRiskAlarm();
-                } else if (5 ==  test_cnt) {
-                    TcpFinishIAP();
-                } else if (6 ==  test_cnt) {
-                    TcpFinishAddNFCCard();
-                } else if (7 ==  test_cnt) {
-                    TcpReadedOneCard(NULL, NULL);
-                } else if (8 ==  test_cnt) {
-                    TcpLockerLocked();
-                } else if (9 ==  test_cnt) {
-                    TcpChargeStarted();
-                } else if (10 ==  test_cnt) {
-                    TcpChargeStoped();
-                } else if (11 ==  test_cnt) {
-                    TcpFinishFactoryReset();
-                }
-            }
-
-            test_cnt++;
-            if (test_cnt > 12) {
-                test_cnt = 0;
-            }
-#endif
         }
 
         if (10000 == task_cnt) {
             task_cnt = 0;
         }
-
-#if 0
-        if (0x81 == net_sta) {
-            if ((task_cnt%16) < 8) {
-                GPIOB_SetPin(task_cnt%4, 1);
-            } else {
-                GPIOB_SetPin(task_cnt%4, 0);
-            }
-        } else {
-            if ((task_cnt%16) < 8) {
-                GPIOB_SetPin(task_cnt%2+1, 1);
-            } else {
-                GPIOB_SetPin(task_cnt%2+1, 0);
-            }
-        }
-#endif
 
         if (0 == (task_cnt%20)) {// every 1.0s
         }

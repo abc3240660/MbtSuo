@@ -33,7 +33,7 @@ static unsigned int bufferHead = 0;
 static char rxBuffer[RX_BUFFER_LENGTH] = "";
 
 // ringbuf for at acks
-static char atRingbuf[RX_RINGBUF_MAX_LEN] = {0};
+static char atRingbuf[RX_RINGBUF_MAX_LEN_L] = {0};
 
 // ringbuf for net recved
 static char netRingbuf[RX_RINGBUF_MAX_LEN] = {0};
@@ -66,7 +66,7 @@ u8 g_net_mode[LEN_COMMON_USE+1] = "";
 
 void InitRingBuffers(void)
 {
-    ringbuffer_init(&g_at_rbuf,atRingbuf,RX_RINGBUF_MAX_LEN);
+    ringbuffer_init(&g_at_rbuf,atRingbuf,RX_RINGBUF_MAX_LEN_L);
     ringbuffer_init(&g_net_rbuf,netRingbuf,RX_RINGBUF_MAX_LEN);
 }
 
@@ -211,21 +211,33 @@ unsigned int ReadResponseByteToBuffer()
 // Return: Only return after timeout
 unsigned int ReadResponseToBuffer(unsigned int timeout)
 {
+    u8 start_flag = 0;
     unsigned long start_time = GetTimeStamp();
     unsigned int recv_len = 0;
 
     CleanBuffer();
 
     if (888 == timeout) {
-        unsigned int timeoutx = 1000;
+        int trycnt = 0;
 
-        while (!isDelayTimeout(start_time, timeoutx)) {// 500ms
+        while (1) {
             if (IsRingBufferAvailable()) {
-                recv_len += ReadResponseByteToBuffer();
-                
-                if (timeoutx < 20) {
-                    timeoutx += 20;
+                trycnt = 0;
+                start_flag = 1;
+                recv_len += ReadResponseByteToBuffer();                
+            } else {
+                if (1 == start_flag) {
+                    if (trycnt >= 2) {
+                        break;
+                    }
                 }
+
+                if (trycnt >= 100) {
+                    break;
+                }
+
+                trycnt++;
+                delay_ms(100);
             }
         }        
     } else {
@@ -1259,7 +1271,7 @@ bool SetAutoNetMode(void)
         return false;
     }
 
-   cmd = "+QICSGP=1,1,\"sentinel.m2mmobi.be\",\"\",\"\",1";
+   cmd = "+QICSGP=1,1,\"sentinel.m2mmobi.be\",\"\",\"\",3";
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
         return false;
@@ -1395,7 +1407,7 @@ bool BG96TcpSend(char* send_buf)
 
 bool ConnectToTcpServer(u8* svr_ip, u8* svr_port, u8* svr_apn)
 {
-    u8 trycnt = 10;
+    int trycnt = 10;
 
     unsigned int comm_pdp_index = 1;  // The range is 1 ~ 16
     unsigned int comm_socket_index = 0;  // The range is 0 ~ 11
@@ -1504,7 +1516,7 @@ bool OpenFtpSession(unsigned int pdp_index, u8* ftp_ip, u8* ftp_port)
 
 bool ConnectToFtpServer(u8* iap_file, u8* ftp_ip, u8* ftp_port)
 {
-    u8 trycnt = 10;
+    int trycnt = 10;
     unsigned int pdp_id = 1;  // The range is 1 ~ 16
 
     if (NULL == iap_file) {
@@ -1517,7 +1529,7 @@ bool ConnectToFtpServer(u8* iap_file, u8* ftp_ip, u8* ftp_port)
 
     CloseFtpService();
 
-    while(trycnt--) {
+    while(--trycnt) {
         if (OpenFtpSession(pdp_id, ftp_ip, ftp_port)){
             break;
         }
@@ -1763,7 +1775,7 @@ void BG96_PowerUp(void)
 //******************************************************************************
 void Configure_BG96(void)
 {
-    u8 trycnt = 2;
+    int trycnt = 2;
 //    bool resultBool = false;
 
     while(trycnt--) {
