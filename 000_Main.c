@@ -171,7 +171,7 @@ int main(void)
     }
 #endif
 
-#if 0
+#if 1
     // Write params into flash when the first time boot
     FlashRead_SysParams(PARAM_ID_1ST_BOOT, params_dat, 64);
     if (strncmp((const char*)params_dat, (const char*)"1", 1) != 0) {
@@ -196,9 +196,9 @@ int main(void)
     CardIDFlashBankInit();
 
     gs_charge_sta = GPIOx_Input(BANKG, 3);
-#else
-    InitRingBuffers();
 #endif
+
+    InitRingBuffers();
 
 #if 0// BNO055 Testing
 	if (0 == bno055_get_euler(&cur_pitch, &cur_yaw, &cur_roll)) {

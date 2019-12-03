@@ -1275,7 +1275,7 @@ void ProcessIapRequest(void)
 
             gs_ftp_offset += got_size;
             DEBUG("gs_ftp_offset = %ld\n", gs_ftp_offset);
-#if 0
+#if 1
             GAgent_MD5Update(&g_ftp_md5_ctx, gs_iap_buf, got_size);
 
             //for (i=0; i<got_size/4; i++) {
@@ -1310,7 +1310,7 @@ void ProcessIapRequest(void)
 #endif
             // DEBUG("flash_offset = %.8lX, %ld\n", flash_offset, flash_offset);
             DEBUG("WR flash_address = 0x%X-%.8lX\n", flash_page, flash_offset);
-            // FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 128);
+            FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 128);
 
             gs_ftp_sum_got += got_size;
         }

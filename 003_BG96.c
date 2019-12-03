@@ -248,8 +248,6 @@ unsigned int ReadResponseToBuffer(unsigned int timeout)
         }
     }
 
-    DEBUG("damon_len = %d\r\n", recv_len);
-
     return recv_len;
 }
 

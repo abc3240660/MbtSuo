@@ -34,7 +34,7 @@ void LB1938_MotorCtrl(MOTOR_FWD motor_fwd, u16 hold_ms)
 {
     u8 pin = 0;
 	u8 sw_sta = 0;
-	u16 time_delay = 0;
+	u8 trycnt = 0;
 
     if (MOTOR_LEFT == motor_fwd) {
         pin = 8;
@@ -48,11 +48,17 @@ void LB1938_MotorCtrl(MOTOR_FWD motor_fwd, u16 hold_ms)
 		if (!GPIOx_Input(BANKF, 5)) {
 			if (1 == sw_sta) {
 				GPIOx_Output(BANKD, pin, 0);
+                break;
 			}
 		} else {
 			sw_sta = 1;
 		}
-		
+
+        if (trycnt++ >= 200) {
+            GPIOx_Output(BANKD, pin, 0);
+            break;
+        }
+
 		delay_ms(2);
 	}
 
