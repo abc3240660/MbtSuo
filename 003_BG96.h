@@ -318,7 +318,7 @@ bool GetDevNetModeRSSI(void);
 bool BG96EnsureRxOk(void);
 bool QueryNetStatus(void);
 bool SetAutoNetMode(void);
-bool DumpNetMode(void);
+bool DumpNetCfg(void);
 void ResetBG96Module(void);
 void PowerOffBG96Module(void);
 

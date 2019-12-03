@@ -937,18 +937,6 @@ bool DoUnLockTheLockerFast(void)
 
 bool DoRingAlarmFast(void)
 {
-#if 0
-    u8 i = 0;
-
-    for (i=0; i<20; i++) {
-        if(i%2){
-            LATD |= (1<<8);
-        }else{
-            LATD &= ~(1<<8);
-        }
-        __delay_usx(25UL);
-    }
-#endif
     g_ring_times = 6;// ring 3 times
     DEBUG("DoRingAlarmFast...\n");
 
@@ -1100,7 +1088,7 @@ void ResetApnChange(void)
     gs_change_apn = 0;
 }
 
-void ProcessTcpSvrCmds(void)
+void DequeueTcpRequest(void)
 {
     int i = 0;
     int skip_flag = 0;
@@ -1388,29 +1376,8 @@ void PowerOnMainSupply(void)
     // wait some time for power sequence...
 }
 
-void ProcessTcpServerCommand(void)
+void ProcessTcpRequest(void)
 {
-    // during download mode, skip other operations
-    // till download success or failed
-#if 0
-    if (gs_iap_waiting != 0) {
-        DoFtpIAP();
-
-        // try twice NG, skip this request
-        if (gs_iap_waiting != 0) {
-            gs_iap_waiting = 0;
-
-            memset(gs_iap_md5, 0, LEN_MD5_HEXSTR);
-            memset(gs_iap_file, 0, LEN_DW_URL);
-
-            gs_dw_size_total = 0;
-            gs_dw_recved_sum = 0;
-        }
-
-        return;
-    }
-#endif
-
     unsigned long temp = 1;
 
     if (gs_need_ack & (temp<<QUERY_PARAMS)) {

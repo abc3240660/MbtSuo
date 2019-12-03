@@ -62,23 +62,7 @@ void LB1938_MotorCtrl(MOTOR_FWD motor_fwd, u16 hold_ms)
 
 void LB1938_OpenLock(void)
 {
-    // Mbtsuo_OpenClockTestV1
-    // LB1938_MotorCtrl(MOTOR_LEFT, 100);
-    
-    // Mbtsuo_OpenClockTestV2
-    // LB1938_MotorCtrl(MOTOR_LEFT, 1000);
-
-    // Mbtsuo_OpenClockTestV3
-    // LB1938_MotorCtrl(MOTOR_RIGHT, 100);
-
-    // Mbtsuo_OpenClockTestV4
-    // LB1938_MotorCtrl(MOTOR_RIGHT, 1000);
-
-    // Mbtsuo_OpenClockTestV5
-    // LB1938_MotorCtrl(MOTOR_LEFT, 5000);
-
-    // Mbtsuo_OpenClockTestV6
-    LB1938_MotorCtrl(MOTOR_RIGHT, 5000);
+    LB1938_MotorCtrl(MOTOR_LEFT, 10);
 }
 
 //******************************************************************************

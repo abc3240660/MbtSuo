@@ -90,7 +90,7 @@ enum CMD_TYPE {
 
 void CalcRegisterKey(void);
 void ParseMobitMsg(char* msg);
-void ProcessTcpSvrCmds(void);
+void DequeueTcpRequest(void);
 
 bool TcpHeartBeat(void);
 bool TcpDeviceRegister(void);
@@ -107,7 +107,7 @@ bool TcpLockerUnlocked(void);
 bool TcpChargeStarted(void);
 bool TcpChargeStoped(void);
 void ProcessIapRequest(void);
-void ProcessTcpServerCommand(void);
+void ProcessTcpRequest(void);
 
 bool IsIapRequested(void);
 

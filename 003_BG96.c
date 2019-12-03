@@ -248,6 +248,8 @@ unsigned int ReadResponseToBuffer(unsigned int timeout)
         }
     }
 
+    DEBUG("damon_len = %d\r\n", recv_len);
+
     return recv_len;
 }
 
@@ -1280,7 +1282,7 @@ bool SetAutoNetMode(void)
     return true;
 }
 
-bool DumpNetMode(void)
+bool DumpNetCfg(void)
 {
     const char *cmd;
     char mode_cfg[16] = "";
@@ -1385,6 +1387,10 @@ bool BG96ATInitialize(void)
 
 bool BG96TcpSend(char* send_buf)
 {
+    if (true == IsIapRequested()) {
+        return false;
+    }
+
     if (NULL == send_buf) {
         return false;
     }

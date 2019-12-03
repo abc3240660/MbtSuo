@@ -45,7 +45,7 @@ u8 g_svr_apn[LEN_NET_TCP+1] = "sentinel.m2mmobi.be";
 u32 g_led_times = 0;
 u8 g_ring_times = 0;
 
-#define GPS_DEBUG 1
+#define GPS_DEBUG 0
 
 static void SwitchToLowClock(void)
 {
@@ -84,7 +84,7 @@ int main(void)
     float cur_roll = 0;
     u8 nfc_ret = 0;
     u8 net_sta = 0;
-//    u32 boot_times = 0;
+    u32 boot_times = 0;
 
     u8 trycnt = 0;
     u32 adcValue = 0;
@@ -96,7 +96,7 @@ int main(void)
 
     unsigned long task_cnt = 0;
 
-//    u8 params_dat[LEN_BYTE_SZ64+1] = "";
+    u8 params_dat[LEN_BYTE_SZ64+1] = "";
 
     System_Config();
 
@@ -105,7 +105,7 @@ int main(void)
     Configure_Tick1();
 
     delay_ms(1000);
-    DEBUG("Test11272208 Application running...\r\n");
+    DEBUG("Test12031338 Application running...\r\n");
     
     BG96_PowerUp();
 
@@ -120,6 +120,15 @@ int main(void)
     Configure_Tick2();
     Configure_Tick3();
 
+	SetLedsStatus(MAIN_LED_G, LED_ON);
+	g_led_times = 500;
+
+#if 0
+	LB1938_OpenLock();
+
+	while(1);
+#endif
+
     CLRC663_PowerUp();
 
     gs_bg96_sta = 0;
@@ -128,17 +137,6 @@ int main(void)
     Uart4_Init();
     
     BNO055_init();
-
-#if 0
-    LB1938_OpenLock();
-    
-    while(1) {
-        printf("test000......................\n");
-        LB1938_OpenLock();
-        printf("test001......................\n");
-        delay_ms(5000);
-    }
-#endif
 
 #if 0// ADC Battery Voltage Testing
     while(1) {
@@ -190,7 +188,7 @@ int main(void)
     InitRingBuffers();
 #endif
 
-#if 1// BNO055 Testing
+#if 0// BNO055 Testing
 	if (0 == bno055_get_euler(&cur_pitch, &cur_yaw, &cur_roll)) {
 		DEBUG("Euler Base: %f %f %f\n", (double)cur_pitch, (double)cur_yaw, (double)cur_roll);
 	} else {
@@ -236,6 +234,25 @@ int main(void)
     }
 #endif
 
+#if 0// Buzzer LOOP Testing
+    GPIOx_Config(BANKB, 13, OUTPUT_DIR);// Beep
+
+    u8 beep_loop = 0;
+
+    while(1)
+    {
+        GPIOx_Output(BANKB, 13, 1);
+        __delay_usx(10);
+        GPIOx_Output(BANKB, 13, 0);
+        __delay_usx(10);
+        
+        if (beep_loop++ >= 100) {
+            beep_loop = 0;
+            DEBUG("XBeep Testing...\r\n");
+        }
+    }
+#endif
+
     while(1)
     {
         if (IsDuringShip()) {
@@ -249,11 +266,13 @@ int main(void)
             continue;
         }
 
+#if 0
         // If detect uncharge->charge, do reset once
         if ((0==gs_charge_sta) && (1==GPIOx_Input(BANKG, 3))) {
             DEBUG("Charge Reset...\n");
             asm("reset");
         }
+#endif
 
 #ifndef GPS_DEBUG
         hbeat_gap = GetHeartBeatGap();
@@ -311,7 +330,7 @@ int main(void)
 #endif
                     TcpHeartBeat();
                     
-                    ManualIapRequested();
+                    // ManualIapRequested();
                 }
             }
         } else {
@@ -323,21 +342,27 @@ int main(void)
         // --
         if (0 == (task_cnt%2)) {// every 0.1s
             ProcessIapRequest();// If IAP requested, will cost 1s every time
+						
+			if (true == IsIapRequested()) {
+				ReadMobibNFCCard();
+			}
         }
 
         // --
         // ---------------------- TASK 2 -------------------- //
         // --
         if (0 == (task_cnt%11)) {  // every 0.5s
-            // ReadMobibNFCCard();
+			if (false == IsIapRequested()) {
+				ReadMobibNFCCard();
+			}
         }
 
         // --
         // ---------------------- TASK 3 -------------------- //
         // --
         if (0 == (task_cnt%21)) {  // every 1.0s
-            ProcessTcpSvrCmds();
-            ProcessTcpServerCommand();
+            DequeueTcpRequest();
+            ProcessTcpRequest();
         }
 
         // --
@@ -356,7 +381,7 @@ int main(void)
                     trycnt = 0;
                     gs_bg96_sta = 1;
 
-                    DumpNetMode();
+                    DumpNetCfg();
                     QueryNetMode();
                 }
             }
