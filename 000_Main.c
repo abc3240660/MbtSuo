@@ -32,6 +32,7 @@
 
 // static u8 is_mode_nb = 0;
 static u32 start_time_hbeat = 0;
+static u32 start_time_nfc = 0;
 
 static u8 gs_charge_sta = 0;
 
@@ -44,6 +45,9 @@ u8 g_svr_apn[LEN_NET_TCP+1] = "sentinel.m2mmobi.be";
 
 u32 g_led_times = 0;
 u8 g_ring_times = 0;
+
+// 0-normal 1-move interrupt
+u8 g_bno055_move = 0;
 
 #define GPS_DEBUG 0
 
@@ -84,6 +88,9 @@ int main(void)
     float cur_roll = 0;
     u8 nfc_ret = 0;
     u8 net_sta = 0;
+    u8 nfc_enable = 0;
+    u32 adc_val = 0;
+    u16 nfc_time = 10;
     u32 boot_times = 0;
 
     u8 trycnt = 0;
@@ -94,7 +101,12 @@ int main(void)
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
 #endif
 
-    unsigned long task_cnt = 0;
+    u8 intr_type = 0;
+
+    // 0-normal 1-low power
+    u8 bno055_mode = 0;
+
+    u32 task_cnt = 0;
 
     u8 params_dat[LEN_BYTE_SZ64+1] = "";
 
@@ -105,7 +117,7 @@ int main(void)
     Configure_Tick1();
 
     delay_ms(1000);
-    DEBUG("Test12031338 Application running...\r\n");
+    DEBUG("Test12031728 Application running...\r\n");
     
     BG96_PowerUp();
 
@@ -255,6 +267,42 @@ int main(void)
 
     while(1)
     {
+#if 0
+        if (g_bno055_move) {// BNO055 wakeup
+            if (IsLockSwitchOpen()) {
+                Sleep();
+                Nop();
+            } else {
+                nfc_enable = 1;
+            }
+        } else {// WDT wakeup for Charge Detect
+            if (Charge_InsertDetect()) {
+                gs_charge_sta |= 0x80;
+
+                ADC0_Init();
+
+                if (ADC0_GetValue(&adc_val)) {
+                    if (adc_val > 1000) {
+                        Charge_Disable();
+                        SetLedsStatus(MAIN_LED_G, LED_ON);
+                    } else {
+                        SetLedsMode(MAIN_LED_B, LED_BLINK);
+                        SetLedsStatus(MAIN_LED_B, LED_ON);
+                    }
+                }
+
+                ADC0_Disable();
+            } else {
+                if (0x80 == gs_charge_sta) {
+                    gs_charge_sta = 0;
+                    SetLedsMode(MAIN_LED_B, LED_BLINK);
+                    SetLedsStatus(MAIN_LED_B, LED_OFF);
+                    SetLedsStatus(MAIN_LED_G, LED_OFF);
+                }
+            }
+        }
+#endif
+
         if (IsDuringShip()) {
             if (GPIOx_Input(BANKE, 4)) {// locked status mean to quit shiping mode
                 PowerOnMainSupply();
@@ -313,6 +361,45 @@ int main(void)
             }
         }
 
+#if 0
+        if (!g_ring_times && !g_led_times) {
+            Disable_Tick2();
+        } else {
+			Enable_Tick2();
+		}
+		
+        if (1 == nfc_enable) {
+            if (0 == start_time_nfc) {
+                DEBUG("start_time_nfc ...\n");
+                g_ring_times = 2;
+                g_led_times = 10000;
+                SetLedsStatus(MAIN_LED_P, LED_ON);
+                Enable_Tick2();
+                start_time_nfc = GetTimeStamp();
+            }
+
+            if (start_time_nfc != 0) {
+                if (isDelayTimeout(start_time_nfc,nfc_time*1000UL)) {
+                    nfc_enable = 0;
+                    DEBUG("nfc_enable = 0\n");
+
+                    g_ring_times = 3;
+                    Enable_Tick2();
+
+                    g_led_times = 0;
+                    delay_ms(15);
+
+                    g_led_times = 5000;
+                    SetLedsStatus(MAIN_LED_R, LED_ON);
+                    // SetLedsStatus(MAIN_LED_G, LED_OFF);
+                    // SetLedsStatus(MAIN_LED_B, LED_OFF);
+                }
+            }
+        } else {
+            start_time_nfc = 0;
+        }
+#endif
+
         // -- use accuate time gap to hbeat
         // ---------------------- H Beat -------------------- //
         // --
@@ -368,11 +455,101 @@ int main(void)
         // --
         // ---------------------- TASK 4 -------------------- //
         // --
-        if (0 == (task_cnt%31)) {  // every 1.5s
+#if 0
+        if (0 == (task_cnt%22)) {  // every 0.5s
+            if (nfc_enable) {
+                DEBUG("before ReadMobibNFCCard\n");
+                if (0 == ReadMobibNFCCard()) {
+                    g_ring_times = 1;
+                    Enable_Tick2();
+
+                    LB1938_OpenLock();
+
+                    g_led_times = 0;
+                    delay_ms(15);
+
+                    g_led_times = 3000;
+                    SetLedsStatus(MAIN_LED_G, LED_ON);
+
+                    nfc_enable = 0;
+                }
+                DEBUG("after ReadMobibNFCCard\n");
+            }
         }
+#endif
 
         // --
         // ---------------------- TASK 5 -------------------- //
+        // --
+#if 0
+        if (0 == (task_cnt%31)) {  // every 1.5s
+            if (1 == GetBNOIntrFlag()) {
+                // INT occur
+                ClearBNOIntrFlag();
+                DEBUG("New Intr Occur...\n");
+                intr_type = bno055_get_int_src();//get the INT source
+                
+                DEBUG("Intr Reg = %.2X\n", intr_type);
+                bno055_clear_int();//clear INT
+                
+                if (!nfc_enable) {
+                    if (intr_type&0x80) {
+                        bno055_mode = 1;// During Low Power Mode
+                        Disable_Tick2();
+
+                        CLRC663_PowerOff();
+                        DEBUG("Enter low power\n");
+                        bno055_enter_lower_mode();
+
+                        if (0 == GetBNOIntrFlag()) {
+                            SwitchToLowClock();
+
+                            Sleep();
+                            Nop();
+
+#if 0
+                            LEDs_Ctrl(MAIN_LED_G, LED_ON);
+                            delay_us_nop(100);
+                            LEDs_Ctrl(MAIN_LED_G, LED_OFF);
+#endif
+
+                            SwitchToNormalClock();
+
+                            // Enable_Tick1();
+                            DEBUG("Wake Up...\r\n");
+                        } else {
+                            DEBUG("Intr happen again...\n");
+                        }
+
+                        Enable_Tick2();
+                    } else if (intr_type&0x40) {
+                        DEBUG("Enter normal\n");
+                        bno055_enter_normal_mode();//
+                        bno055_mode = 0;// During Normal Mode
+
+                        if (!IsLockSwitchOpen()) {
+                            CLRC663_PowerUp();
+                            nfc_enable = 1;
+                            DEBUG("Ready to read NFC...\n");
+                        } else {
+                            CLRC663_PowerOff();
+                            DEBUG("Lock is already open.\n");
+                        }
+                    }
+                }
+            } else if (0 == bno055_mode) {//
+#if 0
+                if (0 == bno055_euler_check(cur_pitch, cur_yaw, cur_roll))
+                    DEBUG("Euler OK\n");
+                else
+                    DEBUG("Euler NG\n");
+#endif
+            }
+        }
+#endif
+
+        // --
+        // ---------------------- TASK 6 -------------------- //
         // --
         if (0 == (task_cnt%41)) {  // every 2.0s
             if (0 == gs_bg96_sta) {
@@ -403,7 +580,7 @@ int main(void)
         }
 
         // --
-        // ---------------------- TASK 6 -------------------- //
+        // ---------------------- TASK 7 -------------------- //
         // --
         if (0 == (task_cnt%99)) {  // every 5.0s
         }
