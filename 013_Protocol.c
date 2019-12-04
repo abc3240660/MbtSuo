@@ -917,18 +917,7 @@ static void __delay_usx(uint16_t ms)
 // ============================================ DEV Action ============================================ //
 bool DoUnLockTheLockerFast(void)
 {
-    u8 i = 0;
-
-    LB1938_MotorCtrl(MOTOR_LEFT, MOTOR_HOLD_TIME);
-
-    for (i=0; i<20; i++) {
-        if(i%2){
-            LATD |= (1<<8);
-        }else{
-            LATD &= ~(1<<8);
-        }
-        __delay_usx(25UL);
-    }
+    LB1938_OpenLock();
 
     DEBUG("DoUnLockTheLockerFast...\n");
 
@@ -1309,8 +1298,8 @@ void ProcessIapRequest(void)
             }
 #endif
             // DEBUG("flash_offset = %.8lX, %ld\n", flash_offset, flash_offset);
-            DEBUG("WR flash_address = 0x%X-%.8lX\n", flash_page, flash_offset);
-            FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 128);
+            DEBUG("WR flash_address = 0x%X-%.8lX\n", flash_page, (flash_offset % 0x10000));
+            FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 256);
 
             gs_ftp_sum_got += got_size;
         }

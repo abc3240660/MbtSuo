@@ -49,7 +49,7 @@ u8 g_ring_times = 0;
 // 0-normal 1-move interrupt
 u8 g_bno055_move = 0;
 
-#define GPS_DEBUG 0
+// #define GPS_DEBUG 1
 
 static void SwitchToLowClock(void)
 {
@@ -96,7 +96,7 @@ int main(void)
     u8 trycnt = 0;
     u32 adcValue = 0;
 #ifdef GPS_DEBUG
-    u16 hbeat_gap = 30;
+    u16 hbeat_gap = 5;
 #else
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
 #endif
@@ -131,15 +131,6 @@ int main(void)
 
     Configure_Tick2();
     Configure_Tick3();
-
-	SetLedsStatus(MAIN_LED_G, LED_ON);
-	g_led_times = 500;
-
-#if 0
-	LB1938_OpenLock();
-
-	while(1);
-#endif
 
     CLRC663_PowerUp();
 
