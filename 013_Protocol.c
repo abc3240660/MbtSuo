@@ -726,12 +726,12 @@ bool TcpLockerUnlocked(void)
     // #MOBIT,868446032285351,OL,e10adc3949ba59abbe56e057f20f883e$
 
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s$%s", g_imei_str, CMD_DOOR_LOCKED, gs_communit_key);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s$%s", g_imei_str, CMD_DOOR_UNLOCKED, gs_communit_key);
 
 //    EncodeTcpPacket((u8*)tcp_send_buf);
 
 //    memset(tcp_send_buf, 0, LEN_MAX_SEND);
-//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_DOOR_LOCKED, gs_send_md5);
+//    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$", g_imei_str, CMD_DOOR_UNLOCKED, gs_send_md5);
 
     return BG96TcpSend(tcp_send_buf);
 }
