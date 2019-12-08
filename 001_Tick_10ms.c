@@ -158,7 +158,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
     }
 
     if (0 == MobitTimesT1%10000) {
-        DEBUG("T1 10s...\n");
+        // DEBUG("T1 10s...\n");
     }
 
     IFS0bits.T1IF = 0;// Clear Timer1 interrupt flag
@@ -285,7 +285,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
     }
 
     if (0 == MobitTimesT2%1000) {
-        DEBUG("T2 10s...\n");
+        // DEBUG("T2 10s...\n");
     }
 
     IFS0bits.T2IF = 0;// Clear Timer2 interrupt flag
@@ -500,7 +500,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T3Interrupt(void)
     }
 
     if (0 == MobitTimesT3%100) {
-        DEBUG("tm3 recv len = %d\n", IsTmpRingBufferAvailable());
+        // DEBUG("tm3 recv len = %d\n", IsTmpRingBufferAvailable());
     }
 
     IFS0bits.T3IF = 0;// Clear Timer3 interrupt flag
@@ -517,7 +517,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T4Interrupt(void)
     }
 
 	if (0 == MobitTimesT4%100) {
-        DEBUG("T4 10s...\n");
+        // DEBUG("T4 10s...\n");
     }
 
     IFS1bits.T4IF = 0;// Clear Timer4 interrupt flag

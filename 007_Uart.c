@@ -255,12 +255,49 @@ int Uart2_Printf(char *fmt,...)
     return len;
 }
 
+u32 m = 0;
+u8 test_buf[2560];
+void CleaTestBuffer(void)
+{
+    m = 0;
+    memset(test_buf, 0, 1280);
+}
+
+void PrintTestBuffer(void)
+{
+    u32 i = 0;
+    u32 j = 0;
+    u8 flag = 0; 
+
+    DEBUG("U2 Recv(%ld Byte):\n", m);
+    for (i=0; i<m; i++) {
+        if (0 == flag) {
+            if (('T'==test_buf[i])&&(0x0D==test_buf[i+1])&&(0x0A==test_buf[i+2])) {
+                flag = 1;
+                i += 2;
+                DEBUG("Found Connect Begin...\n");
+            }
+        } else {
+            DEBUG("%.2X", (u8)test_buf[i+3]);
+            DEBUG("%.2X", (u8)test_buf[i+2]);
+            DEBUG("%.2X", (u8)test_buf[i+1]);
+            DEBUG("%.2X ", (u8)test_buf[i+0]);
+            if (3 == j%4) {
+                DEBUG("\n");
+            }
+            j++;
+            i += 3;
+        }
+    }
+}
+
 void __attribute__((__interrupt__,no_auto_psv)) _U2RXInterrupt(void)
 {
     char temp = 0;
 
     do {
         temp = U2RXREG;
+        test_buf[m++%1280] = (u8)temp;
 #ifdef BG96_MANUAL_DBG
         Uart1_Putc(temp);
 #endif

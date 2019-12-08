@@ -180,8 +180,12 @@ bool WaitUartNetRxIdle()
 
 static void CleanBuffer(void)
 {
+    DEBUG("bufferHead v1 = %d\n", bufferHead);
+
     memset(rxBuffer, '\0', RX_BUFFER_LENGTH);
     bufferHead = 0;
+    
+    DEBUG("bufferHead v2 = %d\n", bufferHead);
 }
 
 unsigned int ReadResponseByteToBuffer()
@@ -1600,7 +1604,7 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf, u8* iap_file)
     trycnt = 0;
     ReadResponseToBuffer(888);
 
-    DEBUG("FTPGET Recv %d Bytes: %.2X%.2X%.2X\n", bufferHead, rxBuffer[0], rxBuffer[1], rxBuffer[2]);
+    DEBUG("FTPGET Recv %d Bytes: %.2X%.2X%.2X\n", bufferHead, (u8)rxBuffer[0], (u8)rxBuffer[1], (u8)rxBuffer[2]);
 
     memset(size_str, 0, 8);
     for (i=0; i<bufferHead; i++) {
@@ -1748,10 +1752,10 @@ static bool InitModule(void)
         PowerOnBG96Module();
     } else {// Already Power on
         DEBUG("BG96 Boot On -> Reset...\n");
-        PowerOffBG96Module();
-        delay_ms(1000);
-        PowerOnBG96Module();
-        // ResetBG96Module();
+        // PowerOffBG96Module();
+        // delay_ms(1000);
+        // PowerOnBG96Module();
+        ResetBG96Module();
     }
 
     for (i=0; i<15; i++) {

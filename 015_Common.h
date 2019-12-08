@@ -72,10 +72,13 @@
 // 2B below flash addr can store 3B validData
 // 2B below flash addr can store 4B BIN size
 // So if BIN size = 128KB, only need 64KB Flash Addr
+// 0x0000  ~ 0x0100(256B)  :   APP Intr Vector
 // 0x0800  ~ 0x0FFF(2K)    :   Params
 // 0x1000  ~ 0x1FFF(4K)    :   CardIDs
-// 0x2000  ~ 0x21FFF(128K) :   APP
-// 0x22000 ~ 0x31FFF(128K) :   BAK
+// 0x2000  ~ 0x1FFFF(120K) :   APP Hex Data
+
+// 0x20000 ~ 0x20100(256B) :   BAK Intr Vector
+// 0x22000 ~ 0x?????(???K) :   BAK Hex Data
 // 0x50000 ~ 0x?????(???K) :   BOT (less than 2K)
 #define FLASH_PAGE_CARD_ID  0x0000
 #define FLASH_BASE_CARD_ID  0x1000

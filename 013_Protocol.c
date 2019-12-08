@@ -1206,6 +1206,10 @@ void ProtocolParamsInit(void)
     }
 }
 
+extern u32 m;
+extern u8 test_buf[2560];
+void CleaTestBuffer(void);
+void PrintTestBuffer(void);
 void ProcessIapRequest(void)
 {
     if (gs_iap_waiting != 1) {
@@ -1213,9 +1217,11 @@ void ProcessIapRequest(void)
     }
 
     u16 i = 0;
+    u32 j = 0;
     u8 ftp_sta = 0;
     u16 got_size = 0;
     u32 ftp_len_per = 1024;
+    // u32 ftp_len_per = 512;
     static u32 iap_total_size = 0;
 	static u8 trycnt = 0;
 
@@ -1254,6 +1260,15 @@ void ProcessIapRequest(void)
 
     memset(gs_iap_buf, 0, LEN_BYTE_SZ2048);
     if (0x81 == ftp_sta) {
+#if 1
+		if (0 == gs_ftp_sum_got) {
+			ftp_len_per = 0x200;// Intr Vector
+		} else {
+			ftp_len_per = 0x400;// 1024
+		}
+#endif
+
+        CleaTestBuffer();
         got_size = BG96FtpGetData(gs_ftp_offset, ftp_len_per, gs_iap_buf, gs_iap_file);
 
         if (got_size > 0) {
@@ -1267,24 +1282,42 @@ void ProcessIapRequest(void)
 #if 1
             GAgent_MD5Update(&g_ftp_md5_ctx, gs_iap_buf, got_size);
 
-            //for (i=0; i<got_size/4; i++) {
-            //    DEBUG("=%.2X-%.2X-%.2X-%.2X\n", (u8)gs_iap_buf[4*i], (u8)gs_iap_buf[4*i+1], (u8)gs_iap_buf[4*i+2], (u8)gs_iap_buf[4*i+3]);
-            //}
+            PrintTestBuffer();
+
+            DEBUG("HEX Dat:\n");
+            for (i=0; i<got_size/4; i++) {
+                DEBUG("%.2X%.2X%.2X    ", (u8)gs_iap_buf[4*i+2], (u8)gs_iap_buf[4*i+1], (u8)gs_iap_buf[4*i]);
+                if (3 == i%4) {
+                    DEBUG("\n");
+                }
+            }
+
+            for (i=0; i<m; i++) {
+                if (('T'==test_buf[i])&&(0x0D==test_buf[i+1])&&(0x0A==test_buf[i+2])) {
+                    j = i+3;
+                    DEBUG("Found Connect Begin...\n");
+                    break;
+                }
+            }
 
             for(i=0;i<(got_size/4);i++)
             {
                 if ((i*4+2) >= got_size) {
                     break;
                 }
-                dat[i].HighLowUINT16s.HighWord = (u8)gs_iap_buf[i*4+2];
+                dat[i].HighLowUINT16s.HighWord = (u8)test_buf[j+i*4+2];
                 if ((i*4+1) >= got_size) {
                     break;
                 }
-                dat[i].HighLowUINT16s.LowWord = (u8)gs_iap_buf[i*4+1] << 8;
+                dat[i].HighLowUINT16s.LowWord = (u8)test_buf[j+i*4+1] << 8;
                 if ((i*4+0) >= got_size) {
                     break;
                 }
-                dat[i].HighLowUINT16s.LowWord += (u8)gs_iap_buf[i*4+0];
+                dat[i].HighLowUINT16s.LowWord += (u8)test_buf[j+i*4+0];
+            }
+            
+            for (i=0; i<1; i++) {
+                DEBUG("=%.8lX\n", (u32)dat[i].UINT32);
             }
 
             if ((0==gs_ftp_sum_got) && (0x200==got_size)) {
@@ -1293,13 +1326,14 @@ void ProcessIapRequest(void)
             } else {
                 flash_offset = FLASH_BASE_BAK;
                 flash_offset += gs_ftp_sum_got / 2;
-                flash_offset -= 0x100;
+                flash_offset -= 0x100;// =Intr Vector, 2B flash size = 4B bin size(3B data + 1B dummy)
                 flash_page = FLASH_PAGE_BAK + (flash_offset / 0x10000);
             }
 #endif
             // DEBUG("flash_offset = %.8lX, %ld\n", flash_offset, flash_offset);
-            DEBUG("WR flash_address = 0x%X-%.8lX\n", flash_page, (flash_offset % 0x10000));
-            FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 256);
+            DEBUG("WR flash_address = 0x%X-%.4lX\n", flash_page, (flash_offset % 0x10000));
+            FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, ftp_len_per/4);
+            // FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 256);
 
             gs_ftp_sum_got += got_size;
         }
@@ -1336,11 +1370,13 @@ void ProcessIapRequest(void)
             }
 
             DEBUG("iap_size_str = %s\n", iap_size_str);
+#if 1
             FlashWrite_SysParams(PARAM_ID_IAP_FLAG, (u8*)IAP_REQ_ON, 4);
             FlashWrite_SysParams(PARAM_ID_RSVD_U1, (u8*)iap_size_str, 6);
 
             DEBUG("Before APP Reset...\n");
             asm("reset");
+#endif
         }
     }
 }
