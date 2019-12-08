@@ -142,6 +142,13 @@ extern u8 g_svr_ip[LEN_NET_TCP+1];
 extern u8 g_svr_port[LEN_NET_TCP+1];
 extern u8 g_svr_apn[LEN_NET_TCP+1];
 
+#if 1// FTP Upgrade
+extern u32 g_ftp_dat_cnt;
+extern u8 g_ftp_buf[1536];
+void CleaFtpBuffer(void);
+void PrintFtpBuffer(void);
+#endif
+
 #if 0
 void CalcRegisterKey(void)
 {
@@ -906,14 +913,6 @@ bool TcpReDeleteNFCs(void)
     return BG96TcpSend(tcp_send_buf);
 }
 
-static void __delay_usx(uint16_t ms)
-{
-    int i=0,j=0;
-    for(i=0;i<ms;i++){
-        for(j=0;j<20;j++);
-    }
-}
-
 // ============================================ DEV Action ============================================ //
 bool DoUnLockTheLockerFast(void)
 {
@@ -1206,10 +1205,6 @@ void ProtocolParamsInit(void)
     }
 }
 
-extern u32 m;
-extern u8 test_buf[2560];
-void CleaTestBuffer(void);
-void PrintTestBuffer(void);
 void ProcessIapRequest(void)
 {
     if (gs_iap_waiting != 1) {
@@ -1268,7 +1263,7 @@ void ProcessIapRequest(void)
 		}
 #endif
 
-        CleaTestBuffer();
+        CleaFtpBuffer();
         got_size = BG96FtpGetData(gs_ftp_offset, ftp_len_per, gs_iap_buf, gs_iap_file);
 
         if (got_size > 0) {
@@ -1282,8 +1277,11 @@ void ProcessIapRequest(void)
 #if 1
             GAgent_MD5Update(&g_ftp_md5_ctx, gs_iap_buf, got_size);
 
-            PrintTestBuffer();
+#if 0
+            PrintFtpBuffer();
+#endif
 
+#if 0
             DEBUG("HEX Dat:\n");
             for (i=0; i<got_size/4; i++) {
                 DEBUG("%.2X%.2X%.2X    ", (u8)gs_iap_buf[4*i+2], (u8)gs_iap_buf[4*i+1], (u8)gs_iap_buf[4*i]);
@@ -1291,31 +1289,49 @@ void ProcessIapRequest(void)
                     DEBUG("\n");
                 }
             }
+#endif
 
-            for (i=0; i<m; i++) {
-                if (('T'==test_buf[i])&&(0x0D==test_buf[i+1])&&(0x0A==test_buf[i+2])) {
+#if 1
+            for (i=0; i<g_ftp_dat_cnt; i++) {
+                if (('T'==g_ftp_buf[i])&&(0x0D==g_ftp_buf[i+1])&&(0x0A==g_ftp_buf[i+2])) {
                     j = i+3;
                     DEBUG("Found Connect Begin...\n");
                     break;
                 }
             }
-
+            
             for(i=0;i<(got_size/4);i++)
             {
                 if ((i*4+2) >= got_size) {
                     break;
                 }
-                dat[i].HighLowUINT16s.HighWord = (u8)test_buf[j+i*4+2];
+                dat[i].HighLowUINT16s.HighWord = (u8)g_ftp_buf[j+i*4+2];
                 if ((i*4+1) >= got_size) {
                     break;
                 }
-                dat[i].HighLowUINT16s.LowWord = (u8)test_buf[j+i*4+1] << 8;
+                dat[i].HighLowUINT16s.LowWord = (u8)g_ftp_buf[j+i*4+1] << 8;
                 if ((i*4+0) >= got_size) {
                     break;
                 }
-                dat[i].HighLowUINT16s.LowWord += (u8)test_buf[j+i*4+0];
+                dat[i].HighLowUINT16s.LowWord += (u8)g_ftp_buf[j+i*4+0];
             }
-            
+#else
+            for(i=0;i<(got_size/4);i++)
+            {
+                if ((i*4+2) >= got_size) {
+                    break;
+                }
+                dat[i].HighLowUINT16s.HighWord = (u8)gs_iap_buf[i*4+2];
+                if ((i*4+1) >= got_size) {
+                    break;
+                }
+                dat[i].HighLowUINT16s.LowWord = (u8)gs_iap_buf[i*4+1] << 8;
+                if ((i*4+0) >= got_size) {
+                    break;
+                }
+                dat[i].HighLowUINT16s.LowWord += (u8)gs_iap_buf[i*4+0];
+            }
+#endif            
             for (i=0; i<1; i++) {
                 DEBUG("=%.8lX\n", (u32)dat[i].UINT32);
             }

@@ -26,7 +26,6 @@ static u8 Uart3_Rx_Buffer[LEN_BYTE_SZ64+1] = {0};
 static u16 Uart4_Rx_Len = 0;
 static u8 Uart4_Rx_Buffer[LEN_BYTE_SZ64+1] = {0};
 
-
 static char Uart2_Send_Buf[UART2_BUFFER_MAX_LEN] = {0};
 
 static ringbuffer_t tmp_rbuf;
@@ -34,8 +33,10 @@ static ringbuffer_t tmp_rbuf;
 // ringbuf for temp recved
 static char tmpRingbuf[RX_RINGBUF_MAX_LEN_L] = {0};
 
-// extern u8 g_ftp_enable;
+u32 g_ftp_dat_cnt = 0;
+u8 g_ftp_buf[1536] = {0};
 
+// extern u8 g_ftp_enable;
 extern int rx_debug_flag;
 
 // 115200 for Debug
@@ -255,12 +256,10 @@ int Uart2_Printf(char *fmt,...)
     return len;
 }
 
-u32 m = 0;
-u8 test_buf[2560];
-void CleaTestBuffer(void)
+void CleaFtpBuffer(void)
 {
-    m = 0;
-    memset(test_buf, 0, 1280);
+    g_ftp_dat_cnt = 0;
+    memset(g_ftp_buf, 0, 1536);
 }
 
 void PrintTestBuffer(void)
@@ -269,19 +268,19 @@ void PrintTestBuffer(void)
     u32 j = 0;
     u8 flag = 0; 
 
-    DEBUG("U2 Recv(%ld Byte):\n", m);
-    for (i=0; i<m; i++) {
+    DEBUG("U2 Recv(%ld Byte):\n", g_ftp_dat_cnt);
+    for (i=0; i<g_ftp_dat_cnt; i++) {
         if (0 == flag) {
-            if (('T'==test_buf[i])&&(0x0D==test_buf[i+1])&&(0x0A==test_buf[i+2])) {
+            if (('T'==g_ftp_buf[i])&&(0x0D==g_ftp_buf[i+1])&&(0x0A==g_ftp_buf[i+2])) {
                 flag = 1;
                 i += 2;
                 DEBUG("Found Connect Begin...\n");
             }
         } else {
-            DEBUG("%.2X", (u8)test_buf[i+3]);
-            DEBUG("%.2X", (u8)test_buf[i+2]);
-            DEBUG("%.2X", (u8)test_buf[i+1]);
-            DEBUG("%.2X ", (u8)test_buf[i+0]);
+            DEBUG("%.2X", (u8)g_ftp_buf[i+3]);
+            DEBUG("%.2X", (u8)g_ftp_buf[i+2]);
+            DEBUG("%.2X", (u8)g_ftp_buf[i+1]);
+            DEBUG("%.2X ", (u8)g_ftp_buf[i+0]);
             if (3 == j%4) {
                 DEBUG("\n");
             }
@@ -297,7 +296,7 @@ void __attribute__((__interrupt__,no_auto_psv)) _U2RXInterrupt(void)
 
     do {
         temp = U2RXREG;
-        test_buf[m++%1280] = (u8)temp;
+        g_ftp_buf[g_ftp_dat_cnt++%1536] = (u8)temp;
 #ifdef BG96_MANUAL_DBG
         Uart1_Putc(temp);
 #endif

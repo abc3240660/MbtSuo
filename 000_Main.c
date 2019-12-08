@@ -95,6 +95,7 @@ int main(void)
 
     u8 trycnt = 0;
     u32 adcValue = 0;
+
 #ifdef GPS_DEBUG
     u16 hbeat_gap = 5;
 #else
@@ -117,11 +118,10 @@ int main(void)
     Configure_Tick1();
 
     delay_ms(1000);
-    DEBUG("Test12031728 Application running...\r\n");
+    DEBUG("Test12081856 Application running...\r\n");
     
     BG96_PowerUp();
 
-//    delay_ms(5000);
     LEDs_Init();
     ADC0_Init();
     Beep_Init();
@@ -140,27 +140,6 @@ int main(void)
     Uart4_Init();
     
     BNO055_init();
-
-#if 0// ADC Battery Voltage Testing
-    while(1) {
-        if(ADC0_GetValue(&adcValue)){
-            DEBUG("ADC0:%ld\r\n",adcValue);
-        }
-        
-        DEBUG("test...\n");
-        delay_ms(5000);
-    }
-#endif
-
-#if 0// GPS Locate Testing
-    TurnOffGNSS();
-    TurnOnGNSSDamon();
-
-    while(1) {
-        TurnTryLocate();
-        delay_ms(5000);
-    }
-#endif
 
 #if 1
     // Write params into flash when the first time boot
@@ -190,71 +169,6 @@ int main(void)
 #endif
 
     InitRingBuffers();
-
-#if 0// BNO055 Testing
-	if (0 == bno055_get_euler(&cur_pitch, &cur_yaw, &cur_roll)) {
-		DEBUG("Euler Base: %f %f %f\n", (double)cur_pitch, (double)cur_yaw, (double)cur_roll);
-	} else {
-		DEBUG("Get base eurl failed \n");
-    }
-
-    ExtIntr_Initialize();
-    bno055_clear_int();// clear INT
-    
-    while(1) {
-        DEBUG("BNO055 Testing...\r\n");
-        
-        ReadMobibNFCCard();
-
-        delay_ms(5000);
-    }
-#endif
-
-#if 0// CLRC663 LOOP Testing
-    LEDs_AllOff();
-
-    while(1)
-    {
-//        GPIOx_Output(BANKE, 7, 0);// IFSEL1 Low
-//        delay_ms(1000);
-//        GPIOx_Output(BANKE, 7, 1);// IFSEL1 Low
-//        Uart3_Putc(0xFF);
-        nfc_ret = ReadMobibNFCCard();
-        if (0 == nfc_ret) {
-            g_ring_times = 2;
-        }
-//        read_iso14443A_nfc_card();
-
-        if (0 == nfc_ret) {
-            LEDs_AllON();
-        }
-        delay_ms(1000);
-
-        if (0 == nfc_ret) {
-            LEDs_AllOff();
-        }
-        delay_ms(1000);
-    }
-#endif
-
-#if 0// Buzzer LOOP Testing
-    GPIOx_Config(BANKB, 13, OUTPUT_DIR);// Beep
-
-    u8 beep_loop = 0;
-
-    while(1)
-    {
-        GPIOx_Output(BANKB, 13, 1);
-        __delay_usx(10);
-        GPIOx_Output(BANKB, 13, 0);
-        __delay_usx(10);
-        
-        if (beep_loop++ >= 100) {
-            beep_loop = 0;
-            DEBUG("XBeep Testing...\r\n");
-        }
-    }
-#endif
 
     while(1)
     {

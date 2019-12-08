@@ -30,23 +30,6 @@ static u32 gs_start_time_nfc = 0;
 
 void print_block(u8 * block, u8 length);
 
-// maybe is not correct
-void __delay_us(uint16_t ms)
-{
-    int i=0,j=0;
-    for(i=0;i<ms;i++){
-        for(j=0;j<200;j++);
-    }
-}
-
-static void __delay_usx(uint16_t ms)
-{
-    int i=0,j=0;
-    for(i=0;i<ms;i++){
-        for(j=0;j<20;j++);
-    }
-}
-
 // Hex print for blocks without DEBUG.
 void print_block(u8 * block, u8 length)
 {
@@ -290,16 +273,8 @@ u8 ReadMobibNFCCard(void)
 
     if (IsDuringBind()) {
         if (0 == gs_start_time_nfc) {
-            for (i=0; i<20; i++) {
-                if(i%2){
-                    LATD |= (1<<8);
-                }else{
-                    LATD &= ~(1<<8);
-                }
-                __delay_usx(25UL);
-            }
-
             j = 0;
+			// TODO: Beep? + LEDs? +  OpenLock?
             gs_start_time_nfc = GetTimeStamp();
         }
     } else {
@@ -310,19 +285,7 @@ u8 ReadMobibNFCCard(void)
         tmp_len = strlen((const char*)gs_tmp_card_id);
         tmp_len = strlen((const char*)gs_tmp_serial_nr);
 
-//        LATB |= (1<<4);
-//        delay_ms(5000);
-//        LATB &= ~(1<<4);
-
-        for (i=0; i<20; i++) {
-            if(i%2){
-                LATD |= (1<<8);
-            }else{
-                LATD &= ~(1<<8);
-            }
-            __delay_usx(25UL);
-        }
-
+		// TODO: Beep? + LEDs? +  OpenLock?
         TcpReadedOneCard(gs_tmp_card_id, gs_tmp_serial_nr);
 
         if (IsDuringBind()) {
@@ -348,18 +311,7 @@ u8 ReadMobibNFCCard(void)
     if (IsDuringBind()) {
         if (gs_start_time_nfc != 0) {
             if (isDelayTimeout(gs_start_time_nfc,10*1000UL)) {
-                for (i=0; i<60; i++) {
-                    if (0 == i%20) {
-                        delay_ms(200);
-                    }
-
-                    if(i%2){
-                        LATD |= (1<<8);
-                    }else{
-                        LATD &= ~(1<<8);
-                    }
-                    __delay_usx(25UL);
-                }
+				// TODO: Beep? + LEDs? +  OpenLock?
                 ReportFinishAddNFC(&gs_bind_cards[0], gs_bind_index);
             }
         }
