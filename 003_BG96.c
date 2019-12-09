@@ -33,7 +33,7 @@ static unsigned int bufferHead = 0;
 static char rxBuffer[RX_BUFFER_LENGTH] = "";
 
 // ringbuf for at acks
-static char atRingbuf[RX_RINGBUF_MAX_LEN_L] = {0};
+static char atRingbuf[RX_RINGBUF_MAX_LEN] = {0};
 
 // ringbuf for net recved
 static char netRingbuf[RX_RINGBUF_MAX_LEN] = {0};
@@ -66,7 +66,7 @@ u8 g_net_mode[LEN_COMMON_USE+1] = "";
 
 void InitRingBuffers(void)
 {
-    ringbuffer_init(&g_at_rbuf,atRingbuf,RX_RINGBUF_MAX_LEN_L);
+    ringbuffer_init(&g_at_rbuf,atRingbuf,RX_RINGBUF_MAX_LEN);
     ringbuffer_init(&g_net_rbuf,netRingbuf,RX_RINGBUF_MAX_LEN);
 }
 

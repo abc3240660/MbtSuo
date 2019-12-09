@@ -19,7 +19,7 @@
 #define         SW_Release              1
 
 #define         HW_VER                  "201910041950"
-#define         SW_VER                  "201910041950"
+#define         SW_VER                  "201912091550"
 
 #define         IPL_HIGH                7
 #define         IPL_MID                 5
@@ -42,7 +42,7 @@
 #define LEN_BYTE_SZ256   256
 #define LEN_BYTE_SZ512   512
 #define LEN_BYTE_SZ1024  1024
-#define LEN_BYTE_SZ2048  1024
+#define LEN_BYTE_SZ2048  2048
 
 #define LEN_CARD_ID      19
 #define LEN_SERIAL_NR    16

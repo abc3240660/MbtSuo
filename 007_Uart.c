@@ -31,7 +31,7 @@ static char Uart2_Send_Buf[UART2_BUFFER_MAX_LEN] = {0};
 static ringbuffer_t tmp_rbuf;
 
 // ringbuf for temp recved
-static char tmpRingbuf[RX_RINGBUF_MAX_LEN_L] = {0};
+static char tmpRingbuf[RX_RINGBUF_MAX_LEN] = {0};
 
 u32 g_ftp_dat_cnt = 0;
 u8 g_ftp_buf[1536] = {0};
@@ -104,7 +104,7 @@ void Uart2_Init(void)
     _U2TXIE = 0;
     _U2RXIE = 1;
     
-    ringbuffer_init(&tmp_rbuf,tmpRingbuf,RX_RINGBUF_MAX_LEN_L);
+    ringbuffer_init(&tmp_rbuf,tmpRingbuf,RX_RINGBUF_MAX_LEN);
 }
 
 // 115200 for CLRC663

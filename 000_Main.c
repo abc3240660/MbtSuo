@@ -118,7 +118,7 @@ int main(void)
     Configure_Tick1();
 
     delay_ms(1000);
-    DEBUG("Test12081856 Application running...\r\n");
+    DEBUG("Test%s Application running...\r\n", SW_VER);
     
     BG96_PowerUp();
 

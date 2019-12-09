@@ -28,7 +28,7 @@
 extern u8 g_ring_times;// 6-DD 200-Alarm
 static u8 special_test = 0;
 
-static u8 gs_iap_buf[LEN_BYTE_SZ2048] = "";
+static u8 gs_iap_buf[LEN_BYTE_SZ1024] = "";
 
 static const char* cmd_list[] = {
     // DEV Auto CMDs
@@ -1253,7 +1253,7 @@ void ProcessIapRequest(void)
         }
     }
 
-    memset(gs_iap_buf, 0, LEN_BYTE_SZ2048);
+    memset(gs_iap_buf, 0, LEN_BYTE_SZ1024);
     if (0x81 == ftp_sta) {
 #if 1
 		if (0 == gs_ftp_sum_got) {

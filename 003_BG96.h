@@ -227,7 +227,7 @@ static const char ssl_client_cert_name[] = "client_cert.pem";
 static const char ssl_client_key_name[] = "client_key.pem";
 
 // For BG96 Serial
-#define RX_BUFFER_LENGTH  RX_RINGBUF_MAX_LEN_L
+#define RX_BUFFER_LENGTH  RX_RINGBUF_MAX_LEN
 // #define UART_DEBUG
 
 static const unsigned long Band_list[] = {
