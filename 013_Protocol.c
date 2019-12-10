@@ -1291,7 +1291,7 @@ void ProcessIapRequest(void)
             }
 #endif
 
-#if 1
+#if 0
             for (i=0; i<g_ftp_dat_cnt; i++) {
                 if (('T'==g_ftp_buf[i])&&(0x0D==g_ftp_buf[i+1])&&(0x0A==g_ftp_buf[i+2])) {
                     j = i+3;
