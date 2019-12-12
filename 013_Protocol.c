@@ -680,7 +680,7 @@ bool TcpFinishAddNFCCard(void)
     // #MOBIT,868446032285351,ADDCR,a|b|c|d|e|f,e10adc3949ba59abbe56e057f20f883e$
 
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$%s", g_imei_str, CMD_FINISH_ADDNFC, gs_addordel_cards, gs_communit_key);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$%s", g_imei_str, CMD_FINISH_ADDNFC, gs_addordel_cards[0]==0?"f":gs_addordel_cards, gs_communit_key);
 
 //    EncodeTcpPacket((u8*)tcp_send_buf);
 
@@ -1032,8 +1032,6 @@ void ReportFinishAddNFC(u8 gs_bind_cards[][LEN_BYTE_SZ64], u8* index_array)
             break;
         }
 
-        j++;
-
         offset = strlen((const char*)gs_addordel_cards);
 
         if (offset > (CNTR_MAX_CARD*(LEN_CARD_ID+1))) {
@@ -1045,6 +1043,7 @@ void ReportFinishAddNFC(u8 gs_bind_cards[][LEN_BYTE_SZ64], u8* index_array)
         } else {
             sprintf((char*)gs_addordel_cards+offset, "|%s", gs_bind_cards[index_array[i-1]]);
         }
+        j++;
     }
 
     if (0 == start_time_finish_addc) {
@@ -1291,7 +1290,7 @@ void ProcessIapRequest(void)
             }
 #endif
 
-#if 0
+#if 1
             for (i=0; i<g_ftp_dat_cnt; i++) {
                 if (('T'==g_ftp_buf[i])&&(0x0D==g_ftp_buf[i+1])&&(0x0A==g_ftp_buf[i+2])) {
                     j = i+3;

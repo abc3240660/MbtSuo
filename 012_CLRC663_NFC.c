@@ -341,7 +341,7 @@ u8 AddNewMobibCard(u8* card_id, u8* serial_nr)
         if (0 == strlen((const char*)gs_bind_cards[i])) {
             memcpy(gs_bind_cards[i], card_id, LEN_BYTE_SZ32);
             memcpy(gs_bind_cards[i]+32, serial_nr, LEN_BYTE_SZ32);
-            index = i;
+            index = i+1;
             break;
         }
     }
