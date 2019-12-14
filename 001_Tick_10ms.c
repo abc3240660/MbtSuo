@@ -316,7 +316,10 @@ void __attribute__((__interrupt__, no_auto_psv)) _T3Interrupt(void)
         // process till RX empty for a while
         if (0 == IsTmpRingBufferAvailable()) {
             WaitUartTmpRxIdle();
-            break;
+
+			if(0 == IsTmpRingBufferAvailable()){
+				break;
+			}
         }
 
         // DEBUG("recv len = %d\n", IsTmpRingBufferAvailable());

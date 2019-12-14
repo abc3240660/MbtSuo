@@ -135,15 +135,21 @@ int IsNetRingBufferAvailable()
 // Descriptions: PIC24F read one byte from RingBuffer
 // Return:   the first byte of incoming data available(or -1 if no data is available)
 //******************************************************************************************
-static char ReadByteFromRingBuffer()
+static char ReadByteFromRingBuffer(char *dat)
 {
-    char dat = 0;
     int len = 1;
+	char onebyte = 0;
+
     if(IsRingBufferAvailable()<=0){
         return -1;
     }
-    len = ringbuffer_read_len(&g_at_rbuf,&dat,len);
-    return dat;
+
+	len = ringbuffer_read_len(&g_at_rbuf,&onebyte,len);
+	if (dat != NULL) {
+		*dat = onebyte;
+	}
+
+    return 0;
 }
 
 char ReadByteFromNetRingBuffer()
@@ -188,9 +194,13 @@ static void CleanBuffer(void)
     DEBUG("bufferHead v2 = %d\n", bufferHead);
 }
 
-unsigned int ReadResponseByteToBuffer()
+static unsigned int ReadResponseByteToBuffer()
 {
-    char c = ReadByteFromRingBuffer();
+	char c = 0;
+
+    if (ReadByteFromRingBuffer(&c) < 0) {
+		return 0;
+	}
 
     rxBuffer[bufferHead] = c;
     
@@ -969,7 +979,7 @@ bool BG96TcpSendHead(unsigned int socket_index, Socket_Type_t socket)
 bool BG96TcpSendMiddle(char *data_buf)
 {
     // to read recv fifo till empty
-    while (ReadByteFromRingBuffer() >= 0);
+    while (ReadByteFromRingBuffer(NULL) >= 0);
 
     if (SendATcommand(data_buf)) {
         return true;
@@ -981,7 +991,7 @@ bool BG96TcpSendMiddle(char *data_buf)
 bool BG96TcpSendTail(void)
 {
     // to read recv fifo till empty
-    while (ReadByteFromRingBuffer() >= 0);
+    while (ReadByteFromRingBuffer(NULL) >= 0);
 
     Uart2_Putc(0x1A);
 
@@ -1014,7 +1024,7 @@ bool SendDataAndCheck(const char *data_buf, const char *ok_str, const char *err_
     delay_ms(100);
 
     // to read recv fifo till empty
-    while (ReadByteFromRingBuffer() >= 0);
+    while (ReadByteFromRingBuffer(NULL) >= 0);
 
     int data_len = strlen(data_buf);
 
@@ -1044,7 +1054,7 @@ bool SendATcommand(const char *command)
 {
     delay_ms(100);
     // to read recv fifo till empty
-    while (ReadByteFromRingBuffer() >= 0);
+    while (ReadByteFromRingBuffer(NULL) >= 0);
     DEBUG("SND: ");
     WriteToBG96("AT");
 
@@ -1600,6 +1610,11 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf, u8* iap_file)
 
         return 0;
     }
+
+#if 0
+	delay_ms(10000);
+	DEBUG("AT RingBuffer = %d\n", ringbuffer_buf_use_size(&g_at_rbuf));	
+#endif
 
     trycnt = 0;
     ReadResponseToBuffer(888);

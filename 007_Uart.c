@@ -340,9 +340,7 @@ char ReadByteFromTmpRingBuffer(void)
 {
     char dat = 0;
     int len = 1;
-    if(IsTmpRingBufferAvailable()<=0){
-        return -1;
-    }
+
     len = ringbuffer_read_len(&tmp_rbuf,&dat,len);
     return dat;
 }
