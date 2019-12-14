@@ -72,7 +72,7 @@ static u32 gs_till_svr_ack = 0;
 
 static u8 gs_alarm_on[LEN_COMMON_USE+1] = "1";
 static u8 gs_beep_on[LEN_COMMON_USE+1] = "1";
-static u8 gs_alarm_level[LEN_COMMON_USE+1] = "80";
+static u8 gs_alarm_level[LEN_COMMON_USE+1] = "100";
 
 static u8 gs_iap_waiting = 0;
 static u8 gs_iap_md5[LEN_MD5_HEXSTR+1] = "";
@@ -1453,7 +1453,7 @@ void ProcessTcpRequest(void)
                     if ((IAP_UPGRADE==i) || (ADD_NFC==i) ||
                         (MODIFY_ALARM==i) || (RING_ALARM==i)) {
                         TcpReNormalAck((u8*)(cmd_list[i]), NULL);
-                    } else if ((IAP_UPGRADE==i) || (ADD_NFC==i)) {
+                    } else if ((CHANGE_APN==i) || (FACTORY_RST==i)) {
                         u8 run_ret = 1;// default success
 
                         if (run_ret) {
