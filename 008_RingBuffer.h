@@ -24,6 +24,7 @@ extern "C"{
 #include <stdint.h>
 #include <p24fxxxx.h>
 #include "015_Common.h"
+
 #define min(a, b) (a)<(b)?(a):(b)                   ///< Calculate the minimum value
 
 #pragma pack(1)

@@ -1612,7 +1612,7 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf, u8* iap_file)
     }
 
 #if 0
-	delay_ms(10000);
+	delay_ms(3000);
 	DEBUG("AT RingBuffer = %d\n", ringbuffer_buf_use_size(&g_at_rbuf));	
 #endif
 
