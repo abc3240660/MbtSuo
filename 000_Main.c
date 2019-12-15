@@ -149,7 +149,7 @@ int main(void)
         FlashWrite_SysParams(PARAM_ID_SVR_PORT, (u8*)g_svr_port, strlen((const char*)g_svr_port));
         FlashWrite_SysParams(PARAM_ID_SVR_APN, (u8*)g_svr_apn, strlen((const char*)g_svr_apn));
         FlashWrite_SysParams(PARAM_ID_IAP_MD5, (u8*)"11112222333344445555666677778888", 32);
-        FlashWrite_SysParams(PARAM_ID_1ST_BOOT, (u8*)"1", 1);
+       
     }
 
     memset(params_dat, 0, LEN_BYTE_SZ64);
@@ -164,7 +164,10 @@ int main(void)
 
     ProtocolParamsInit();
     CardIDFlashBankInit();
-
+    FlashRead_SysParams(PARAM_ID_1ST_BOOT, params_dat, 64);
+    if (strncmp((const char*)params_dat, (const char*)"1", 1) != 0) {
+    	FlashWrite_SysParams(PARAM_ID_1ST_BOOT, (u8*)"1", 1);
+    }
     gs_charge_sta = GPIOx_Input(BANKG, 3);
 #endif
 
