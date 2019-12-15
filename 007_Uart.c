@@ -393,7 +393,6 @@ void Uart4_Init(void)
     _U4RXIF = 0;
     _U4TXIE = 0;
     _U4RXIE = 1;
-
 }
 
 void Uart4_Putc(char ch)
