@@ -478,14 +478,17 @@ void ParseMobitMsg(char* msg)
                     memset(gs_alarm_on, 0, LEN_NET_TCP);
                     strncpy((char*)gs_alarm_on, split_str, LEN_NET_TCP);
                     DEBUG("gs_alarm_on = %s\n", gs_alarm_on);
+                    FlashWrite_SysParams(PARAM_ID_ALM_ON, (u8*)gs_alarm_on, 1);
                 } else if (4 == index) {
                     memset(gs_beep_on, 0, LEN_NET_TCP);
                     strncpy((char*)gs_beep_on, split_str, LEN_NET_TCP);
                     DEBUG("gs_beep_on = %s\n", gs_beep_on);
+        			FlashWrite_SysParams(PARAM_ID_BEEP_ON, (u8*)gs_beep_on, 1);
                 } else if (5 == index) {
                     memset(gs_alarm_level, 0, LEN_NET_TCP);
                     strncpy((char*)gs_alarm_level, split_str, LEN_NET_TCP);
                     DEBUG("gs_alarm_level = %s\n", gs_alarm_level);
+        			FlashWrite_SysParams(PARAM_ID_BEEP_LEVEL, (u8*)gs_alarm_level, 2);
                 }
             }
         }
