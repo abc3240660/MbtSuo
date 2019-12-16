@@ -119,6 +119,7 @@ int main(void)
 
     delay_ms(1000);
     DEBUG("Test%s Application running...\r\n", SW_VER);
+
     InitRingBuffers();
     BG96_PowerUp();
 
@@ -170,8 +171,6 @@ int main(void)
     }
     gs_charge_sta = GPIOx_Input(BANKG, 3);
 #endif
-
-   
 
     while(1)
     {

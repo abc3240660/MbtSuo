@@ -1,9 +1,8 @@
- 
 //       10        20        30        40        50        60        70
 //--*----*----*----*----*----*----*----*----*----*----*----*----*----*----*----*
 
 /******************************************************************************
-library for RingBuffer of UART2(for BG96)
+ * A library for RingBuffer of UART2(for BG96)
  * This file is about the RingBuffer of UART2
  *
  * Copyright (c) 2019 Mobit technology inc.
@@ -24,6 +23,7 @@ extern "C"{
 #include <stdint.h>
 #include <p24fxxxx.h>
 #include "015_Common.h"
+
 #define min(a, b) (a)<(b)?(a):(b)                   ///< Calculate the minimum value
 
 #pragma pack(1)

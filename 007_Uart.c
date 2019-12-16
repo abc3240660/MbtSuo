@@ -262,13 +262,14 @@ void CleaFtpBuffer(void)
     memset(g_ftp_buf, 0, 1536);
 }
 
-void PrintTestBuffer(void)
+void PrintFtpBuffer(void)
 {
     u32 i = 0;
     u32 j = 0;
     u8 flag = 0; 
 
     DEBUG("U2 Recv(%ld Byte):\n", g_ftp_dat_cnt);
+#if 0
     for (i=0; i<g_ftp_dat_cnt; i++) {
         if (0 == flag) {
             if (('T'==g_ftp_buf[i])&&(0x0D==g_ftp_buf[i+1])&&(0x0A==g_ftp_buf[i+2])) {
@@ -288,6 +289,7 @@ void PrintTestBuffer(void)
             i += 3;
         }
     }
+#endif
 }
 
 void __attribute__((__interrupt__,no_auto_psv)) _U2RXInterrupt(void)
@@ -391,7 +393,6 @@ void Uart4_Init(void)
     _U4RXIF = 0;
     _U4TXIE = 0;
     _U4RXIE = 1;
-
 }
 
 void Uart4_Putc(char ch)
