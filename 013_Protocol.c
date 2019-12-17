@@ -1177,7 +1177,7 @@ void ProtocolParamsInit(void)
     if (strncmp((const char*)params_dat, (const char*)"1", 1) != 0) {
         FlashWrite_SysParams(PARAM_ID_ALM_ON, (u8*)"1", 1);
         FlashWrite_SysParams(PARAM_ID_BEEP_ON, (u8*)"1", 1);
-        FlashWrite_SysParams(PARAM_ID_BEEP_LEVEL, (u8*)"18", 2);
+        FlashWrite_SysParams(PARAM_ID_BEEP_LEVEL, (u8*)"100", 3);
     }
 
     memset(params_dat, 0, LEN_BYTE_SZ64);
