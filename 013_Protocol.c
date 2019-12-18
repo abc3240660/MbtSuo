@@ -29,7 +29,8 @@ extern u8 g_ring_times;// 6-DD 200-Alarm
 static u8 special_test = 0;
 
 static u8 gs_iap_buf[LEN_BYTE_SZ1024] = "";
-
+extern u8 g_ring_times;
+extern u32 g_led_times;
 static const char* cmd_list[] = {
     // DEV Auto CMDs
     CMD_DEV_REGISTER,
@@ -507,7 +508,9 @@ bool TcpHeartBeat(void)
     u32 bat_vol = 0;
     u8 vol_str[8] = "";
     // const char send_data[] = "#MOBIT,868446032285351,HB,4.0,1,20,e10adc3949ba59abbe56e057f20f883e$";
-
+    if (true == IsIapRequested()) {
+        return false;
+    }
     if (ADC0_GetValue(&bat_vol)) {
         if ((bat_vol>=0) && (bat_vol<=1023)) {
             tmp_vol1 = (((bat_vol*330*18)/10240)%1000)/100;
@@ -1422,7 +1425,7 @@ void PowerOnMainSupply(void)
 void ProcessTcpRequest(void)
 {
     unsigned long temp = 1;
-
+    u8 flag=0;
     if (gs_need_ack & (temp<<QUERY_PARAMS)) {
         gs_need_ack &= ~(temp<<QUERY_PARAMS);
         TcpReQueryParams();
@@ -1453,9 +1456,15 @@ void ProcessTcpRequest(void)
                 } else if (QUERY_ICCID == i) {
                     continue;
                 } else {
-                    if ((IAP_UPGRADE==i) || (ADD_NFC==i) ||
+                    if ((IAP_UPGRADE==i) ||
                         (MODIFY_ALARM==i) || (RING_ALARM==i)) {
                         TcpReNormalAck((u8*)(cmd_list[i]), NULL);
+                    }
+                    else if (ADD_NFC==i){
+                        TcpReNormalAck((u8*)(cmd_list[i]), NULL);
+                        SetLedsStatus(MAIN_LED_G, LED_ON);
+                        g_led_times=20000;
+                        g_ring_times=1;
                     } else if ((CHANGE_APN==i) || (FACTORY_RST==i)) {
                         u8 run_ret = 1;// default success
 
@@ -1515,12 +1524,16 @@ void ProcessTcpRequest(void)
     if (gs_till_svr_ack & (temp<<DOOR_LOCKED)) {
         if (start_time_locked != 0) {
             if (isDelayTimeout(start_time_locked,10*1000UL)) {
+                //????????1s
+                g_ring_times=10;
                 TcpLockerLocked();
             }
         }
     } else if (gs_till_svr_ack & (temp<<DOOR_UNLOCKED)) {
         if (start_time_unlocked != 0) {
             if (isDelayTimeout(start_time_unlocked,10*1000UL)) {
+                //????????1s
+                g_ring_times=10;
                 TcpLockerUnlocked();
                 TcpReportGPS();
                 // TODO: delete this test
@@ -1533,6 +1546,9 @@ void ProcessTcpRequest(void)
                 TcpFinishAddNFCCard();
                 // TODO: delete this test
                 gs_till_svr_ack = 0;
+                
+                //???????
+                g_led_times=0;
             }
         }
     } else if (gs_till_svr_ack & (temp<<RISK_REPORT)) {

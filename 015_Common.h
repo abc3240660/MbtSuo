@@ -19,7 +19,7 @@
 #define         SW_Release              1
 
 #define         HW_VER                  "201910041950"
-#define         SW_VER                  "201912170001"
+#define         SW_VER                  "201912180001"
 
 #define         IPL_HIGH                7
 #define         IPL_MID                 5

@@ -45,6 +45,7 @@ u8 g_svr_apn[LEN_NET_TCP+1] = "sentinel.m2mmobi.be";
 
 u32 g_led_times = 0;
 u8 g_ring_times = 0;
+u32 g_led_always_on=0;
 
 // 0-normal 1-move interrupt
 u8 g_bno055_move = 0;
@@ -101,7 +102,7 @@ int main(void)
 #else
     u16 hbeat_gap = DEFAULT_HBEAT_GAP;
 #endif
-
+    u8 flag_led=0;
     u8 intr_type = 0;
 
     // 0-normal 1-low power
@@ -132,6 +133,9 @@ int main(void)
 
     Configure_Tick2();
     Configure_Tick3();
+    //?????
+    SetLedsStatus(MAIN_LED_G, LED_ON);
+    g_led_times=3000;
 
     CLRC663_PowerUp();
 
@@ -311,6 +315,13 @@ int main(void)
         // ---------------------- H Beat -------------------- //
         // --
         if (0x81 == net_sta) {
+            if(flag_led == 0)
+            {
+                flag_led = 1;
+                SetLedsStatus(MAIN_LED_B, LED_ON);
+                g_led_times=3000;
+                g_ring_times=g_led_times/10;
+            }
             if (0 == start_time_hbeat) {
                 start_time_hbeat = GetTimeStamp();
             }

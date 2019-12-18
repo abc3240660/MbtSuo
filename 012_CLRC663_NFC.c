@@ -29,7 +29,9 @@ static u8 gs_bind_index[CNTR_MAX_CARD] = {0};
 static u32 gs_start_time_nfc = 0;
 
 void print_block(u8 * block, u8 length);
-
+extern u8 g_ring_times;
+extern u32 g_led_times;
+extern u32 g_led_always_on;
 // Hex print for blocks without DEBUG.
 void print_block(u8 * block, u8 length)
 {
@@ -287,8 +289,14 @@ u8 ReadMobibNFCCard(void)
 
 		// TODO: Beep? + LEDs? +  OpenLock?
         TcpReadedOneCard(gs_tmp_card_id, gs_tmp_serial_nr);
-
+        //???????
+        g_ring_times=1;
+       
         if (IsDuringBind()) {
+            //?????????
+            g_led_times=2000;
+            g_ring_times=20;
+            g_led_always_on=1;
             gs_start_time_nfc = GetTimeStamp();
             index = AddNewMobibCard(gs_tmp_card_id, gs_tmp_serial_nr);
             if (index != 88) {

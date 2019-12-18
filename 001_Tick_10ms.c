@@ -42,6 +42,7 @@ extern ringbuffer_t g_at_rbuf;
 extern ringbuffer_t g_net_rbuf;
 extern u8 g_ring_times;
 extern u32 g_led_times;
+extern u32 g_led_always_on;
 
 //******************************************************************************
 //* Timer 1
@@ -171,7 +172,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
 {
     static u8 start_flag = 0;
     static u32 loop_time = 0;
-
+    int jg=100;//1s
     MobitTimesT2 += 1;
     if(MobitTimesT2 > 10000000UL){
         MobitTimesT2 = 0;
@@ -207,7 +208,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
 #endif
 
 #if 1// LEDs Ctrl
-    if (0 == MobitTimesT2%2) {// 10ms ON + 10ms OFF
+    if (0 == MobitTimesT2%jg) {// 10ms ON + 10ms OFF
         if (GetLedsStatus(MAIN_LED_B)) {
             if (GetLedsMode(MAIN_LED_B)) {
                 if ((MobitTimesT2%(gs_leds_all_time/10) < (gs_leds_on_time/10))) {
@@ -237,7 +238,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
                 LEDs_Ctrl(MAIN_LED_G, LED_ON);
             }
         }
-    } else if (1 == MobitTimesT2%2) {
+    } else if( (jg/2 == MobitTimesT2%jg) && (g_led_always_on == 0)){
         LEDs_Ctrl(MAIN_LED_B, LED_OFF);
         LEDs_Ctrl(MAIN_LED_R, LED_OFF);
         LEDs_Ctrl(MAIN_LED_G, LED_OFF);
@@ -282,6 +283,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T2Interrupt(void)
         SetLedsStatus(MAIN_LED_B, LED_OFF);
         SetLedsStatus(MAIN_LED_G, LED_OFF);
         SetLedsStatus(MAIN_LED_R, LED_OFF);
+        g_led_always_on=0;
     }
 
     if (0 == MobitTimesT2%1000) {
