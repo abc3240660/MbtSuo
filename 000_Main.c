@@ -82,6 +82,33 @@ static void EnterToSleep(void)
     Nop();
 }
 
+static u32 GetIapBinSize(void)
+{
+    u16 i = 0;
+    u32 size = 0;
+    u8 strs_array[LEN_BYTE_SZ64+1] = "";
+
+    FlashRead_SysParams(PARAM_ID_RSVD_U4, strs_array, LEN_BYTE_SZ64);
+
+    for (i=0; i<8; i++) {
+        if ((strs_array[i]<'0') || (strs_array[i]>'9')) {// Invalid Data In "BIN SIZE" Flash Section
+            strs_array[i] = 0;
+            break;
+        }
+    }
+
+	DEBUG("Re-Start IAP Got SIZEV1 = %s\n", strs_array);
+
+    for (i=0; i<strlen((const char*)strs_array); i++) {
+        size *= 10;
+        size += strs_array[i] - '0';
+    }
+
+	DEBUG("Re-Start IAP Got SIZEV = %ld\n", size);
+
+	return size;
+}
+
 int main(void)
 {
     float cur_pitch = 0;
@@ -104,6 +131,8 @@ int main(void)
 #endif
     u8 flag_led=0;
     u8 intr_type = 0;
+	u8 wdt_reset = 0;
+    u8 ftp_restart = 0;
 
     // 0-normal 1-low power
     u8 bno055_mode = 0;
@@ -111,6 +140,10 @@ int main(void)
     u32 task_cnt = 0;
 
     u8 params_dat[LEN_BYTE_SZ64+1] = "";
+
+	if (_WDTO) {
+		wdt_reset = 1;
+	}
 
     System_Config();
 
@@ -120,6 +153,43 @@ int main(void)
 
     delay_ms(1000);
     DEBUG("Test%s Application running...\r\n", SW_VER);
+
+#if 0	
+	if (1 == wdt_reset) {
+		DEBUG("Reset by WDT Timeout...\r\n");
+#if 1
+		memset(params_dat, 0, LEN_BYTE_SZ64);
+		FlashRead_SysParams(PARAM_ID_IAP_FLAG, params_dat, 64);
+		if (0 == strncmp((const char*)params_dat, (const char*)IAP_REQ_RN, 4)) {
+			DEBUG("Re-Start IAP Manually...\r\n");
+			ManualIapRequested();
+		}
+		
+		memset(params_dat, 0, LEN_BYTE_SZ64);
+		FlashRead_SysParams(PARAM_ID_RSVD_U3, params_dat, 64);
+		if (strlen((const char*)params_dat) != 0) {
+			DEBUG("Re-Start IAP File = %s\n", params_dat);
+			ManualIapSetFileName(params_dat);
+		}
+		
+		ManualIapSetGotSize(GetIapBinSize());
+#endif
+	}
+#else
+	memset(params_dat, 0, LEN_BYTE_SZ64);
+	FlashRead_SysParams(PARAM_ID_IAP_FLAG, params_dat, 64);
+	if (0 == strncmp((const char*)params_dat, (const char*)IAP_REQ_RN, 4)) {		
+		memset(params_dat, 0, LEN_BYTE_SZ64);
+		FlashRead_SysParams(PARAM_ID_RSVD_U3, params_dat, 64);
+		if (strlen((const char*)params_dat) != 0) {
+            ftp_restart = 1;
+			DEBUG("Re-Start IAP File = %s\n", params_dat);
+			ManualIapSetFileName(params_dat);
+
+			ManualIapSetGotSize(GetIapBinSize());
+		}
+	}
+#endif
 
     InitRingBuffers();
     BG96_PowerUp();
@@ -131,6 +201,7 @@ int main(void)
     LB1938_Init();
     LockSwitch_Init();
 
+    _SWDTEN = 1;// wait 8.192s
     Configure_Tick2();
     Configure_Tick3();
     //?????
@@ -260,15 +331,17 @@ int main(void)
         // retry initial or connection every 10s
         // if net-register failed or lost connection
         if (0 == (task_cnt++%200)) {
-            if (0 == net_sta) {
-                if (2 == gs_bg96_sta) {
-                    Configure_BG96();
+            if (false == IsIapRequested()) {
+                if (0 == net_sta) {
+                    if (2 == gs_bg96_sta) {
+                        Configure_BG96();
+                    }
                 }
-            }
 
-            net_sta = GetNetStatus();
-            if ((0x80==net_sta) || (0x40==net_sta)) {// lost connection
-                ConnectToTcpServer(g_svr_ip, g_svr_port, g_svr_apn);
+                net_sta = GetNetStatus();
+                if ((0x80==net_sta) || (0x40==net_sta)) {// lost connection
+                    ConnectToTcpServer(g_svr_ip, g_svr_port, g_svr_apn);
+                }
             }
         }
 
@@ -330,8 +403,8 @@ int main(void)
                 if (isDelayTimeout(start_time_hbeat,hbeat_gap*1000UL)) {
                     start_time_hbeat = GetTimeStamp();
 #ifdef GPS_DEBUG
-                    DoQueryGPSFast();
-                    TcpReportGPS();
+                    // DoQueryGPSFast();
+                    // TcpReportGPS();
 #endif
                     TcpHeartBeat();
                     
@@ -478,6 +551,13 @@ int main(void)
 
                     DumpNetCfg();
                     QueryNetMode();
+                    
+                    if (1 == ftp_restart) {
+                        ftp_restart = 0;
+                        
+                        DEBUG("Re-Start IAP Manually...\r\n");
+                        ManualIapRequested();
+                    }
                 }
             }
 

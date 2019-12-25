@@ -143,5 +143,7 @@ void ClearShipStatus(void);
 void PowerOnMainSupply(void);
 void StartCommunication(void);
 bool ManualIapRequested(void);
+bool ManualIapSetFileName(u8* file);
+bool ManualIapSetGotSize(u32 got_size);
 
 #endif

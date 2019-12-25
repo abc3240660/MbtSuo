@@ -77,7 +77,7 @@ static u8 gs_alarm_level[LEN_COMMON_USE+1] = "100";
 
 static u8 gs_iap_waiting = 0;
 static u8 gs_iap_md5[LEN_MD5_HEXSTR+1] = "";
-static u8 gs_iap_file[LEN_DW_URL+1] = "Mbtsuo_V2.bin";
+static u8 gs_iap_file[LEN_DW_URL+1] = "Mbtsuo_1218_1012.bin";
 
 static u16 gs_hbeat_gap = DEFAULT_HBEAT_GAP;
 
@@ -118,8 +118,8 @@ static u8 gs_change_apn = 0;
 
 static u8 gs_during_ship = 0;
 
-static MD5_CTX g_ftp_md5_ctx;
-static u8 gs_ftp_res_md5[LEN_COMMON_USE+1] = "";
+// static MD5_CTX g_ftp_md5_ctx;
+// static u8 gs_ftp_res_md5[LEN_COMMON_USE+1] = "";
 
 static u8 gs_addordel_cards[LEN_BYTE_SZ512+1] = {0};
 
@@ -508,9 +508,11 @@ bool TcpHeartBeat(void)
     u32 bat_vol = 0;
     u8 vol_str[8] = "";
     // const char send_data[] = "#MOBIT,868446032285351,HB,4.0,1,20,e10adc3949ba59abbe56e057f20f883e$";
+
     if (true == IsIapRequested()) {
         return false;
     }
+
     if (ADC0_GetValue(&bat_vol)) {
         if ((bat_vol>=0) && (bat_vol<=1023)) {
             tmp_vol1 = (((bat_vol*330*18)/10240)%1000)/100;
@@ -686,7 +688,7 @@ bool TcpFinishAddNFCCard(void)
     // #MOBIT,868446032285351,ADDCR,a|b|c|d|e|f,e10adc3949ba59abbe56e057f20f883e$
 
     memset(tcp_send_buf, 0, LEN_MAX_SEND);
-    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$%s", g_imei_str, CMD_FINISH_ADDNFC, gs_addordel_cards[0]==0?"f":gs_addordel_cards, gs_communit_key);
+    sprintf(tcp_send_buf, "#MOBIT,%s,%s,%s$%s", g_imei_str, CMD_FINISH_ADDNFC, (char*)((char)gs_addordel_cards[0]==0?"F":(char*)gs_addordel_cards), gs_communit_key);
 
 //    EncodeTcpPacket((u8*)tcp_send_buf);
 
@@ -1024,6 +1026,24 @@ bool ManualIapRequested(void)
     return true;
 }
 
+bool ManualIapSetGotSize(u32 got_size)
+{
+	gs_ftp_offset = got_size;
+	gs_ftp_sum_got = got_size;
+
+    return true;
+}
+
+bool ManualIapSetFileName(u8* file)
+{
+	if (file != NULL) {
+		memset(gs_iap_file, 0, LEN_DW_URL);
+		strncpy((char*)gs_iap_file, (const char*)file, LEN_DW_URL);
+	}
+	
+	return true;
+}
+
 void ReportFinishAddNFC(u8 gs_bind_cards[][LEN_BYTE_SZ64], u8* index_array)
 {
     u8 i = 0;
@@ -1210,6 +1230,95 @@ void ProtocolParamsInit(void)
     }
 }
 
+u8 bytes_array[CNTR_INWD_PER_PAGE*BINA_DATA_PER_INWD] = {0};
+
+static bool CheckIapMd5(u32 bin_size, u32 inwd_count)
+{
+    u32 i = 0;
+	u32 tmp_val = 0;
+    u32 data_len = 0;
+    u32 page_count = 0;
+    u16 flash_page = 0;
+    u32 flash_offset = 0;
+    u8 strs_array[LEN_BYTE_SZ64 + 1] = "";
+
+    MD5_CTX iapbin_md5_ctx;
+    u8 iapbin_res_md5[LEN_COMMON_USE] = "";
+
+    if ((bin_size < 512) || (0==inwd_count)) {
+        return false;
+    }
+
+    GAgent_MD5Init(&iapbin_md5_ctx);
+
+	// For Vector Partition
+	data_len = CNTR_INWD_PER_BLK*BINA_DATA_PER_INWD;// Vector BIN SIZE = 512
+	flash_offset = 0;
+	flash_page = FLASH_PAGE_BAK;
+
+	FlashRead_InstructionWordsToByteArray(flash_page, flash_offset, CNTR_INWD_PER_PAGE, bytes_array);
+
+	bytes_array[7] = 0x05;
+	DEBUG("MD5 flash_address = 0x%X-%.4lX-%ld\n", flash_page, (flash_offset % 0x10000), data_len);
+
+	DEBUG("GAgent_MD5Update DATZ = %.2X%.2X%.2X%.2X%.2X%.2X%.2X%.2X\n", (u8)bytes_array[0], (u8)bytes_array[1], (u8)bytes_array[2], (u8)bytes_array[3], (u8)bytes_array[4], (u8)bytes_array[5], (u8)bytes_array[6], (u8)bytes_array[7]);
+	DEBUG("GAgent_MD5Update DATF = %.2X%.2X%.2X%.2X%.2X%.2X%.2X%.2X\n", (u8)bytes_array[data_len-8], (u8)bytes_array[data_len-7], (u8)bytes_array[data_len-6], (u8)bytes_array[data_len-5], (u8)bytes_array[data_len-4], (u8)bytes_array[data_len-3], (u8)bytes_array[data_len-2], (u8)bytes_array[data_len-1]);
+	GAgent_MD5Update(&iapbin_md5_ctx, bytes_array, data_len);
+
+	// For Data Partition
+    data_len = CNTR_INWD_PER_PAGE * BINA_DATA_PER_INWD;
+	// 512 Vector BIN SIZE = 0x100 Flash Addr = 0x80 INWD
+    page_count = ((inwd_count-0x80+CNTR_INWD_PER_PAGE-1) / CNTR_INWD_PER_PAGE);
+
+	DEBUG("page_count = %ld, inwd_count = %ld\n", page_count, inwd_count);
+    for (i=0; i<page_count; i++) {
+		tmp_val = BYTE_ADDR_PER_PAGE_SML;
+		tmp_val *= i;
+
+        flash_offset = FLASH_BASE_BAK;
+		flash_offset += tmp_val;
+
+		flash_page = FLASH_PAGE_BAK + (flash_offset / 0x10000);
+
+        flash_offset %= 0x10000;
+        FlashRead_InstructionWordsToByteArray(flash_page, flash_offset, CNTR_INWD_PER_PAGE, bytes_array);
+
+        if (i == (page_count-1)) {
+			// Vector BIN SIZE = 512
+            data_len = (bin_size - CNTR_INWD_PER_BLK*BINA_DATA_PER_INWD) % (CNTR_INWD_PER_PAGE*BINA_DATA_PER_INWD);
+        }
+
+		DEBUG("MD5 flash_address = 0x%X-%.4lX-%ld\n", flash_page, (flash_offset % 0x10000), data_len);
+
+		DEBUG("GAgent_MD5Update DATZ = %.2X%.2X%.2X%.2X%.2X%.2X%.2X%.2X\n", (u8)bytes_array[0], (u8)bytes_array[1], (u8)bytes_array[2], (u8)bytes_array[3], (u8)bytes_array[4], (u8)bytes_array[5], (u8)bytes_array[6], (u8)bytes_array[7]);
+		DEBUG("GAgent_MD5Update DATF = %.2X%.2X%.2X%.2X%.2X%.2X%.2X%.2X\n", (u8)bytes_array[data_len-8], (u8)bytes_array[data_len-7], (u8)bytes_array[data_len-6], (u8)bytes_array[data_len-5], (u8)bytes_array[data_len-4], (u8)bytes_array[data_len-3], (u8)bytes_array[data_len-2], (u8)bytes_array[data_len-1]);
+        GAgent_MD5Update(&iapbin_md5_ctx, bytes_array, data_len);
+    }
+
+    GAgent_MD5Final(&iapbin_md5_ctx, iapbin_res_md5);
+	
+	DEBUG("FLASH MD5 = ");
+    for (i=0; i<16; i++) {
+		DEBUG("%.2X", iapbin_res_md5[i]);
+		sprintf((char*)strs_array+i*2, "%.2X", iapbin_res_md5[i]);
+    }
+    DEBUG("\r\n");
+
+	DEBUG("FLASH MD5V2 = %s\n", strs_array);
+#if 1
+    FlashRead_SysParams(PARAM_ID_IAP_MD5, gs_iap_md5, LEN_BYTE_SZ64);
+
+	DEBUG("USER FTP MD5 = %s\n", gs_iap_md5);
+    if (0 == strncmp((const char*)gs_iap_md5, (const char*)strs_array, LEN_BYTE_SZ32)) {
+        return true;
+    } else {
+        return false;
+    }
+#else
+	return true;
+#endif
+}
+
 void ProcessIapRequest(void)
 {
     if (gs_iap_waiting != 1) {
@@ -1232,10 +1341,12 @@ void ProcessIapRequest(void)
     // Erase BAK partition & Initialize MD5
     if (0 == gs_is_erased) {
         gs_is_erased = 1;
-        GAgent_MD5Init(&g_ftp_md5_ctx);
+        // GAgent_MD5Init(&g_ftp_md5_ctx);
 
-        FlashErase_LargePage(FLASH_PAGE_BAK, FLASH_BASE_BAK);// SIZE: 0xE000
-        FlashErase_LargePage(FLASH_PAGE_BAK+1, 0);// SIZE: 0x10000
+		if (0 == gs_ftp_sum_got) {
+			FlashErase_LargePage(FLASH_PAGE_BAK, FLASH_BASE_BAK);// SIZE: 0xE000
+			FlashErase_LargePage(FLASH_PAGE_BAK+1, 0);// SIZE: 0x10000
+		}
     }
 
     // ----------------
@@ -1263,6 +1374,9 @@ void ProcessIapRequest(void)
 #if 1
 		if (0 == gs_ftp_sum_got) {
 			ftp_len_per = 0x200;// Intr Vector
+			FlashWrite_SysParams(PARAM_ID_IAP_FLAG, (u8*)IAP_REQ_RN, 4);
+			FlashWrite_SysParams(PARAM_ID_RSVD_U3, (u8*)gs_iap_file, strlen((const char*)gs_iap_file));
+			FlashWrite_SysParams(PARAM_ID_IAP_MD5, (u8*)gs_iap_md5, 32);
 		} else {
 			ftp_len_per = 0x400;// 1024
 		}
@@ -1272,6 +1386,10 @@ void ProcessIapRequest(void)
         got_size = BG96FtpGetData(gs_ftp_offset, ftp_len_per, gs_iap_buf, gs_iap_file);
 
         if (got_size > 0) {
+            u8 j = 0;
+            u32 tmp_value = 10;
+            u8 num_count = 0;
+            u8 iap_size_str[8] = {0};
             u16 flash_page = FLASH_PAGE_BAK;// 0x2,2000
             u32 flash_offset = FLASH_BASE_BAK;
 
@@ -1280,9 +1398,7 @@ void ProcessIapRequest(void)
             gs_ftp_offset += got_size;
             DEBUG("gs_ftp_offset = %ld\n", gs_ftp_offset);
 #if 1
-            GAgent_MD5Update(&g_ftp_md5_ctx, gs_iap_buf, got_size);
-
-#if 0
+#if 1
             PrintFtpBuffer();
 #endif
 
@@ -1304,7 +1420,9 @@ void ProcessIapRequest(void)
                     break;
                 }
             }
-            
+
+			// GAgent_MD5Update(&g_ftp_md5_ctx, g_ftp_buf+j, got_size);
+
             for(i=0;i<(got_size/4);i++)
             {
                 if ((i*4+2) >= got_size) {
@@ -1321,6 +1439,8 @@ void ProcessIapRequest(void)
                 dat[i].HighLowUINT16s.LowWord += (u8)g_ftp_buf[j+i*4+0];
             }
 #else
+			// GAgent_MD5Update(&g_ftp_md5_ctx, gs_iap_buf, got_size);
+
             for(i=0;i<(got_size/4);i++)
             {
                 if ((i*4+2) >= got_size) {
@@ -1352,28 +1472,51 @@ void ProcessIapRequest(void)
             }
 #endif
             // DEBUG("flash_offset = %.8lX, %ld\n", flash_offset, flash_offset);
-            DEBUG("WR flash_address = 0x%X-%.4lX\n", flash_page, (flash_offset % 0x10000));
+            DEBUG("Before WR flash_address = 0x%X-%.4lX\n", flash_page, (flash_offset % 0x10000));
             FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, ftp_len_per/4);
             // FlashWrite_InstructionWords(flash_page, (u16)flash_offset, dat, 256);
-
+			
+			DEBUG("After WR flash_address = 0x%X-%.4lX\n", flash_page, (flash_offset % 0x10000));
             gs_ftp_sum_got += got_size;
+			
+            tmp_value = gs_ftp_sum_got;
+            do {
+                tmp_value /= 10;
+                num_count++;
+            } while(tmp_value != 0);
+
+            for (i=0; i<num_count; i++) {
+                tmp_value = 1;
+                for (j=0; j<(num_count-i-1); j++) {
+                    tmp_value *= 10;
+                }
+                iap_size_str[i] = '0' + ((gs_ftp_sum_got/tmp_value)%10);
+            }
+
+            DEBUG("iap_got_size_str = %s\n", iap_size_str);
+
+            FlashWrite_SysParams(PARAM_ID_RSVD_U4, (u8*)iap_size_str, 6);
         }
 
         if ((gs_ftp_offset>=iap_total_size) && (iap_total_size!=0)) {
             u8 j = 0;
+			u32 inwd_count = 0;
             u32 tmp_value = 10;
             u8 num_count = 0;
             u8 iap_size_str[8] = {0};
 
             gs_iap_waiting = 0;
-            GAgent_MD5Final(&g_ftp_md5_ctx, gs_ftp_res_md5);
+
+			inwd_count = ((iap_total_size+BINA_DATA_PER_INWD-1) / BINA_DATA_PER_INWD);
+#if 0
+            // GAgent_MD5Final(&g_ftp_md5_ctx, gs_ftp_res_md5);
 
             DEBUG("FTP MD5 = ");
             for (i=0; i<16; i++) {
-                DEBUG("%.2X", gs_ftp_res_md5[i]);
+                // DEBUG("%.2X", gs_ftp_res_md5[i]);
             }
             DEBUG("\r\n");
-
+#endif
             DEBUG("FTP DW Finished...\n");
 
             tmp_value = iap_total_size;
@@ -1391,12 +1534,17 @@ void ProcessIapRequest(void)
             }
 
             DEBUG("iap_size_str = %s\n", iap_size_str);
-#if 1
-            FlashWrite_SysParams(PARAM_ID_IAP_FLAG, (u8*)IAP_REQ_ON, 4);
-            FlashWrite_SysParams(PARAM_ID_RSVD_U1, (u8*)iap_size_str, 6);
 
-            DEBUG("Before APP Reset...\n");
-            asm("reset");
+			if (true == CheckIapMd5(iap_total_size, inwd_count)) {
+#if 1
+				FlashWrite_SysParams(PARAM_ID_IAP_FLAG, (u8*)IAP_REQ_ON, 4);
+				FlashWrite_SysParams(PARAM_ID_RSVD_U1, (u8*)iap_size_str, 6);
+
+				DEBUG("Before APP Reset...\n");
+				asm("reset");
+			} else {
+				DEBUG("IAP MD5 validate failed...\n");
+			}
 #endif
         }
     }

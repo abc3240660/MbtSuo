@@ -12,172 +12,171 @@
 
 #include "008_RingBuffer.h"
 
-void ringbuffer_init(ringbuffer_t *rb, char *buf, unsigned int len)
+/****
+    * @brief init ringbuffer
+    * @param ringbufer
+    * @param
+    * @param input buf length
+    * @retval void
+    */
+void ringbuffer_init(ringbuffer_t *rbuf,char * buf,unsigned int len)
 {
-    if(NULL == rb)
+    rbuf->head = buf;
+    rbuf->buflen = len;
+    rbuf->readpos = 0;
+    rbuf->writepos = 0;
+    rbuf->roundsum = 0;
+}
+
+/****
+    * @brief write ringbufer
+    * @param
+    * @param
+    * @param
+    * @retval write length
+    */
+int ringbuffer_write(ringbuffer_t* ringbuffer, char* buff, int len)
+{
+    int i = 0;
+
+    for (i = 0; i < len; i++)
     {
-		DEBUG("ERR: %s null pointer found.\n", __func__);
-        return;
+        ringbuffer->head[ringbuffer->writepos] = buff[i];
+        ringbuffer->writepos++;
+        if (ringbuffer->writepos >= ringbuffer->buflen)
+        {
+            ringbuffer->writepos = 0;
+            ringbuffer->roundsum = 1;
+        }
+    }
+    return len;
+}
+
+/****
+    * @brief write single byte to ringbufer
+    * @param
+    * @param
+    * @param
+    * @retval write length
+    */
+int ringbuffer_write_byte(ringbuffer_t* ringbuffer, char buf)
+{
+    ringbuffer->head[ringbuffer->writepos] = buf;
+    ringbuffer->writepos++;
+    if (ringbuffer->writepos >= ringbuffer->buflen)
+    {
+        ringbuffer->writepos = 0;
+        ringbuffer->roundsum = 1;
+    }
+    return 0;
+}
+
+/****
+    * @brief read ringbuffer
+    * @param
+    * @param
+    * @retval read byte length
+    */
+int ringbuffer_read(ringbuffer_t* ringbuffer, char* buff)
+{
+    int len = 0;
+
+    while ((ringbuffer->roundsum > 0) || (ringbuffer->readpos < ringbuffer->writepos))
+    {
+        buff[len] = ringbuffer->head[ringbuffer->readpos];
+        ringbuffer->readpos++;
+        len++;
+        if (ringbuffer->readpos >= ringbuffer->buflen)
+        {
+            ringbuffer->readpos = 0;
+            ringbuffer->roundsum = 0;
+        }
+
+    }
+    return len;
+}
+
+/****
+    * @brief Read a certain length
+    * @param
+    * @param
+    * @param    length
+    * @retval read byte length
+    */
+int ringbuffer_read_len(ringbuffer_t* ringbuffer, char* buff, int len)
+{
+    int templen = 0,i = 0;
+    int useData = ringbuffer_buf_use_size(ringbuffer);
+    int datalen = 0;
+    datalen = useData >= len ? len : useData;
+
+    while (((ringbuffer->roundsum > 0) || (ringbuffer->readpos < ringbuffer->writepos)) && datalen > 0)
+    {
+        buff[i] = ringbuffer->head[ringbuffer->readpos];
+        ringbuffer->readpos++;
+        i++;
+        if (ringbuffer->readpos >= ringbuffer->buflen)
+        {
+            ringbuffer->readpos = 0;
+            ringbuffer->roundsum = 0;
+        }
+        datalen--;
     }
 
-    rb->rbBuff = (u8*)buf;
-    rb->rbHead = rb->rbBuff;
-    rb->rbTail = rb->rbBuff;
+    return templen;
+}
 
-    rb->rbCapacity = len;
-
+/****
+    * @brief clear ringbuffer
+    * @param
+    */
+void ringbuffer_clear(ringbuffer_t* ringbuffer)
+{
+    ringbuffer->readpos = 0;
+    ringbuffer->writepos = 0;
+    ringbuffer->roundsum = 0;
     return;
 }
 
-void ringbuffer_clear(ringbuffer_t* rb)
+/****
+    * @brief bytes used
+    * @param
+    * @retval used length
+    */
+unsigned int ringbuffer_buf_use_size(ringbuffer_t* ringbuffer)
 {
-    if(NULL == rb)
+    if (ringbuffer->writepos >= ringbuffer->readpos)
     {
-		DEBUG("ERR: %s null pointer found.\n", __func__);
-        return;
-    }
-
-    rb->rbHead = rb->rbBuff;
-    rb->rbTail = rb->rbBuff;
-
-	if (rb->rbCapacity > 0) {
-		memset(rb->rbBuff, 0, rb->rbCapacity);
-	}
-
-	return;
-}
-
-u32 ringbuffer_capacity(ringbuffer_t *rb)
-{
-    if(NULL == rb)
-    {
-		DEBUG("ERR: %s null pointer found.\n", __func__);
-        return 0;
-    }
-
-    return rb->rbCapacity;
-}
-
-unsigned int ringbuffer_can_read(ringbuffer_t *rb)
-{
-    if(NULL == rb)
-    {
-		DEBUG("ERR: %s null pointer found.\n", __func__);
-        return 0;
-    }
-
-    if (rb->rbHead == rb->rbTail)
-    {
-        return 0;
-    }
-
-    if (rb->rbHead < rb->rbTail)
-    {
-        return rb->rbTail - rb->rbHead;
-    }
-
-    return ringbuffer_capacity(rb) - (rb->rbHead - rb->rbTail);
-}
-
-u32 ringbuffer_can_write(ringbuffer_t *rb)
-{
-    if(NULL == rb)
-    {
-		DEBUG("ERR: %s null pointer found.\n", __func__);
-        return 0;
-    }
-
-    return ringbuffer_capacity(rb) - ringbuffer_buf_use_size(rb);
-}
-
-unsigned int ringbuffer_buf_use_size(ringbuffer_t* rb)
-{
-	return ringbuffer_can_read(rb);
-}
-
-int ringbuffer_read_len(ringbuffer_t* rb, char* data, int count)
-{
-    u32 copySz = 0;
-
-    if((NULL == rb)||(NULL == data))
-    {
-		DEBUG("ERR: %s null pointer found.\n", __func__);
-        return 0;
-    }
-
-    if (rb->rbHead < rb->rbTail)
-    {
-        copySz = min(count, ringbuffer_buf_use_size(rb));
-        memcpy(data, rb->rbHead, copySz);
-        rb->rbHead += copySz;
-        return copySz;
-    }
-    else
-    {
-        if (count < ringbuffer_capacity(rb)-(rb->rbHead - rb->rbBuff))
+        if (ringbuffer->roundsum)
         {
-            copySz = count;
-            memcpy(data, rb->rbHead, copySz);
-            rb->rbHead += copySz;
-            return copySz;
+            ringbuffer->readpos = ringbuffer->writepos;
+            return ringbuffer->buflen;
         }
         else
         {
-            copySz = ringbuffer_capacity(rb) - (rb->rbHead - rb->rbBuff);
-            memcpy(data, rb->rbHead, copySz);
-            rb->rbHead = rb->rbBuff;
-            copySz += ringbuffer_read_len(rb, (char*)data+copySz, count-copySz);
-            return copySz;
-        }
-    }
-}
-
-u32 ringbuffer_write_array(ringbuffer_t *rb, const void *data, u32 count)
-{
-    u32 tailAvailSz = 0;
-
-    if((NULL == rb)||(NULL == data))
-    {
-		DEBUG("ERR: %s null pointer found.\n", __func__);
-        return 0;
-    }
-
-    if (count >= ringbuffer_can_write(rb))
-    {
-		DEBUG("ERR: %s buffer is not enough.\n", __func__);
-        return 0;
-    }
-
-    if (rb->rbHead <= rb->rbTail)
-    {
-        tailAvailSz = ringbuffer_capacity(rb) - (rb->rbTail - rb->rbBuff);
-        if (count <= tailAvailSz)
-        {
-            memcpy(rb->rbTail, data, count);
-            rb->rbTail += count;
-            if (rb->rbTail == rb->rbBuff+ringbuffer_capacity(rb))
-            {
-                rb->rbTail = rb->rbBuff;
-            }
-            return count;
-        }
-        else
-        {
-            memcpy(rb->rbTail, data, tailAvailSz);
-            rb->rbTail = rb->rbBuff;
-
-            return tailAvailSz + ringbuffer_write_array(rb, (char*)data+tailAvailSz, count-tailAvailSz);
+            return ringbuffer->writepos - ringbuffer->readpos;
         }
     }
     else
     {
-        memcpy(rb->rbTail, data, count);
-        rb->rbTail += count;
-        return count;
+        if (ringbuffer->roundsum)
+        {
+            return ringbuffer->buflen - (ringbuffer->readpos - ringbuffer->writepos);
+        }
+        else
+        {
+            ringbuffer->writepos = ringbuffer->readpos;
+            return 0;
+        }
     }
 }
 
-int ringbuffer_write_byte(ringbuffer_t* rb, char buf)
+/****
+    * @brief bytes unused
+    * @param
+    * @retval unused length 
+    */
+unsigned int ringbuffer_buf_free_size(ringbuffer_t* ringbuffer)
 {
-	return (int)ringbuffer_write_array(rb, &buf, 1);
+    return (unsigned int)(ringbuffer->buflen - ringbuffer_buf_use_size(ringbuffer));
 }

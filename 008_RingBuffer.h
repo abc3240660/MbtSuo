@@ -20,29 +20,28 @@ extern "C"{
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 #include <p24fxxxx.h>
-#include "015_Common.h"
 
-#define min(a, b) (a)<(b)?(a):(b)                   ///< Calculate the minimum value
+typedef struct
+{
+    char* head;
+    unsigned int buflen;
+    unsigned int readpos;
+    unsigned int writepos;
+    int roundsum;
+} ringbuffer_t;
 
-#pragma pack(1)
-typedef struct {
-    u8  *rbHead;
-    u8  *rbTail;
-    u8  *rbBuff;
-    unsigned int rbCapacity;
-}ringbuffer_t;
-#pragma pack()
-
-void ringbuffer_init(ringbuffer_t *rb, char *buf, unsigned int len);
-int ringbuffer_write_byte(ringbuffer_t* rb, char buf);
-int ringbuffer_read_len(ringbuffer_t* rb, char* data, int count);
-void ringbuffer_clear(ringbuffer_t* rb);
-unsigned int ringbuffer_buf_use_size(ringbuffer_t* rb);
+void ringbuffer_init(ringbuffer_t *rbuf,char * buf,unsigned int len);
+int ringbuffer_write(ringbuffer_t* ringbuffer, char* buff,int len);
+int ringbuffer_write_byte(ringbuffer_t* ringbuffer, char buf);
+int ringbuffer_read(ringbuffer_t* ringbuffer, char* buff);
+int ringbuffer_read_len(ringbuffer_t* ringbuffer, char* buff,int len);
+void ringbuffer_clear(ringbuffer_t* ringbuffer);
+unsigned int ringbuffer_buf_use_size(ringbuffer_t* ringbuffer);
+unsigned int ringbuffer_buf_free_size(ringbuffer_t* ringbuffer);
 
 #ifdef __cplusplus
 }
-#endif
-	
+#endif //__cplusplus
+
 #endif //RINGBUFFER_H

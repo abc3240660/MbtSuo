@@ -26,9 +26,10 @@ u16 FlashRead_InstructionWordsToByteArray(u16 flash_page, u16 flash_offset, u16 
         flashAddr.Uint16Addr.HighAddr = flash_page;
         flashAddr.Uint16Addr.LowAddr = flash_offset+i*2;
 
-        pdata[3*i+0]=InnerFlash_ReadInstructionLow(flashAddr);
-        pdata[3*i+1]=InnerFlash_ReadInstructionLow(flashAddr)>>8;
-        pdata[3*i+2]=InnerFlash_ReadInstructionHigh(flashAddr);
+        pdata[4*i+0]=InnerFlash_ReadInstructionLow(flashAddr);
+        pdata[4*i+1]=InnerFlash_ReadInstructionLow(flashAddr)>>8;
+        pdata[4*i+2]=InnerFlash_ReadInstructionHigh(flashAddr);
+		pdata[4*i+3]=0;
     }
 
     return 0;

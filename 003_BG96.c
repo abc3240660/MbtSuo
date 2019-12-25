@@ -1639,6 +1639,11 @@ u16 BG96FtpGetData(u32 offset, u32 length, u8* iap_buf, u8* iap_file)
 
     if (size_pos != 0) {
         size_got = atoi(size_str);
+        
+        if (size_got > LEN_BYTE_SZ1024) {
+            size_got = LEN_BYTE_SZ1024;
+        }
+
         memcpy((char*)iap_buf, (const char*)rxBuffer, size_got);
     } else {
 		gs_ftp_sta = 0;

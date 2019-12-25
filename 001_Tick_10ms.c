@@ -158,7 +158,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
         MobitTimesT1 = 0;
     }
 
-    if (0 == MobitTimesT1%10000) {
+    if (0 == MobitTimesT1%1000) {
         // DEBUG("T1 10s...\n");
     }
 
@@ -313,6 +313,8 @@ void __attribute__((__interrupt__, no_auto_psv)) _T3Interrupt(void)
     if(MobitTimesT3 > 10000000UL){
         MobitTimesT3 = 0;
     }
+
+    ClrWdt();
 
     while (1) {
         // process till RX empty for a while
