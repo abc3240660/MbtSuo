@@ -393,7 +393,7 @@ int main(void)
                 flag_led = 1;
                 SetLedsStatus(MAIN_LED_B, LED_ON);
                 g_led_times=3000;
-                g_ring_times=g_led_times/10;
+                //g_ring_times=g_led_times/10;
             }
             if (0 == start_time_hbeat) {
                 start_time_hbeat = GetTimeStamp();
