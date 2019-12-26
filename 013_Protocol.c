@@ -419,6 +419,7 @@ void ParseMobitMsg(char* msg)
                     memset(g_svr_port, 0, LEN_NET_TCP);
                     strncpy((char*)g_svr_port, split_str, LEN_NET_TCP);
                     DEBUG("g_svr_port = %s\n", g_svr_port);
+                    FlashWrite_SysParams(PARAM_ID_SVR_PORT, (u8*)g_svr_port, strlen((const char*)g_svr_port));
                 } else if (5 == index) {
                     memset(g_svr_apn, 0, LEN_NET_TCP);
                     strncpy((char*)g_svr_apn, split_str, LEN_NET_TCP);
