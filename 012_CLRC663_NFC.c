@@ -290,12 +290,12 @@ u8 ReadMobibNFCCard(void)
 		// TODO: Beep? + LEDs? +  OpenLock?
         TcpReadedOneCard(gs_tmp_card_id, gs_tmp_serial_nr);
         //???????
-        g_ring_times=1;
+        g_ring_times=2;
        
         if (IsDuringBind()) {
             //?????????
             g_led_times=2000;
-            g_ring_times=20;
+            g_ring_times=2;
             g_led_always_on=1;
             gs_start_time_nfc = GetTimeStamp();
             index = AddNewMobibCard(gs_tmp_card_id, gs_tmp_serial_nr);

@@ -401,14 +401,34 @@ void ParseMobitMsg(char* msg)
             // below is all SVR CMDs with params
             } else if (IAP_UPGRADE == cmd_type) {
                 if (3 == index) {
-                    gs_iap_waiting = 1;
                     memset(gs_iap_file, 0, LEN_DW_URL);
                     strncpy((char*)gs_iap_file, split_str, LEN_DW_URL);
                     DEBUG("gs_iap_file = %s\n", gs_iap_file);
                 } else if (4 == index) {
-                    memset(gs_iap_md5, 0, LEN_DW_URL);
-                    strncpy((char*)gs_iap_md5, split_str, LEN_DW_URL);
-                    DEBUG("gs_iap_md5 = %s\n", gs_iap_md5);
+					if (32 == strlen(split_str)) {
+						for (i=0; i<32; i++) {
+							if (((split_str[i]>='0')&&(split_str[i]<='9'))||((split_str[i]>='A')&&(split_str[i]<='F'))) {
+								// Valid Char
+							} else {
+								break;// Invalid Char
+							}
+						}
+
+						if (32 == i) {
+							memset(gs_iap_md5, 0, LEN_DW_URL);
+							strncpy((char*)gs_iap_md5, split_str, LEN_DW_URL);
+							DEBUG("gs_iap_md5 = %s\n", gs_iap_md5);
+
+							gs_is_erased = 0;
+							gs_ftp_offset = 0;
+							gs_ftp_sum_got = 0;
+							gs_iap_waiting = 1;
+						} else {
+							DEBUG("MD5 char is invalid: split_str = >>>%s<<<\n", split_str);
+						}
+					} else {
+						DEBUG("MD5 length is invalid: split_str = >>>%s<<<\n", split_str);
+					}
                 }
             } else if (CHANGE_APN == cmd_type) {
                 if (3 == index) {
@@ -419,7 +439,6 @@ void ParseMobitMsg(char* msg)
                     memset(g_svr_port, 0, LEN_NET_TCP);
                     strncpy((char*)g_svr_port, split_str, LEN_NET_TCP);
                     DEBUG("g_svr_port = %s\n", g_svr_port);
-                    FlashWrite_SysParams(PARAM_ID_SVR_PORT, (u8*)g_svr_port, strlen((const char*)g_svr_port));
                 } else if (5 == index) {
                     memset(g_svr_apn, 0, LEN_NET_TCP);
                     strncpy((char*)g_svr_apn, split_str, LEN_NET_TCP);
@@ -1506,6 +1525,9 @@ void ProcessIapRequest(void)
             u8 num_count = 0;
             u8 iap_size_str[8] = {0};
 
+			gs_is_erased = 0;
+			gs_ftp_offset = 0;
+			gs_ftp_sum_got = 0;
             gs_iap_waiting = 0;
 
 			inwd_count = ((iap_total_size+BINA_DATA_PER_INWD-1) / BINA_DATA_PER_INWD);
