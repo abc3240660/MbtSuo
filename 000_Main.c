@@ -321,7 +321,10 @@ int main(void)
                     FlashWrite_SysParams(PARAM_ID_SVR_IP, (u8*)g_svr_ip, strlen((const char*)g_svr_ip));
                     FlashWrite_SysParams(PARAM_ID_SVR_PORT, (u8*)g_svr_port, strlen((const char*)g_svr_port));
                     FlashWrite_SysParams(PARAM_ID_SVR_APN, (u8*)g_svr_apn, strlen((const char*)g_svr_apn));
-                }
+                } else {
+					DEBUG("Connect new IP/PORT failed, reset...\n");
+					asm("reset");
+				}
             }
         }
 
@@ -393,7 +396,7 @@ int main(void)
                 flag_led = 1;
                 SetLedsStatus(MAIN_LED_B, LED_ON);
                 g_led_times=3000;
-                g_ring_times=g_led_times/10;
+                //g_ring_times=g_led_times/10;
             }
             if (0 == start_time_hbeat) {
                 start_time_hbeat = GetTimeStamp();

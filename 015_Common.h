@@ -19,7 +19,7 @@
 #define         SW_Release              1
 
 #define         HW_VER                  "201910041950"
-#define         SW_VER                  "201912251003"
+#define         SW_VER                  "201912301005"
 
 #define         IPL_HIGH                7
 #define         IPL_MID                 5
@@ -239,12 +239,12 @@ typedef struct {
 
 // External OSC
 // #define EXT_OSC_4M_USE 1
-// #define EXT_OSC_20M_USE 1
+#define EXT_OSC_20M_USE 1
 // #define EXT_OSC_NONE_USE 1
 
 #define OSC_32M_USE 1
 
-// #define EXT_CRYSTAL 1
+#define EXT_CRYSTAL 1
 
 #define UART1_MANUAL_DBG 1
 
