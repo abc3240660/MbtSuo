@@ -47,11 +47,11 @@ u16 Uart3_GetSize(void);
 
 
 // for BNO055
+// for BNO055
 void Uart4_Init(void);
-void Uart4_Putc(char ch);
-void Uart4_Clear(void);
-u8 Uart4_Read(u16 postion);
-u16 Uart4_GetSize(void);
+void U4Putc(char ch);
+u16 U4GetSize(void);
+u8 U4Getc();
 
 #ifdef __cplusplus
 }

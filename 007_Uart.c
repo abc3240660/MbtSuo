@@ -20,11 +20,14 @@
 #include "007_Uart.h"
 #include "008_RingBuffer.h"
 
+#define U4BufSize   LEN_BYTE_SZ64
+
 static u16 Uart3_Rx_Len = 0;
 static u8 Uart3_Rx_Buffer[LEN_BYTE_SZ64+1] = {0};
 
-static u16 Uart4_Rx_Len = 0;
-static u8 Uart4_Rx_Buffer[LEN_BYTE_SZ64+1] = {0};
+u8 U4RxBuf[U4BufSize] = {0};
+u8 *pU4Start;
+u8 *pU4End;
 
 static char Uart2_Send_Buf[UART2_BUFFER_MAX_LEN] = {0};
 
@@ -172,26 +175,6 @@ u8 Uart3_Read(u16 postion)
 u16 Uart3_GetSize(void)
 {
     return Uart3_Rx_Len;
-}
-
-void Uart4_Clear(void)
-{
-    Uart4_Rx_Len = 0;
-    memset(Uart4_Rx_Buffer, 0, LEN_BYTE_SZ64);
-}
-
-u8 Uart4_Read(u16 postion)
-{
-    if (postion > Uart4_Rx_Len) {
-        return 0x00;
-    }
-
-    return Uart4_Rx_Buffer[postion];
-}
-
-u16 Uart4_GetSize(void)
-{
-    return Uart4_Rx_Len;
 }
 
 int fputc(int ch,FILE * f)
@@ -368,11 +351,17 @@ bool WaitUartTmpRxIdle(void)
     return true;
 }
 
+/******************************************************************************
+ * UART4 Init
+ *****************************************************************************/
 void Uart4_Init(void)
 {
-    RPOR6bits.RP12R = 0x0015;    //RD11->UART4:U4TX
-    RPINR27bits.U4RXR = 0x0003;    //RD10->UART4:U4RX
+    pU4Start = U4RxBuf;
+    pU4End = U4RxBuf;
 
+    _RP12R = 21;
+    _U4RXR = 3;
+            
     _LATD11 = 1;
     _TRISD10 = 1;
     _TRISD11 = 0;
@@ -386,7 +375,6 @@ void Uart4_Init(void)
 #else// OSC_20M_USE
     U4BRG = 21;
 #endif
-
     _U4TXIP = IPL_DIS;
     _U4RXIP = IPL_HIGH;
     _U4TXIF = 0;
@@ -395,24 +383,94 @@ void Uart4_Init(void)
     _U4RXIE = 1;
 }
 
-void Uart4_Putc(char ch)
+void Uart4_DeInit(void)
 {
+    pU4Start = U4RxBuf;
+    pU4End = U4RxBuf;
+
+    _RP12R = 0;
+    _U4RXR = 0;
+            
+    _LATD11 = 0;
+    _TRISD10 = 0;
+    _TRISD11 = 0;
+
+    U4MODE=0;
+    U4STA = 0;
+
+#ifdef OSC_32M_USE
+    // 4M/(34+1) = 114285
+    U4BRG = 0;
+#else// OSC_20M_USE
+    U4BRG = 21;
+#endif
+    _U4TXIP = IPL_DIS;
+    _U4RXIP = IPL_HIGH;
+    _U4TXIF = 0;
+    _U4RXIF = 0;
+    _U4TXIE = 0;
+    _U4RXIE = 0;
+}
+
+/******************************************************************************
+ * UART4 Send byte
+ *****************************************************************************/
+void U4Putc(char ch) {
     U4TXREG = ch;
-    // DEBUG("TX[%.2X] ", (u8)ch);
-    while(_U4TXIF == 0);
+    while( !_U4TXIF)
+        ;
     _U4TXIF = 0;
 }
 
+/******************************************************************************
+ * UART4 reade data size in circular buffer
+ *****************************************************************************/
+u16 U4GetSize(void) {
+    if (pU4End < pU4Start)
+        return(pU4Start - pU4End);
+    else
+        return(pU4End - pU4Start);
+}
+
+/******************************************************************************
+ * UART4 Read byte from circular buffer
+ *****************************************************************************/
+u8 U4Getc(u8 *data) {
+    int cnt = 100;
+
+    do {
+        if (U4GetSize()) {
+            *data = *(pU4Start++);
+            if (pU4Start > (U4RxBuf+U4BufSize) )
+                pU4Start = U4RxBuf;
+            return 1;
+        }
+        delay_ms_nop(10);
+    } while(cnt--);
+    return 0;
+}
+
+/******************************************************************************
+ * UART4 reset circular buffer pointers
+ *****************************************************************************/
+void U4ResetBuffer(void)
+{
+    pU4Start = pU4End = U4RxBuf;
+}
+
+/******************************************************************************
+ * UART4 ISR
+ *****************************************************************************/
 void __attribute__((__interrupt__,no_auto_psv)) _U4RXInterrupt(void)
 {
-    do {
-
-        if (U4STAbits.OERR) {
-            DEBUG("U4 OEER \n");
-            U4STAbits.OERR = 0;
-        } else {
-            _U4RXIF = 0;
-            Uart4_Rx_Buffer[Uart4_Rx_Len++]=U4RXREG;
-        }
-    } while (U4STAbits.URXDA);
+    if (U4STAbits.OERR) {
+        DEBUG("U4 OEER \n");
+        U4STAbits.OERR = 0;
+    } else {
+        _U4RXIF = 0;    // clear IRQ flag
+        *(pU4End++) = U4RXREG;
+        // if at end of the buffer, go back to start
+        if (pU4End > (U4RxBuf+U4BufSize))
+            pU4End = U4RxBuf;
+    }
 }

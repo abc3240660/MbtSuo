@@ -1259,7 +1259,8 @@ bool SetAutoNetMode(void)
     // 02-LTE CAT M1
     // 03-LTE CAT NB1
     cmd = "+QCFG=\"NWSCANSEQ\",030201,1";
-//    cmd = "+QCFG=\"NWSCANSEQ\",02,1";
+	// cmd = "+QCFG=\"NWSCANSEQ\",02,1";
+	cmd = "+QCFG=\"NWSCANSEQ\",01,1";
 
     if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
         return false;
@@ -1268,8 +1269,8 @@ bool SetAutoNetMode(void)
     // 0-Automatic
     // 1-GSM Only
     // 3-LTE Only
-//   cmd = "+QCFG=\"NWSCANMODE\",1,1";
-   cmd = "+QCFG=\"NWSCANMODE\",0,1";
+   cmd = "+QCFG=\"NWSCANMODE\",1,1";
+//   cmd = "+QCFG=\"NWSCANMODE\",0,1";
 //   cmd = "+QCFG=\"NWSCANMODE\",3,1";
 
    if (SendAndSearch(cmd, RESPONSE_OK, 2) != SUCCESS_RESPONSE) {
@@ -1719,85 +1720,80 @@ void GetGPSInfo(char* gnss_part)
 }
 
 /////////////////////////////////// BG96 Common ///////////////////////////////////
-void ResetBG96Module(void)
-{
-    _ANSB11 = 0;
-
-    GPIOx_Config(BANKB, 11, OUTPUT_DIR);// RESET
-    GPIOx_Output(BANKB, 11, 0);
-    delay_ms(100);
-    GPIOx_Output(BANKB, 11, 1);
-    delay_ms(300);
-    GPIOx_Output(BANKB, 11, 0);
-}
-
-void PowerOffBG96Module(void)
-{
-    _ANSB9 = 0;
-
-    GPIOx_Config(BANKB, 9, OUTPUT_DIR);// PWRKEY
-    GPIOx_Output(BANKB, 9, 0);// default SI2302 HIGH
-    delay_ms(100);
-    GPIOx_Output(BANKB, 9, 1);// MCU High -> SI2302 Low  -> PowerOff
-    delay_ms(800);// SI2302 Low >= 0.65s :  On -> Off
-    GPIOx_Output(BANKB, 9, 0);// release to default SI2302 HIGH
-}
-
-void PowerOnBG96Module(void)
-{
-    _ANSB9 = 0;
-
-    GPIOx_Config(BANKB, 9, OUTPUT_DIR);// PWRKEY
-    GPIOx_Output(BANKB, 9, 0);// default SI2302 HIGH
-    delay_ms(100);
-    GPIOx_Output(BANKB, 9, 1);// MCU High -> SI2302 Low  -> PowerOn
-    delay_ms(600);// SI2302 Low >= 0.5s :  Off -> On
-    GPIOx_Output(BANKB, 9, 0);// release to default SI2302 HIGH
-}
-
-static bool InitModule(void)
+void BG96_Config_HW(void)
 {
     u8 i = 0;
-
+    
     _ANSB3 = 0;
-//    IOCPDB |= (1<<3);
-//    GPIOx_Config(BANKB, 3, INPUT_DIR);// STATUS
-
     _ANSB8 = 0;
-//    GPIOx_Config(BANKB, 8, OUTPUT_DIR);// AP_READY
-//    GPIOx_Output(BANKB, 8, 0);
+    _ANSB9 = 0;
+    _ANSB11 = 0;
 
-    if (GPIOx_Input(BANKB, 3)) {// default HIGH: Power off
-        DEBUG("BG96 Boot Off -> Power on...\n");
-        PowerOnBG96Module();
-    } else {// Already Power on
-        DEBUG("BG96 Boot On -> Reset...\n");
-        // PowerOffBG96Module();
-        // delay_ms(1000);
-        // PowerOnBG96Module();
+    //GPIOx_Output(BANKB, 11, 1);             // Reset state
+    BG96Reset(BG96_ON);
+    GPIOx_Config(BANKB, 11, OUTPUT_DIR);    // RESET pin
+    //GPIOx_Output(BANKB, 9, 0);              // Power off state
+    BG96Power(BG96_OFF);
+    //BG96Power(BG96_ON);
+    GPIOx_Config(BANKB, 9, OUTPUT_DIR);     // PWRKEY pin
+//    GPIOx_Output(BANKB, 10, 1);              // W_disable
+//    GPIOx_Config(BANKB, 10, OUTPUT_DIR);     //W_disable
+//    GPIOx_Output(BANKB, 8, 1);              // AP_READY
+//    GPIOx_Config(BANKB, 8, OUTPUT_DIR);     //AP_READY
+    BG96Reset(BG96_OFF);
+}
+
+void PowerPulse(u16 ms) {
+    BG96Power(BG96_ON);
+    delay_ms(ms);
+    BG96Power(BG96_OFF);
+}
+
+void ResetBG96Module(void)
+{
+    BG96Reset(BG96_ON);
+    delay_ms(300);
+    BG96Reset(BG96_OFF);
+}
+
+void PowerOffBG96Module(bool wait)
+{
+    int cnt = 20;
+ 
+    PowerPulse(OffPulse);
+
+    if (wait) {
+        do {
+            delay_ms_nop(100);
+        } while( (!BG96PwrStat()) && --cnt);
+        DEBUG("%s\n", cnt ? "BG96 Power off success" : "BG96 Power off failed");
+    }
+}
+
+
+void PowerOnBG96Module(bool wait)
+{
+    int cnt = 50;
+    
+    if (BG96PwrStat()) {// default HIGH: Power off
+        DEBUG("BG96 Power Off -> Power on...\n");
+        BG96Reset(BG96_OFF);    // Be sure the module is not in reset
+        PowerPulse(OnPulse); //PowerOnBG96Module();
+    } 
+    else {// Already Power on
+        DEBUG("BG96 already power On -> Reset...\n");
         ResetBG96Module();
     }
 
-    for (i=0; i<15; i++) {
-        if (!GPIOx_Input(BANKB, 3)) {// Power on
-            break;
-        }
-
-        delay_ms(1000);
+    if (wait) {
+        do {
+            delay_ms_nop(100);
+        } while(BG96PwrStat() && --cnt);
+    
+        delay_ms_nop(400);      // Delay to be sure the uart is activated     
+        DEBUG("%s\n", cnt ? "BG96 Power on success" : "BG96 Power on failed");
     }
     
-    if (15 == i) {
-        DEBUG("BG96 Power on failed\n");
-    } else {
-        DEBUG("BG96 Power on success\n");
-    }
-
-    return true;
-}
-
-void BG96_PowerUp(void)
-{
-    InitModule();
 }
 
 //******************************************************************************
@@ -1805,23 +1801,10 @@ void BG96_PowerUp(void)
 //******************************************************************************
 void Configure_BG96(void)
 {
-    int trycnt = 2;
-//    bool resultBool = false;
+    // Delay to avoid comm problems after power on
+    delay_ms_nop(200);
+    BG96ATInitialize();
 
-    while(trycnt--) {
-//        resultBool = InitModule();
-//        if(resultBool){
-//            DEBUG("init bg96 success!\r\n");
-//        }else{
-//            DEBUG("init bg96 failure!\r\n");
-//        }
-
-        if (BG96ATInitialize()) {
-            break;
-        }
-
-        delay_ms(1000);
-    }
 }
 
 static u32 ParseFTPFileSize(void)

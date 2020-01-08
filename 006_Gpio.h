@@ -19,6 +19,11 @@
 extern "C" {
 #endif
 
+#define LEDS_OFF    0x00
+#define LED_B       0x01
+#define LED_R       0x02
+#define LED_G       0x04
+
 typedef enum {
     EXTE_LED_B = 1,
     EXTE_LED_G,
@@ -62,7 +67,6 @@ typedef enum {
 void GPIOx_Config(GPIO_BANKx port, u8 pin, GPIO_DIR dir);
 void GPIOx_Output(GPIO_BANKx port, u8 pin, u8 value);
 u8 GPIOx_Input(GPIO_BANKx port, u8 pin);
-void GPIOx_Pull(GPIO_BANKx port, u8 pin, GPIO_PUL value);
 u8 GetLedsStatus(LED_INDEX led_id);
 void SetLedsStatus(LED_INDEX led_id, LED_STA led_sta);
 
@@ -80,6 +84,10 @@ void Beep_High(void);
 
 u8 IsLockSwitchOpen(void);
 void LockSwitch_Init(void);
+
+void MotorSwitch_Init(void);
+u8 IsMotorRunning(void);
+
 
 void Charge_Init(void);
 void Charge_Disable(void);

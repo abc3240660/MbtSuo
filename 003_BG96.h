@@ -19,6 +19,43 @@
 
 #include "015_Common.h"
 
+/////////////////////////////////// Wait Implement ///////////////////////////////////
+// For GPIO Ctrl
+#define LOW 0
+#define HIGH 1
+#define OUTPUT 1
+#define POWKEY_PIN  6
+#define RESET_PIN   5
+
+#define BG96_ON     1
+#define BG96_OFF    0
+#define OnPulse     200
+#define OffPulse    750
+
+#define IMEI_SIZE       20
+#define ICCID_SIZE      25
+#define DATETIME_SIZE   15
+
+
+#define BG96PwrStat() ( GPIOx_Input(BANKB, 3) )  // 1: powered off, 0:powered ON
+#define BG96Power(state)(GPIOx_Output(BANKB, 9, state)) // 1 ON, 0 OFF
+#define BG96Reset(state)(GPIOx_Output(BANKB, 11, state)) // 1 reset, 0 run
+
+typedef struct {
+    u8  imei[IMEI_SIZE];
+    u8  simIccId[ICCID_SIZE];
+    u8  zone[DATETIME_SIZE];
+    u8  time[DATETIME_SIZE];
+} BG96Struct;
+
+typedef struct {
+    bool    powerOn;
+    bool    initialised;
+    bool    registered;
+    bool    connected;
+    bool    socket;
+} BG96StatusStruct;
+
 /////////////////////////////////// BG96 AT CMDs ///////////////////////////////////
 // AT commands response
 static const char RESPONSE_READY[] = "RDY";
@@ -319,8 +356,6 @@ bool BG96EnsureRxOk(void);
 bool QueryNetStatus(void);
 bool SetAutoNetMode(void);
 bool DumpNetCfg(void);
-void ResetBG96Module(void);
-void PowerOffBG96Module(void);
 
 #endif //__BG96_H
 

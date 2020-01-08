@@ -9,26 +9,7 @@
  * @Author       : Damon
  * @Create time  : 03/11/2019
 ******************************************************************************/
-
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <p24fxxxx.h>
-
-#include "001_Tick_10ms.h"
-#include "002_CLRC663.h"
-#include "003_BG96.h"
-#include "004_LB1938.h"
-#include "005_BNO055.h"
-#include "006_Gpio.h"
-#include "007_Uart.h"
-#include "009_System.h"
-#include "012_CLRC663_NFC.h"
-#include "013_Protocol.h"
-#include "015_Common.h"
-#include "016_FlashOta.h"
-#include "017_InnerFlash.h"
-#include "019_ADC0.h"
+#include "000_Main.h"
 
 // static u8 is_mode_nb = 0;
 static u32 start_time_hbeat = 0;
@@ -54,17 +35,33 @@ u8 g_bno055_move = 0;
 
 static void SwitchToLowClock(void)
 {
+    
     _GIE = 0;
+    /*
     __builtin_write_OSCCONH(5);// LPRC
     __builtin_write_OSCCONL(1);// 32MHz change to 32KHz
     while(OSCCONbits.OSWEN);
+    */
     _GIE = 1;
+    
 }
 
 static void SwitchToNormalClock(void)
 {
-    _GIE = 0;
+    /*
+         _GIE = 0;
+    __builtin_write_OSCCONH(0x01);
 
+    // Start clock switching
+   __builtin_write_OSCCONL(0x01);    
+
+    // Wait for Clock switch to occur (COSC = 0b011)
+    while (OSCCONbits.COSC != 0b001);
+
+    // Wait for PLL to lock
+    while(OSCCONbits.LOCK!=1);
+*/
+#if 0
 #ifdef EXT_CRYSTAL
     __builtin_write_OSCCONH(3);// PRIPLL
 #else
@@ -73,7 +70,22 @@ static void SwitchToNormalClock(void)
 
     __builtin_write_OSCCONL(1);// 32KHz change to 32MHz
     while(OSCCONbits.OSWEN);
+#endif
+    /*
+       // Initiate Clock Switch to Primary OSC with PLL (NOSC=0b011)
+    __builtin_write_OSCCONH(0x01);
+
+    // Start clock switching
+    __builtin_write_OSCCONL(0x01);    
+
+    // Wait for Clock switch to occur (COSC = 0b011)
+    while (OSCCONbits.COSC != 0b011);
+
+    // Wait for PLL to lock
+    while(OSCCONbits.LOCK!=1);
+
     _GIE = 1;
+     */
 }
 
 static void EnterToSleep(void)
@@ -146,13 +158,48 @@ int main(void)
 	}
 
     System_Config();
+    BNO055_PowerUp();
+    BoardPowerInit();
+    BoardPower(0);
 
+
+    InitRingBuffers();
+    delay_ms_nop(500);
+    BoardPower(1);
+    LEDs_Init();
+    ADC0_Init();
+    Beep_Init();
+    Charge_Init();
+    LB1938_Init();
+    LockSwitch_Init();
+   
+    _SWDTEN = 1;// wait 8.192s
+    //?????
+    SetLedsStatus(MAIN_LED_G, LED_ON);
+    g_led_times=3000;
+
+    CLRC663_PowerUp();
+
+    gs_bg96_sta = 0;
     Uart1_Init();
-    Uart2_Init();
-    Configure_Tick1();
-
-    delay_ms(1000);
+	Uart3_Init();
+    Uart4_Init();
+#ifdef BG96COMM
+	Uart2_Init();
+    BG96_Config_HW();
+#endif
     DEBUG("Test%s Application running...\r\n", SW_VER);
+
+    Configure_Tick1();
+    Configure_Tick2();
+    Configure_Tick3();
+
+#ifdef BG96COMM
+    PowerOnBG96Module(false);
+#endif
+    
+    BNO055_init();
+
 
 #if 0	
 	if (1 == wdt_reset) {
@@ -190,32 +237,6 @@ int main(void)
 		}
 	}
 #endif
-
-    InitRingBuffers();
-    BG96_PowerUp();
-
-    LEDs_Init();
-    ADC0_Init();
-    Beep_Init();
-    Charge_Init();
-    LB1938_Init();
-    LockSwitch_Init();
-
-    _SWDTEN = 1;// wait 8.192s
-    Configure_Tick2();
-    Configure_Tick3();
-    //?????
-    SetLedsStatus(MAIN_LED_G, LED_ON);
-    g_led_times=3000;
-
-    CLRC663_PowerUp();
-
-    gs_bg96_sta = 0;
-
-    Uart3_Init();
-    Uart4_Init();
-    
-    BNO055_init();
 
 #if 1
     // Write params into flash when the first time boot
@@ -565,6 +586,8 @@ int main(void)
             }
 
             if (1 == gs_bg96_sta) {
+				// SetAutoNetMode();
+
                 trycnt++;
                 if (QueryNetStatus()) {
                     gs_bg96_sta = 2;
@@ -575,7 +598,7 @@ int main(void)
             if (trycnt >= 100) {
                 trycnt = 0;
                 SetAutoNetMode();
-                BG96_PowerUp();
+                PowerOnBG96Module();
                 // asm("reset");
             }
         }

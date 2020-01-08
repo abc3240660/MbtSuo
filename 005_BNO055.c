@@ -20,49 +20,36 @@
 #include "007_Uart.h"
 #include "006_Gpio.h"
 
+
+#define BNO055StartByte     0xAA
+#define BNO055Read          0x01
+#define BNO055Write         0x00
+#define BNO055WriteAck      0xEE
+#define BNO055ReadAck       0xBB
+#define BNO055WriteSuccess  0x01
+#define BNO055ChipId        0xA0
+
+enum ErrCodes {
+    ErrNo                   = 0x0000,
+    ErrCommTo               = 0x0001,
+    ErrReadFail             = 0x0002,
+    ErrWriteFail            = 0x0003,
+    ErrRegmapInvalidAddress = 0x0004,
+    ErrRegmapWriteDisabled  = 0x0005,
+    ErrWrongStartByte       = 0x0006,
+    ErrBusOverRun           = 0x0007,
+    ErrMaxLength            = 0x0008,
+    ErrMinLength            = 0x0009,
+    ErrReceiveCharTo        = 0x000A,
+    ErrChipId               = 0x000B,
+};
+
 static u8 cur_pos = 0;
 
 static u8 bno055_int_flag = 0;
 static u8 bno_send_buf[LEN_BYTE_SZ64+1] = {0};
 
-u8 GetBNOIntrFlag(void)
-{
-    return bno055_int_flag;
-}
 
-void ClearBNOIntrFlag(void)
-{
-    bno055_int_flag = 0;
-}
-
-void __attribute__ ((weak)) EX_INT1_CallBack(void)
-{
-    // DEBUG("!!!!!!!!!!!!!!!!!!!!!!!INT occur \n");
-    bno055_int_flag = 1;
-}
-
-void __attribute__ ( ( interrupt, no_auto_psv ) ) _INT1Interrupt(void)
-{
-    EX_INT1_CallBack();
-
-    IFS1bits.INT1IF = 0;// Clear INT Flag
-}
-
-void __attribute__ ( ( interrupt, no_auto_psv ) ) _INT2Interrupt(void)
-{
-    IFS1bits.INT2IF = 0;// Clear INT Flag
-}
-
-void ExtIntr_Initialize(void)
-{
-    _TRISD0 = 1;
-    RPINR0bits.INT1R = 11;// RD0->EXT_INT:INT1
-
-    IPC5bits.INT1IP = IPL_MID;
-    IFS1bits.INT1IF = 0;// Clear INT Flag
-    INTCON2bits.INT1EP = 0;// Rise Edge
-    IEC1bits.INT1IE = 1;// Enable INT1 Interrupt
-}
 
 void bno_055_delay_ms(u32 ms)
 {
@@ -71,6 +58,7 @@ void bno_055_delay_ms(u32 ms)
 
 void bno055_send_chars(u8 *data, int len)
 {
+#if 0
     u16 i = 0;
 
     if (NULL == data) {
@@ -81,16 +69,20 @@ void bno055_send_chars(u8 *data, int len)
         bno_055_delay_ms(20);
         Uart4_Putc(data[i]);
     }
+#endif
 }
 
 void bno055_reve_buff_clear(void)
 {
+#if 0
 	cur_pos = 0;
 	Uart4_Clear();
+#endif
 }
 
 u8 bno055_getc_from_reve_buff(void)
 {
+#if 0
     u8 try_cnt = 20;
     do {
 		if (Uart4_GetSize() > cur_pos) {
@@ -101,57 +93,124 @@ u8 bno055_getc_from_reve_buff(void)
     } while (--try_cnt);
 
     return 0xFF;
+#endif
 }
+
+
+
+
 
 static u16 bno055_write_byte(u8 reg_addr, u8 reg_data)
 {
+    u8 txbuf[5] = { 0xAA, 0x00, reg_addr, 0x01, reg_data };
+    u8 onebyte;
+    int i;
 
-    u8 onebyte = 0;
+    //send command
+    for (i=0; i<5; i++)
+        U4Putc(txbuf[i]);
 
-	bno055_reve_buff_clear();
-    memset(bno_send_buf, 0, LEN_BYTE_SZ64);
-
-    bno_send_buf[0] = 0xAA;
-    bno_send_buf[1] = 0x00;// WR
-    bno_send_buf[2] = reg_addr;
-    bno_send_buf[3] = 0x01;// LEN
-    bno_send_buf[4] = reg_data;
-
-    // send data
-    bno055_send_chars(bno_send_buf, 5);
-
-    // wait
-    bno_055_delay_ms(20);
-    onebyte = bno055_getc_from_reve_buff();
-
-    if (0xEE == onebyte) {// NG ack response
-        if (reg_addr != BNO055_SYS_TRIGGER) {
-            onebyte = bno055_getc_from_reve_buff();
-            if (onebyte != 0x01) {// 0x01 - WRITE_SUCCESS
-                DEBUG("write failure code: 0x%X\r\n", onebyte);
-                return 1;
+    //Get response
+    if ( U4Getc(&onebyte) ) {
+        if (onebyte == 0xEE ) {
+            // ACK response
+            if (reg_addr != BNO055_SYS_TRIGGER) {
+                if ( U4Getc(&onebyte) ) {
+                    if (onebyte != 0x01) {
+                        DEBUG("write bytes failure code, expected 0x01: 0x%X\r\n", onebyte);
+                        return 1;
+                    }
+                    return 0;
+                }
+                else {
+                    DEBUG("receive timeout\r\n");
+                    return 1;
+                }
+            }
+            else {
+                if ( U4Getc(&onebyte) ) {
+                    if (onebyte != 0x01) {
+                        DEBUG("write bytes failure code expected 0x01 (BNO055_SYS_TRIGGER): 0x%X\r\n", onebyte);
+                        return 1;
+                    }
+                    if (U4GetSize()) {
+                        if ( !U4Getc(&onebyte) ) {
+                            DEBUG("receive timeout\r\n");
+                            return 1;
+                        }
+                    }
+                }
+            return 0;
             }
         }
-    } else {// invalid ack
+        // invalid ack
         DEBUG("receive invalid ack header: 0x%X\r\n", onebyte);
         return 1;
     }
-
-    return 0;
+    DEBUG("receive timeout\r\n");
+    return 1;
 }
 
-static u16 bno055_write_bytes(u8 reg_addr, u8 *p_in, u8 len)
+
+static u8 bno055_read_byte(u8 reg_addr)
+{
+    u8 onebyte = 0;
+    u8 txbuf[4] = { 0xAA, 0x01, reg_addr, 0x01 };
+    int i;
+
+    //send command
+    for (i=0; i<4; i++)
+        U4Putc(txbuf[i]);
+    
+    //Get response
+    if ( U4Getc(&onebyte) ) {
+        if (onebyte == 0xBB) {
+            //ACK received
+            if ( U4Getc(&onebyte) ) {
+                if (onebyte != 0x01) {// length NG
+                    DEBUG("receive data lenght is ng\r\n");
+                    return 0;
+                }
+                if (U4Getc(&onebyte)) {
+                    return(onebyte);
+                }
+                else {
+                    DEBUG("receive timeout\r\n");
+                    return 1;
+                }
+            }
+            else {
+                DEBUG("receive timeout\r\n");
+                return 1;
+            }
+        }
+        else if (onebyte == 0xEE ) {
+            // NACK received
+            if ( U4Getc(&onebyte) ) {
+                DEBUG("read failure code: 0x%X\r\n", onebyte);
+            }
+            else {
+                DEBUG("receive timeout\r\n");
+                return 1;
+            }
+        }
+    }
+    else {
+        DEBUG("receive timeout\r\n");
+        return 1;
+    }
+}
+
+static u16 bno055_write_bytes(u8 reg_addr, u8 *data, u8 len)
 {
     u16 i = 0;
     u8 onebyte = 0;
+    u8 txbuf[] = { 0xAA, 0x00, reg_addr, len };
 
-	bno055_reve_buff_clear();
-    if ((!p_in) || (len<=0)) {
+    if ((!data) || (len<=0))
         return 1;
-    }
 
-    memset(bno_send_buf, 0, LEN_BYTE_SZ64);
-
+#if 0
     bno_send_buf[0] = 0xAA;
     bno_send_buf[1] = 0x00;// WR
     bno_send_buf[2] = reg_addr;
@@ -160,12 +219,46 @@ static u16 bno055_write_bytes(u8 reg_addr, u8 *p_in, u8 len)
     for (i=0; i<len; i++) {
         bno_send_buf[4+i] = p_in[i];
     }
-
+#endif 
+    
+    // send command
+    for (i=0;i<4;i++)
+        U4Putc(txbuf[i]);
     // send data
-    bno055_send_chars(bno_send_buf, len+4);
+    for (i=0;i<len;i++)
+        U4Putc(*data++);
+//        bno055_send_chars(bno_send_buf, len+4);
+    //Get response
+    if ( U4Getc(&onebyte) ) {
+        if (onebyte == 0xEE ) {
+            // ACK response
+            if ( U4Getc(&onebyte) ) {
+                if (onebyte != 0x01) {
+                    DEBUG("write byte failure code expected 0x01: 0x%X\r\n", onebyte);
+                    return 1;
+                }
+                else {
+                    DEBUG("receive timeout\r\n");
+                    return 1;
+                }
+            }
+        }
+        else {// invalid ack
+            DEBUG("receive invalid ack header: 0x%X\r\n", onebyte);
+            return 1;
+        }
+    }
+    else {
+        DEBUG("receive timeout\r\n");
+        return 1;
+    }
 
+
+    return 0;
+
+#if 0    
     // wait
-    bno_055_delay_ms(100);
+//    bno_055_delay_ms(100);
     onebyte = bno055_getc_from_reve_buff();
 
     if (0xEE == onebyte) {// NG ack response
@@ -176,56 +269,17 @@ static u16 bno055_write_bytes(u8 reg_addr, u8 *p_in, u8 len)
 
             return 1;
         }
-    } else {// invalid ack
+    } 
+    else {// invalid ack
         DEBUG("receive invalid ack header: 0x%X\r\n", onebyte);
 
         return 1;
     }
 
     return 0;
+#endif
 }
 
-static u8 bno055_read_byte(u8 reg_addr)
-{
-    u8 onebyte = 0;
-
-    bno055_reve_buff_clear();
-    memset(bno_send_buf, 0, LEN_BYTE_SZ64);
-
-    bno_send_buf[0] = 0xAA;
-    bno_send_buf[1] = 0x01;// RD
-    bno_send_buf[2] = reg_addr;
-    bno_send_buf[3] = 0x01;// LEN
-
-    // send data
-    bno055_send_chars(bno_send_buf, 4);
-
-    // wait
-    bno_055_delay_ms(50);
-
-    // recv ack till empty or timeout
-    onebyte = bno055_getc_from_reve_buff();
-
-    if (0xEE == onebyte) {// NG ack response
-        onebyte = bno055_getc_from_reve_buff();
-        DEBUG("read failure code: 0x%X\r\n", onebyte);
-
-        return 0;
-    } else if (0xBB == onebyte) {// OK ack response
-        onebyte = bno055_getc_from_reve_buff();// length
-
-        if (onebyte != 0x01) {// length NG
-            DEBUG("receive data lenght is ng\r\n");
-            return 0;
-        }
-
-        return bno055_getc_from_reve_buff();// data
-    } else {// invalid ack
-        DEBUG("read invalid ack header: 0x%X\r\n", onebyte);
-
-        return 0;
-    }
-}
 
 static u16 bno055_read_bytes(u8 reg_addr, u8 len, u8 *p_out)
 {
@@ -461,16 +515,6 @@ u16 bno055_read_calibrate_sta(u16 *calib_sta)
     return result;
 }
 
-// 1 C = 1 LSB
-// 2 F = 1 LSB
-u8 bno055_read_temp(void)
-{
-    u8 temp = 0;
-
-    bno055_loop_read_bytes(BNO055_TEMP, 1, &temp);
-
-    return temp;
-}
 
 // read system status & self test result & system error
 void bno055_read_status(u8 *sys_stat, u8 *st_ret, u8 * sys_err)
@@ -570,281 +614,10 @@ u16 bno055_set_axis_sign(u8 mode)
     return 0;
 }
 
-u16 bno055_enter_suspend_mode(void)
-{
-    u16 result = 0;
 
-    // Select BNO055 config mode
-    result = bno055_write_byte(BNO055_OPR_MODE, CONFIGMODE);
-    if (result) {
-        return 1;
-    }
 
-    bno_055_delay_ms(25);
 
-    result = bno055_write_byte(BNO055_PWR_MODE, 0x02);
-    if (result) {
-        return 1;
-    }
 
-    bno_055_delay_ms(25);
-
-    result = bno055_write_byte(BNO055_OPR_MODE, NDOF);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-
-    return 0;
-}
-
-u16 bno055_enter_normal_mode(void)
-{
-    u16 result = 0;
-
-    // Select BNO055 config mode
-    result = bno055_write_byte(BNO055_OPR_MODE, CONFIGMODE);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    result = bno055_write_byte(BNO055_PAGE_ID, 0x1);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    result = bno055_write_byte(BNO055_INT_EN, 0x80);//ACC_AM ACC_NM
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    result = bno055_write_byte(BNO055_PAGE_ID, 0x0);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-	
-	result = bno055_write_byte(BNO055_PWR_MODE, 0x00);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    result = bno055_write_byte(BNO055_OPR_MODE, NDOF);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-
-    return 0;
-}
-
-u16 bno055_enter_lower_mode(void)
-{
-    u16 result = 0;
-
-    // Select BNO055 config mode
-    result = bno055_write_byte(BNO055_OPR_MODE, CONFIGMODE);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    result = bno055_write_byte(BNO055_PAGE_ID, 0x0);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    result = bno055_write_byte(BNO055_PWR_MODE, 0x01);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    result = bno055_write_byte(BNO055_OPR_MODE, NDOF);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    result = bno055_write_byte(BNO055_PAGE_ID, 0x1);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    result = bno055_write_byte(BNO055_INT_EN, 0x40);//ACC_AM ACC_NM
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(50);
-    result = bno055_write_byte(BNO055_PAGE_ID, 0x0);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-
-    return 0;
-}
-
-u8 bno055_get_int_src(void)
-{
-    u8 onebyte = 0;
-
-    // clear
-    // Select BNO055 config mode
-    // bno055_write_byte(BNO055_OPR_MODE, CONFIGMODE);
-
-    bno_055_delay_ms(50);
-    onebyte = bno055_read_byte(BNO055_INT_STATUS);
-    bno_055_delay_ms(25);
-
-    return onebyte;
-}
-
-u16 bno055_clear_int(void)
-{
-    // u8 onebyte = 0;
-    // clear
-    // bno_055_delay_ms(50);
-    // onebyte = bno055_read_byte(BNO055_SYS_TRIGGER);
-
-    bno_055_delay_ms(50);
-    bno055_write_byte(BNO055_SYS_TRIGGER, 0x40);
-    bno_055_delay_ms(50);
-
-    return 0;
-}
-
-u16 bno055_initial(void)
-{
-    u16 result = 0;
-    u8 onebyte = 0;
-    u8 try_cnt = 5;
-
-    // Select BNO055 config mode
-    result = bno055_write_byte(BNO055_OPR_MODE, CONFIGMODE);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    //             bit7  bit6  bit5  bit4  bit3  bit2  bit1  bit0 
-    // Access       w    w      w          w 
-    // Reset        0    0      0          0 
-    // Content  CLK_SEL RST_INT RST_SYS    Self_Test 
-    // do reset
-	result = bno055_write_byte(BNO055_SYS_TRIGGER, 0x20);
-    if(result){
-        return -1;
-    }
-	bno_055_delay_ms(1000);
-
-    while (--try_cnt) {
-        onebyte = bno055_read_byte(BNO055_CHIP_ID);
-
-        if (0xA0 == onebyte) {
-            break;
-        }
-
-        bno_055_delay_ms(25);
-    }
-
-    // timeout
-    if (try_cnt <= 0) {
-        return 1;
-    }
-
-    result = bno055_write_byte(BNO055_PWR_MODE, Normalpwr);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-
-    return 0;
-}
-
-u16 bno055_int_config(void )
-{
-    u16 result = 0;
-    u8 onebyte = 0;
-
-    // Select BNO055 config mode
-    result = bno055_write_byte(BNO055_OPR_MODE, CONFIGMODE);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    //PAGE1 mode
-    result = bno055_write_byte(BNO055_PAGE_ID, 0x1);
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    // AM NM interrupt enable
-    result = bno055_write_byte(BNO055_INT_EN, 0xC0);//ACC_AM ACC_NM
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    // interrupt mask
-    result = bno055_write_byte(BNO055_INT_MSK, 0xC0);//ACC_AM ACC_NM
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    // 0x14*7.81mg
-    result = bno055_write_byte(BNO055_ACC_AM_THRES, 0x14);//1 LSB = 7.81 mg (4-g range)
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    // 0x0A*7.81mg
-    result = bno055_write_byte(BNO055_ACC_NM_THRESH, 0x0A);//1 LSB = 7.81 mg (4-g range)
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    result = bno055_write_byte(BNO055_ACC_INT_SETTINGS, 0x1C);//AM/NM_Z_AXIS AM/NM_Y_AXIS AM/NM_X_AXIS 
-    if (result) {
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    // slo_no_mot_dur=16s
-    result = bno055_write_byte(BNO055_ACC_NM_SET, (SLO_NO_MOT_DUR<<1) | SMNM);//SMNM=1
-    if (result) {
-        return 1;
-    }
-
-    // PAGE0
-    result = bno055_write_byte(BNO055_PAGE_ID, 0x0);
-    if (result) {
-        return 1;
-    }
-
-    bno055_clear_int();
-
-    onebyte = bno055_get_int_src();
-
-    return 0;
-}
 
 u16 bno055_calibrate_demo(void)
 {
@@ -906,85 +679,6 @@ u16 bno055_calibrate_demo(void)
     return 0;
 }
 
-u16 bno055_set_ext_crystal(u8 usextal)
-{
-    u16 result = 0;
-
-    // Select BNO055 config mode
-    result = bno055_write_byte(BNO055_OPR_MODE, CONFIGMODE);
-    if (result) {
-        DEBUG("init failed 1\n");
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    // Select page 0 to read sensors
-    result = bno055_write_byte(BNO055_PAGE_ID, 0x00);
-    if (result) {
-        DEBUG("init failed 2\n");
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    if (usextal) {
-        result = bno055_write_byte(BNO055_SYS_TRIGGER, 0x80);
-    } else {
-        result = bno055_write_byte(BNO055_SYS_TRIGGER, 0x00);
-    }
-
-    if (result) {
-        DEBUG("init failed 3\n");
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-    // Select BNO055 NDOF mode
-    result = bno055_write_byte(BNO055_OPR_MODE, NDOF);
-    if (result) {
-        DEBUG("init failed 4\n");
-        return 1;
-    }
-
-    bno_055_delay_ms(25);
-
-    return 0;
-}
-
-u16 bno055_setup(void)
-{
-    u16 result = 0;
-    // u8 sys_stat, st_ret, sys_err;
-
-    // result = bno055_verify_chip();
-    // if (result) {
-    //     return 1;
-    // }
-
-    result = bno055_initial();
-    if (result) {
-        DEBUG("init failed \n");
-        return 1;
-    }
-
-    result = bno055_int_config();
-    if (result) {
-        DEBUG("ini config failed \n");
-        return 1;
-    } else {
-        DEBUG("bno055 ini config success \n");
-    }
-
-    // bno055_read_status(&sys_stat, &st_ret, &sys_err);
-    // DEBUG("sys_stat0x%x st_ret0x%x sys_err=0x%x \n",sys_stat, st_ret, sys_err);
-
-    result = bno055_set_ext_crystal(0);
-    if (result) {
-        DEBUG("set_ext_crystal failed \n");
-        return 1;
-    }
-
-    return 0;
-}
 
 u16 bno055_get_euler(float *cur_pitch, float *cur_yaw, float *cur_roll)
 {
@@ -1049,44 +743,488 @@ u16 bno055_euler_check(float init_pitch, float init_yaw, float init_roll)
 }
 
 
-//******************************************************************************
-// Configure BG96
-//******************************************************************************
-u16 Configure_BNO055(void)
+/******************************************************************************/
+/******************************************************************************/
+/******************************************************************************/
+/******************************************************************************/
+
+void BNO055_PowerUp(void)
+{    
+    GPIOx_Output(BANKC, 14, 1);// nTILT_BOOT_LOAD
+    GPIOx_Pull(BANKC, 14, PULL_UP);
+    GPIOx_Config(BANKC, 14, OUTPUT_DIR);// BNO055
+
+    // Don't reset due BNO055 bug
+    GPIOx_Pull(BANKC, 13, PULL_UP);
+    GPIOx_Output(BANKC, 13, 1);// nTILT_RST
+    GPIOx_Config(BANKC, 13, OUTPUT_DIR);// BNO055 
+    //delay_ms_nop(1000);
+    //GPIOx_Output(BANKC, 13, 1);// nTILT_RST
+    delay_ms_nop(250);
+    U4ResetBuffer();
+}
+
+void BNO055_Reset(bool onOff) {
+    GPIOx_Output(BANKC, 13, onOff);// nTILT_RST
+}
+/******************************************************************************/
+u16 BNO055_init(void)
 {
     u16 result = 0;
 
-    result = bno055_setup();
+    if ( bno055_initial() ) {
+        DEBUG("init failed \n");
+        return 1;
+    }
+
+    if ( bno055_int_config() ) {
+        DEBUG("ini config failed \n");
+        return 1;
+    }
+
+    result = bno055_set_ext_crystal(0);
     if (result) {
-        DEBUG("bno055 init failure\n");
-    } else {
-        DEBUG("bno055 init success\n");
+        DEBUG("set_ext_crystal failed \n");
+        return 1;
+    }
+
+    return 0;
+}
+
+/******************************************************************************/
+u8 bno055_initial(void)
+{
+    u16 result;
+    u8 data;
+    
+    data = CONFIGMODE;
+    if ( result = CommReadWrite( BNO055Write, BNO055_OPR_MODE, &data, 1, 0 ) ) {
+        DEBUG("ERROR CONFIGMODE %04X\r\n", result);
+        return result;
+    }
+
+    if ( result = CommReadWrite( BNO055Read, BNO055_CHIP_ID, &data, 0, 1 ) ) {
+        DEBUG("ERROR READ CHIP_ID %04X\r\n", result);
+        return result;
+    }
+
+    if (data != BNO055ChipId) {
+        DEBUG("ERROR CHIP_ID %02X\r\n", data);
+        return ErrChipId;
+    }
+
+    data = Normalpwr;
+    return(CommReadWrite( BNO055Write, BNO055_PWR_MODE, &data, 1, 0 ));
+}
+
+
+/******************************************************************************/
+u16 bno055_int_config(void )
+{
+    u16 result;
+    u8 data;
+
+    // Select BNO055 config mode
+    data = CONFIGMODE;
+    if ( result = CommReadWrite( BNO055Write, BNO055_OPR_MODE, &data, 1, 0 ) ) {
+        DEBUG("ERROR CONFIGMODE %04X\r\n", result);
+        return result;
+    }
+
+    //PAGE1 mode
+    data = 0x01;
+    if ( result = CommReadWrite( BNO055Write, BNO055_PAGE_ID, &data, 1, 0 ) ) {
+        DEBUG("ERROR BNO055_PAGE_ID %04X\r\n", result);
+        return result;
+    }
+
+    // AM NM interrupt enable
+    data = 0xC0;    //ACC_AM ACC_NM
+    if ( result = CommReadWrite( BNO055Write, BNO055_INT_EN, &data, 1, 0 ) ) {
+        DEBUG("ERROR BNO055_INT_EN %04X\r\n", result);
+        return result;
+    }
+
+    // interrupt mask
+    data = 0xC0;    //ACC_AM ACC_NM
+    if ( result = CommReadWrite( BNO055Write, BNO055_INT_MSK, &data, 1, 0 ) ) {
+        DEBUG("ERROR BNO055_INT_MSK %04X\r\n", result);
+        return result;
+    }
+
+    // 0x14*7.81mg
+    data = 0x99;    //1 LSB = 7.81 mg (4-g range) (0x14))
+    if ( result = CommReadWrite( BNO055Write, BNO055_ACC_AM_THRES, &data, 1, 0 ) ) {
+        DEBUG("ERROR BNO055_ACC_AM_THRES %04X\r\n", result);
+        return result;
+    }
+
+    // 0x0A*7.81mg
+    data = 0x10;    //1 LSB = 7.81 mg (4-g range) (0x0A))
+    if ( result = CommReadWrite( BNO055Write, BNO055_ACC_NM_THRESH, &data, 1, 0 ) ) {
+        DEBUG("ERROR BNO055_ACC_NM_THRESH %04X\r\n", result);
+        return result;
+    }
+
+    data = 0x1C;    //AM/NM_Z_AXIS AM/NM_Y_AXIS AM/NM_X_AXIS 
+    if ( result = CommReadWrite( BNO055Write, BNO055_ACC_INT_SETTINGS, &data, 1, 0 ) ) {
+        DEBUG("ERROR BNO055_ACC_INT_SETTINGS %04X\r\n", result);
+        return result;
+    }
+
+    // slo_no_mot_dur=16s
+    //data = (SLO_NO_MOT_DUR<<1) | SMNM;    //SMNM=1
+    data = (0x0F<<1) | SMNM;    //SMNM=1
+    if ( result = CommReadWrite( BNO055Write, BNO055_ACC_NM_SET, &data, 1, 0 ) ) {
+        DEBUG("ERROR BNO055_ACC_NM_SET %04X\r\n", result);
+        return result;
+    }
+
+    data = 0;   //Temp source accelerometer
+    if ( result = CommReadWrite( BNO055Write, BNO055_TEMP_SOURCE, &data, 1, 0 ) ) {
+        DEBUG("ERROR BNO055_TEMP_SOURCE %04X\r\n", result);
+        return result;
+    }
+
+    // PAGE0
+    data = 0;
+    if ( result = CommReadWrite( BNO055Write, BNO055_PAGE_ID, &data, 1, 0 ) ) {
+        DEBUG("ERROR BNO055_PAGE_ID %04X\r\n", result);
+        return result;
+    }
+    
+    return( bno055_get_int_src(&data) );
+}
+
+/******************************************************************************/
+u16 bno055_set_ext_crystal(u8 usextal)
+{
+    u16 result;
+    u8 data;
+
+    data = CONFIGMODE;
+    if ( result = CommReadWrite( BNO055Write, BNO055_OPR_MODE, &data, 1, 0 ) ) {
+        DEBUG("ERROR BNO055_OPR_MODE %04X\r\n", result);
+        return result;
+    }
+
+    data = 0x00;
+    if ( result = CommReadWrite( BNO055Write, BNO055_PAGE_ID, &data, 1, 0 ) ) {
+        DEBUG("ERROR BNO055_PAGE_ID %04X\r\n", result);
+        return result;
+    }
+
+    data = usextal ? 0x80 : 0x00;
+    if ( result = CommReadWrite( BNO055Write, BNO055_SYS_TRIGGER, &data, 1, 0 ) ) {
+        DEBUG("ERROR BNO055_SYS_TRIGGER %04X\r\n", result);
+        return result;
+    }
+
+    data = NDOF;
+    if ( result = CommReadWrite( BNO055Write, BNO055_OPR_MODE, &data, 1, 0 ) ) {
+        DEBUG("ERROR BNO055_OPR_MODE %04X\r\n", result);
+        return result;
     }
 
     return result;
 }
 
-u16 BNO055_init(void)
-{
-    delay_ms(2000);
-    Configure_BNO055();
+/******************************************************************************/
+u16 CommReadWrite(u8 readWrite, u8 regAddr, u8 *pTxRx, u16 txLen, u16 rxLen ) {
+    u8 txBuf[4] = { BNO055StartByte, readWrite, regAddr, readWrite ? rxLen : txLen};
+    u8 data;
+    u16 cnt;
+    u8 len;
+    
+    U4ResetBuffer();
+    
+    //send command
+    for( cnt = 0; cnt < 4; cnt++ )
+        U4Putc(txBuf[cnt]);
 
-    return 0;
+    if (readWrite) {
+        //Get response
+        if ( !U4Getc(&data) )
+            return (ErrCommTo);
+        
+        if ( data != BNO055ReadAck )
+            return ErrReadFail;
+        
+        // Get receive length
+        if ( !U4Getc(&data) )
+            return (ErrCommTo);
+        
+        len = data;
+        if ( (u16)data > rxLen)
+            return ErrMaxLength;
+        
+        for ( cnt = 0; cnt < (u16)len; cnt++) {
+            if ( !U4Getc(&data) )
+                return (ErrCommTo);
+            *pTxRx++ = data;
+        }
+    } 
+    else {
+        for ( cnt = 0; cnt < txLen; cnt++ )
+            U4Putc(*(pTxRx++));
+
+        //Get response
+        if ( !U4Getc(&data) )
+            return (ErrCommTo);
+
+        if ( data != BNO055WriteAck )
+            return (data);      // If not ACK, return received error
+
+        if ( !U4Getc(&data) )
+            return (ErrCommTo);
+        
+        if ( data != BNO055WriteSuccess )
+            return(data);
+    }        
+
+    return ErrNo;
 }
 
-void BNO055_PowerUp(void)
-{    
-    GPIOx_Pull(BANKC, 13, PULL_UP);
-    GPIOx_Pull(BANKC, 14, PULL_UP);
-    GPIOx_Config(BANKC, 13, OUTPUT_DIR);// BNO055 
-    GPIOx_Config(BANKC, 14, OUTPUT_DIR);// BNO055
-    GPIOx_Output(BANKC, 14, 1);// nTILT_BOOT_LOAD
-   
-    GPIOx_Output(BANKC, 13, 1);// nTILT_RST
-    delay_ms(200);
-    GPIOx_Output(BANKC, 13, 0);// nTILT_RST
-    delay_ms(200);
-    GPIOx_Output(BANKC, 13, 1);// nTILT_RST
+/******************************************************************************/
+u16 bno055_get_int_src(u8 *data)
+{
+    u16 result;
+    u16 retry = 5;
+
+/*
+    *data = 0x00;
+    if ( result = CommReadWrite( BNO055Write, BNO055_PAGE_ID, data, 1, 0 ) ) {
+        DEBUG("ERROR normal BNO055_PAGE_ID %04X\r\n", result);
+        return result;
+    }
+ */
+    
+    while ( (result = CommReadWrite( BNO055Read, BNO055_INT_STATUS, data, 0, 1 )) && retry-- )
+        ;
+    
+    if (result)
+        DEBUG("ERROR get_int_src BNO055_INT_STATUS %04X\r\n", result);
+
+#if 0    
+    if ( result = CommReadWrite( BNO055Read, BNO055_INT_STATUS, data, 0, 1 ) ) {
+        DEBUG("ERROR get_int_src BNO055_INT_STATUS %04X\r\n", result);
+        return result;
+    }
+#endif
+
+    return result;
+}
+
+/******************************************************************************/
+u8 GetBNOIntrFlag(void)
+{
+    return bno055_int_flag;
+}
+
+/******************************************************************************/
+void ClearBNOIntrFlag(void)
+{
+    bno055_int_flag = 0;
+}
+
+/******************************************************************************/
+u16 bno055_clear_int(void)
+{
+    u16 result;
+    u8 data = 0x40;
+    u8 retry = 5;
+
+    while( (result = CommReadWrite( BNO055Write, BNO055_SYS_TRIGGER, &data, 1, 0 )) && retry--)
+        ;
+    
+    if (result)
+        DEBUG("ERROR BNO055_SYS_TRIGGER %04X\r\n", result);
+    
+//    if (result = CommReadWrite( BNO055Write, BNO055_SYS_TRIGGER, &data, 1, 0 ))
+  //      DEBUG("ERROR BNO055_SYS_TRIGGER %04X\r\n", result);
+
+    return result;
+}
+
+/******************************************************************************/
+u16 bno055_read_temp(u8 *temp)
+{
+    u16 result;
+    u8 data = 0x40;
+
+    if (result = CommReadWrite( BNO055Read, BNO055_TEMP, &data, 0, 1 ))
+        DEBUG("ERROR BNO055_TEMP %04X\r\n", result);
+
+    return result;
+}
+
+/******************************************************************************/
+u16 bno055_enter_suspend_mode(void)
+{
+    u16 result;
+    u8 data;
+
+    data = CONFIGMODE;
+    if ( result = CommReadWrite( BNO055Write, BNO055_OPR_MODE, &data, 1, 0 ) ) {
+        DEBUG("ERROR suspend BNO055_OPR_MODE %04X\r\n", result);
+        return result;
+    }
+
+    data = 0x02;
+    if ( result = CommReadWrite( BNO055Write, BNO055_PWR_MODE, &data, 1, 0 ) ) {
+        DEBUG("ERROR suspend BNO055_PWR_MODE %04X\r\n", result);
+        return result;
+    }
+
+    data = NDOF;
+    if ( result = CommReadWrite( BNO055Write, BNO055_OPR_MODE, &data, 1, 0 ) ) {
+        DEBUG("ERROR suspend BNO055_OPR_MODE %04X\r\n", result);
+        return result;
+    }
+    
+    return result;
+}
+
+/******************************************************************************/
+u16 bno055_enter_normal_mode(void)
+{
+    u16 result;
+    u8 data;
+
+    data = CONFIGMODE;
+    if ( result = CommReadWrite( BNO055Write, BNO055_OPR_MODE, &data, 1, 0 ) ) {
+        DEBUG("ERROR normal BNO055_OPR_MODE %04X\r\n", result);
+        return result;
+    }
+
+    data = 0x01;
+    if ( result = CommReadWrite( BNO055Write, BNO055_PAGE_ID, &data, 1, 0 ) ) {
+        DEBUG("ERROR normal BNO055_PAGE_ID 1 %04X\r\n", result);
+        return result;
+    }
+
+    data = 0x80;    //ACC_AM ACC_NM
+    if ( result = CommReadWrite( BNO055Write, BNO055_INT_EN, &data, 1, 0 ) ) {
+        DEBUG("ERROR normal BNO055_INT_EN %04X\r\n", result);
+        return result;
+    }
+
+    data = 0x00;
+    if ( result = CommReadWrite( BNO055Write, BNO055_PAGE_ID, &data, 1, 0 ) ) {
+        DEBUG("ERROR normal BNO055_PAGE_ID 0 %04X\r\n", result);
+        return result;
+    }
+
+    data = 0x00;
+    if ( result = CommReadWrite( BNO055Write, BNO055_PWR_MODE, &data, 1, 0 ) ) {
+        DEBUG("ERROR normal BNO055_PWR_MODE %04X\r\n", result);
+        return result;
+    }
+
+    data = NDOF;
+    if ( result = CommReadWrite( BNO055Write, BNO055_OPR_MODE, &data, 1, 0 ) ) {
+        DEBUG("ERROR normal BNO055_OPR_MODE %04X\r\n", result);
+        return result;
+    }
+    
+    return result;
+}
+
+/******************************************************************************/
+u16 bno055_enter_lower_mode(void)
+{
+    u16 result;
+    u8 data;
+
+    data = CONFIGMODE;
+    if ( result = CommReadWrite( BNO055Write, BNO055_OPR_MODE, &data, 1, 0 ) ) {
+        DEBUG("ERROR lower BNO055_OPR_MODE %04X\r\n", result);
+        return result;
+    }
+    
+    data = 0x00;
+    if ( result = CommReadWrite( BNO055Write, BNO055_PAGE_ID, &data, 1, 0 ) ) {
+        DEBUG("ERROR lower BNO055_PAGE_ID 0 %04X\r\n", result);
+        return result;
+    }
+
+    data = 0x01;
+    if ( result = CommReadWrite( BNO055Write, BNO055_PWR_MODE, &data, 1, 0 ) ) {
+        DEBUG("ERROR lower BNO055_PWR_MODE %04X\r\n", result);
+        return result;
+    }
+
+//    data = NDOF;
+    data = ACCONLY;
+    if ( result = CommReadWrite( BNO055Write, BNO055_OPR_MODE, &data, 1, 0 ) ) {
+        DEBUG("ERROR lower BNO055_OPR_MODE %04X\r\n", result);
+        return result;
+    }
+
+    data = 0x01;
+    if ( result = CommReadWrite( BNO055Write, BNO055_PAGE_ID, &data, 1, 0 ) ) {
+        DEBUG("ERROR lower BNO055_PAGE_ID 1 %04X\r\n", result);
+        return result;
+    }
+
+    data = 0x40;    //ACC_AM ACC_NM
+    if ( result = CommReadWrite( BNO055Write, BNO055_INT_EN, &data, 1, 0 ) ) {
+        DEBUG("ERROR lower BNO055_INT_EN %04X\r\n", result);
+        return result;
+    }
+
+    data = 0x00;
+    if ( result = CommReadWrite( BNO055Write, BNO055_PAGE_ID, &data, 1, 0 ) ) {
+        DEBUG("ERROR lower BNO055_PAGE_ID %04X\r\n", result);
+        return result;
+    }
+
+    return result;
+}
+
+/******************************************************************************/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/******************************************************************************/
+void __attribute__ ((weak)) EX_INT1_CallBack(void)
+{
+    // printf("!!!!!!!!!!!!!!!!!!!!!!!INT occur \n");
+    bno055_int_flag = 1;
+}
+
+void __attribute__ ( ( interrupt, no_auto_psv ) ) _INT1Interrupt(void)
+{
+    EX_INT1_CallBack();
+
+    IFS1bits.INT1IF = 0;// Clear INT Flag
+}
+
+void __attribute__ ( ( interrupt, no_auto_psv ) ) _INT2Interrupt(void)
+{
+    IFS1bits.INT2IF = 0;// Clear INT Flag
+}
+
+void ExtIntr_Initialize(void)
+{
+    _TRISD0 = 1;
+    RPINR0bits.INT1R = 11;// RD0->EXT_INT:INT1
+
+    IPC5bits.INT1IP = IPL_MID;
+    IFS1bits.INT1IF = 0;// Clear INT Flag
+    INTCON2bits.INT1EP = 0;// Rise Edge
+    IEC1bits.INT1IE = 1;// Enable INT1 Interrupt
 }
 
 //******************************************************************************

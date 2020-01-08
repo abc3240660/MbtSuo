@@ -18,7 +18,8 @@
 #include "015_Common.h"
 
 #define SMNM                1
-#define SLO_NO_MOT_DUR      15 //16s
+//#define SLO_NO_MOT_DUR      15 //16s
+#define SLO_NO_MOT_DUR      10 //16s
 
 // BNO055 Register Map
 //
@@ -308,10 +309,12 @@ u16 bno055_enter_lower_mode(void);
 u16 bno055_read_calibrate_sta(u16 *calib_sta);
 
 u16 bno055_set_ext_crystal(u8 usextal);
+u16 CommReadWrite(u8 readWrite, u8 regAddr, u8 *pTxRx, u16 txLen, u16 rxLen );
 
 // read system status & self test result & system error
 void bno055_read_status(u8 *sys_stat, u8 *st_ret, u8 *sys_err);
-u8 bno055_get_int_src(void);
+u16 bno055_get_int_src(u8 *data);
+//u8 bno055_get_int_src(void);
 u16 bno055_clear_int(void);
 u16 bno055_get_euler(float *cur_pitch, float *cur_yaw, float *cur_roll);
 u16 bno055_euler_check(float init_pitch, float init_yaw, float init_roll);
@@ -323,6 +326,10 @@ u8 GetBNOIntrFlag(void);
 void ClearBNOIntrFlag(void);
 
 void ExtIntr_Initialize(void);
+
+u8 bno055_initial(void);
+u16 bno055_int_config(void );
+u16 bno055_read_temp(u8 *temp);
 
 #endif //__BNO055_H
 

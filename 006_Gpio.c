@@ -260,20 +260,41 @@ void LockSwitch_Init(void)
     _ANSE4 = 0;
     // Default HW Pull Up
     GPIOx_Config(BANKE, 4, INPUT_DIR);
-
-    // _ANSF5 = 0;
-    // Default HW Pull Up ???
-    GPIOx_Config(BANKF, 5, INPUT_DIR);
 }
 
 u8 IsLockSwitchOpen(void)
 {
     if (!GPIOx_Input(BANKE, 4)) {
+        return 0;// Open
+    } else {
+        return 1;// Close
+    }
+}
+
+void MotorSwitch_Init(void)
+{
+    _ANSE4 = 0;
+    // Default HW Pull Up
+    GPIOx_Config(BANKF, 5, INPUT_DIR);
+}
+
+u8 IsMotorRunning(void)
+{
+    if (!GPIOx_Input(BANKF, 5)) {
         return 1;// Open
     } else {
         return 0;// Close
     }
 }
+
+
+
+
+
+
+
+
+
 
 void Beep_Init(void)
 {
@@ -283,6 +304,11 @@ void Beep_Init(void)
     GPIOx_Output(BANKB, 13, 0);// default low -> poweroff
 }
 
+void Beep(u32 time){
+    GPIOx_Output(BANKB, 13, 1);
+    delay_ms_nop(time);
+    GPIOx_Output(BANKB, 13, 0);
+}
 void Beep_Low(void)
 {
     GPIOx_Output(BANKB, 13, 0);
@@ -398,20 +424,26 @@ void ExtIntr2_Disable(void)
     _INT2IE = 0;// Enable INT1 Interrupt
 }
 
-void Charge_Init(void)
-{
-    // Charge Status
-    GPIOx_Pull(BANKF, 2, PULL_UP);
-    GPIOx_Config(BANKF, 2, INPUT_DIR);
-
+void BoardPowerInit(void) {
     // Charge Enable
     GPIOx_Config(BANKG, 3, OUTPUT_DIR);
     GPIOx_Output(BANKG, 3, 0);// allow charge
 }
 
+void BoardPower(bool onOff) {
+    GPIOx_Output(BANKG, 3, onOff);
+}
+
+void Charge_Init(void)
+{
+    // Charge Status
+    GPIOx_Pull(BANKF, 2, PULL_UP);
+    GPIOx_Config(BANKF, 2, INPUT_DIR);
+}
+
 void Charge_Disable(void)
 {
-    GPIOx_Output(BANKG, 3, 1);// disable charge
+    //GPIOx_Output(BANKG, 3, 1);// disable charge
 }
 
 u8 Charge_InsertDetect(void)
@@ -483,4 +515,29 @@ void SetLedsMode(LED_INDEX led_id, LED_MOD led_mod)
 u8 GetLedsMode(LED_INDEX led_id)
 {
     return (gs_leds_mod&(1<<led_id)) ? 1 : 0;
+}
+
+void InitIdleIrq(void) {
+    // interrupt on change init
+    DEBUG("Init idle IRQ\n");
+    _IOCON = 1;     //enable IOC functionality
+    IOCPE = 0x10;      //RE4 switch input rising edge
+    
+    IOCNE = 0x10;      //RE4 switch input falling edge
+    _IOCIE = 1;
+    
+    
+    
+    
+    //Idle();
+}
+
+/* Interrupt on change */
+void __attribute__ ( ( interrupt, no_auto_psv ) ) _IOCInterrupt(void){
+    if (_IOCPEF ) {     
+        // change interrupt detected on port E
+        if (IOCFE & 0x10) {
+            _IOCIF = 0;
+        }
+    }
 }
